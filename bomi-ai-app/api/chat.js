@@ -40,8 +40,9 @@ export default async function handler(req, res) {
         body: JSON.stringify({
           systemInstruction: { parts: [{ text: system || '' }] },
           contents,
+          tools: [{ google_search: {} }], // 실시간 구글 검색으로 답을 보강 (버스/지하철 경로 등 정확도 향상)
           generationConfig: {
-            maxOutputTokens: 500,
+            maxOutputTokens: 700,
             thinkingConfig: { thinkingBudget: 0 } // 생각하는 토큰을 꺼서 답변이 잘리지 않게 함
           }
         })
