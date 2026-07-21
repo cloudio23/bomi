@@ -40,7 +40,10 @@ export default async function handler(req, res) {
         body: JSON.stringify({
           systemInstruction: { parts: [{ text: system || '' }] },
           contents,
-          generationConfig: { maxOutputTokens: 300 }
+          generationConfig: {
+            maxOutputTokens: 500,
+            thinkingConfig: { thinkingBudget: 0 } // 생각하는 토큰을 꺼서 답변이 잘리지 않게 함
+          }
         })
       }
     );
