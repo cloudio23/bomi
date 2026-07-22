@@ -1054,6 +1054,36 @@ async function maybeAskFeedback(){
   }
 }
 
+/* ============ HEALTH SIGNAL EXTRACTION (real data, replaces fake scores) ============ */
+async function extractAndMergeSignals(userText, assistantText){
+  try{
+    const resp = await fetch('/api/extract', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userText, assistantText })
+    });
+    const data = await resp.json();
+    const s = data.signals || {};
+
+    // 오늘 언급된 게 하나도 없으면 저장할 필요 없음
+    const hasAny = s.sleep || s.pain || s.mood || s.meal || s.activity;
+    if(!hasAny) return;
+
+    const key = todayKey('signals');
+    const existing = (await storeGet(key)) || {};
+    // 새로 언급된 항목만 오늘 기록에 덮어씀 (마지막으로 언급한 내용이 최신값)
+    if(s.sleep) existing.sleep = s.sleep;
+    if(s.pain) existing.pain = s.pain;
+    if(s.mood) existing.mood = s.mood;
+    if(s.meal) existing.meal = s.meal;
+    if(s.activity) existing.activity = s.activity;
+    existing.updated_at = new Date().toISOString();
+    await storeSet(key, existing);
+  }catch(e){
+    // 추출 실패해도 대화 자체엔 영향 없게 조용히 무시
+  }
+}
+
 async function sendMessage(text){
   if(!text || !text.trim()) return;
   document.getElementById('sendBtn').disabled = true;
@@ -1074,6 +1104,17 @@ async function sendMessage(text){
       document.getElementById('sendBtn').disabled = false;
     }, 500);
     return;
+  }
+
+  addTyping();
+  try{
+    const reply = await callBomi(text);
+    removeTyping();
+    addBubble('assistant', reply);
+    messages.push({role:'assistant', content:reply});
+    await storeSet(todayKey('messages'), messages.slice(-30));
+    extractAndMergeSignals(text, reply); // 기다리지 않고 백그라운드로 실행 (대화 속도에 영향 없게)
+    await maybeAskFeedback();
   }
 
   addTyping();
