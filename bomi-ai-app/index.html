@@ -1015,7 +1015,6 @@ function addBubble(role, text){
   chat.appendChild(row);
   chat.scrollTop = chat.scrollHeight;
 }
-}
 function addTyping(){
   const chat = document.getElementById('chat');
   const row = document.createElement('div');
@@ -1168,6 +1167,9 @@ async function sendMessage(text){
     await storeSet(todayKey('messages'), messages.slice(-30));
     extractAndMergeSignals(text, reply); // 기다리지 않고 백그라운드로 실행 (대화 속도에 영향 없게)
     await maybeAskFeedback();
+  }catch(e){
+    removeTyping();
+    addBubble('assistant', '지금 연결이 원활하지 않아요. 잠시 후 다시 말씀해 주세요 🙏');
   }
   document.getElementById('sendBtn').disabled = false;
 }
