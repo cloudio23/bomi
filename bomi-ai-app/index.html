@@ -939,16 +939,29 @@ document.getElementById('addChecklistItem').addEventListener('click', async ()=>
 
 /* ============ CHAT LOGIC ============ */
 
+function escapeHtml(s){
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function renderBubbleContent(text){
+  // 텍스트를 이스케이프한 뒤 **굵게** 표시만 <strong>으로 바꿔줍니다 (그 외 마크다운은 그대로 문자로 남음).
+  const escaped = escapeHtml(text);
+  return escaped.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+}
 function addBubble(role, text){
   const chat = document.getElementById('chat');
   const row = document.createElement('div');
   row.className = 'row ' + (role==='user' ? 'user' : 'bot');
   const b = document.createElement('div');
   b.className = 'bubble ' + (role==='user' ? 'user' : 'bot');
-  b.textContent = text;
+  if(role === 'user'){
+    b.textContent = text;
+  } else {
+    b.innerHTML = renderBubbleContent(text);
+  }
   row.appendChild(b);
   chat.appendChild(row);
   chat.scrollTop = chat.scrollHeight;
+}
 }
 function addTyping(){
   const chat = document.getElementById('chat');
@@ -967,7 +980,7 @@ function systemPrompt(){
 역할: 수면, 식사, 통증, 복약, 정서 상태를 먼저 챙기고, 관심사(${profile.interests.join(', ')})를 활용해 친밀하게 대화하세요.
 규칙:
 - 문장 하나하나는 짧고 쉽게 끊어 쓰되, 답변 전체 길이는 상황에 맞게 조절하세요. 안부·감정 대화는 2~3문장으로 짧게, 길찾기·정보 요청처럼 구체적인 답이 필요한 질문에는 5~7문장까지 써서 충분히 설명하세요.
-- 마크다운 문법(**굵게**, # 제목, - 목록 기호 등)을 쓰지 마세요. 순수 텍스트로만 답하세요. 번호를 매길 땐 "1. 2." 처럼 숫자만 쓰세요.
+- 마크다운 문법 중 굵게(**텍스트**)는 버스/지하철 번호, 지역·정류장 이름, 약 이름처럼 한눈에 띄어야 하는 핵심 단어에만 사용하세요. 문장 전체나 매 문장마다 쓰지 말고, 답변당 2~3곳 이내로 꼭 필요한 곳에만. # 제목이나 - 목록 기호는 쓰지 마세요. 번호를 매길 땐 "1. 2." 처럼 숫자만 쓰세요.
 - 정보 요청(길찾기, 날씨 등)에 답할 땐 필요한 정보만 정확히 전달하고, "궁금한 점 있으면 물어보세요", "오늘 하루도 즐겁게 보내세요" 같은 상투적인 끝인사는 붙이지 마세요. 안부·감정 대화에서만 그런 다정한 마무리를 쓰세요.
 - 의학적 진단/처방은 하지 말고, 이상 증상엔 병원 방문이나 가벼운 스트레칭을 권유하세요.
 - 이모지는 가끔 1개 정도만.`;
