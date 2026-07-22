@@ -763,18 +763,52 @@ document.getElementById('copyCrm').addEventListener('click', ()=>{
   const old = btn.textContent; btn.textContent = '복사됨'; setTimeout(()=>btn.textContent=old, 1200);
 });
 
-/* ============ REPORT SCREEN ============ */
-function seededRandom(seed){ const x = Math.sin(seed) * 10000; return x - Math.floor(x); }
-function dayHash(){ const d = new Date(); return d.getFullYear()*372 + d.getMonth()*31 + d.getDate(); }
+/* ============ REPORT SCREEN (real signals, no more fake random scores) ============ */
+function scoreFromSleep(sig){
+  if(!sig || (sig.hours == null && !sig.quality)) return null;
+  let score = 75;
+  if(sig.hours != null){
+    if(sig.hours >= 7) score = 88;
+    else if(sig.hours >= 5) score = 70;
+    else score = 48;
+  }
+  if(sig.quality === 'poor') score -= 15;
+  if(sig.quality === 'good') score += 5;
+  return Math.max(20, Math.min(100, Math.round(score)));
+}
+function scoreFromMood(mood){
+  if(!mood) return null;
+  if(mood === 'positive') return 85;
+  if(mood === 'neutral') return 68;
+  return 42; // negative
+}
+function scoreFromMeal(sig, lunchChecked){
+  if(!sig && !lunchChecked) return null;
+  let score = 60;
+  if(sig && sig.count != null) score = Math.min(100, 35 + sig.count * 20);
+  if(lunchChecked) score = Math.max(score, 75);
+  if(sig && sig.skipped) score -= 20;
+  return Math.max(20, Math.min(100, Math.round(score)));
+}
+function scoreFromActivity(sig, walkChecked){
+  if(!sig && !walkChecked) return null;
+  let score = 55;
+  if(sig && sig.did_exercise) score = 85;
+  if(walkChecked) score = Math.max(score, 80);
+  return Math.max(20, Math.min(100, Math.round(score)));
+}
 
-function computeScores(){
-  const seed = dayHash();
-  const sleep = Math.min(100, Math.round(70 + seededRandom(seed+1)*25));
-  const mental = Math.min(100, Math.round(65 + seededRandom(seed+2)*25));
-  const nutri = Math.min(100, Math.round(58 + (checklistState['lunch']?20:0) + seededRandom(seed+3)*15));
-  const act = Math.min(100, Math.round(50 + (checklistState['walk']?25:0) + seededRandom(seed+4)*15));
-  const overall = Math.round((sleep+mental+nutri+act)/4);
-  return { seed, sleep, mental, nutri, act, overall };
+async function computeScores(){
+  const signals = (await storeGet(todayKey('signals'))) || {};
+  const sleep = scoreFromSleep(signals.sleep);
+  const mental = scoreFromMood(signals.mood);
+  const nutri = scoreFromMeal(signals.meal, !!checklistState['lunch']);
+  const act = scoreFromActivity(signals.activity, !!checklistState['walk']);
+
+  const available = [sleep, mental, nutri, act].filter(v => v != null);
+  const overall = available.length ? Math.round(available.reduce((a,b)=>a+b,0) / available.length) : null;
+
+  return { sleep, mental, nutri, act, overall, signals };
 }
 
 async function renderReport(){
@@ -784,30 +818,45 @@ async function renderReport(){
 
   let recordDays = 1;
   try{
-   recordDays = Math.max(1, (await storeKeysWithPrefix('messages:')).length);
+    const keys = await storeKeysWithPrefix('messages:');
+    recordDays = Math.max(1, keys.length);
   }catch(e){}
   document.getElementById('recordDaysBadge').textContent = `${recordDays}일 기록됨`;
 
-  const { seed, sleep, mental, nutri, act, overall } = computeScores();
+  const { sleep, mental, nutri, act, overall, signals } = await computeScores();
 
-  document.getElementById('scoreNum').textContent = overall;
+  document.getElementById('scoreNum').textContent = overall != null ? overall : '-';
   const ring = document.getElementById('scoreRing');
-  ring.style.background = `conic-gradient(var(--navy) ${overall}%, #EEF1F6 ${overall}%)`;
-  document.getElementById('scoreCap').textContent = overall>=80 ? '컨디션이 아주 좋아요' : overall>=60 ? '무난한 상태예요' : '조금 더 챙겨볼까요';
+  const ringPct = overall != null ? overall : 0;
+  ring.style.background = `conic-gradient(var(--navy) ${ringPct}%, #EEF1F6 ${ringPct}%)`;
+  document.getElementById('scoreCap').textContent = overall == null
+    ? '아직 데이터가 부족해요, 대화를 더 나눠보세요'
+    : (overall>=80 ? '컨디션이 아주 좋아요' : overall>=60 ? '무난한 상태예요' : '조금 더 챙겨볼까요');
 
-  setMetric('sleep', sleep, `수면시간 ${Math.round(sleep/100*8)}h · 수면질 ${sleep>=75?'숙면':'보통'}`);
-  setMetric('nutri', nutri, `${checklistState['lunch']?'3회 식사':'2회 식사'} · 물 ${Math.round(4+seededRandom(seed+5)*4)}잔`);
-  setMetric('act', act, `${checklistState['walk']?'5,200보':'2,100보'} · ${checklistState['walk']?'30분 운동':'10분 운동'}`);
-  setMetric('mental', mental, `기분 ${mental>=75?'긍정적':'보통'} · 스트레스 ${mental>=75?'낮음':'보통'}`);
+  setMetric('sleep', sleep, sleep != null
+    ? `${signals.sleep?.hours != null ? signals.sleep.hours+'시간 · ' : ''}${signals.sleep?.quality==='poor'?'수면 불편 언급':signals.sleep?.quality==='good'?'숙면':'보통'}`
+    : '아직 수면 관련 대화가 없어요');
+  setMetric('nutri', nutri, nutri != null
+    ? `${checklistState['lunch']?'점심 체크 완료':(signals.meal?.count!=null? signals.meal.count+'회 식사 언급':'')}${signals.meal?.skipped?' · 식사 거름 언급':''}`
+    : '아직 식사 관련 대화가 없어요');
+  setMetric('act', act, act != null
+    ? `${checklistState['walk']?'산책 체크 완료':''}${signals.activity?.type?' · '+signals.activity.type:''}`
+    : '아직 활동 관련 대화가 없어요');
+  setMetric('mental', mental, mental != null
+    ? `기분 ${signals.mood==='positive'?'긍정적':signals.mood==='negative'?'가라앉음':'보통'}`
+    : '아직 기분 관련 대화가 없어요');
 
   const age = new Date().getFullYear() - profile.birthYear;
   const b = bmiInfo();
+  const painNote = signals.pain?.present
+    ? ` <b style="color:#C23A56">통증 언급 있음${signals.pain.location?' ('+signals.pain.location+')':''}</b> — 병원 방문을 권해드렸어요.`
+    : '';
   document.getElementById('sourceNote').innerHTML =
-    `<b style="color:var(--ink)">데이터 출처</b><br>보미와의 대화·체크리스트 활동을 바탕으로 산출된 <b>프로토타입 추정치</b>입니다. 만 ${age}세 · ${profile.gender} 기준 · BMI ${b.bmi} (${b.cat}). 실제 서비스에서는 웨어러블·문진 데이터 연동이 필요해요.`;
+    `<b style="color:var(--ink)">데이터 출처</b><br>보미와 실제로 나눈 대화에서 언급된 내용과 체크리스트를 바탕으로 계산돼요 (언급이 없으면 "데이터 없음"으로 표시돼요, 임의로 추측하지 않아요). 참고 정보: 만 ${age}세 · ${profile.gender} · BMI ${b.bmi} (${b.cat}).${painNote}`;
 }
 function setMetric(key, score, sub){
-  document.getElementById(key+'Score').textContent = score + '/100';
-  document.getElementById(key+'Bar').style.width = score + '%';
+  document.getElementById(key+'Score').textContent = score != null ? score + '/100' : '데이터 없음';
+  document.getElementById(key+'Bar').style.width = (score != null ? score : 0) + '%';
   document.getElementById(key+'Sub').textContent = sub;
 }
 document.getElementById('dPrev').addEventListener('click', ()=>{});
@@ -816,11 +865,13 @@ document.getElementById('dNext').addEventListener('click', ()=>{});
 /* ============ FAMILY REPORT (PREVIEW) ============ */
 function familySummary(scores){
   const parts = [];
-  parts.push(scores.sleep>=75 ? '수면은 안정적이에요.' : '수면 점수가 평소보다 낮아서 조금 더 지켜봐야 해요.');
-  parts.push(scores.nutri>=75 ? '식사도 잘 챙기고 계세요.' : '식사 횟수가 다소 불규칙했어요.');
-  parts.push(scores.act>=70 ? '활동량도 늘었어요.' : '오늘은 활동량이 적은 편이었어요, 가볍게 산책을 권해드렸어요.');
-  parts.push(scores.mental>=75 ? '기분도 좋아 보이세요 😊' : '요즘 기분 상태는 보통이에요, 안부 전화 한 통 드려보는 건 어떨까요?');
-  return parts.join(' ');
+  parts.push(scores.sleep == null ? null : (scores.sleep>=75 ? '수면은 안정적이에요.' : '수면이 평소보다 부족해 보여요.'));
+  parts.push(scores.nutri == null ? null : (scores.nutri>=75 ? '식사도 잘 챙기고 계세요.' : '식사가 다소 불규칙했어요.'));
+  parts.push(scores.act == null ? null : (scores.act>=70 ? '활동량도 좋아요.' : '오늘은 활동량이 적은 편이었어요.'));
+  parts.push(scores.mental == null ? null : (scores.mental>=75 ? '기분도 좋아 보이세요 😊' : '기분이 평소보다 가라앉아 보여요.'));
+  const filled = parts.filter(Boolean);
+  if(filled.length === 0) return '아직 대화가 충분하지 않아서 소식을 정리하기 어려워요. 대화를 나눌수록 정확해져요.';
+  return filled.join(' ');
 }
 
 async function renderFamily(){
@@ -829,17 +880,19 @@ async function renderFamily(){
   document.getElementById('famName').textContent = profile.name + '님';
   document.getElementById('famSub').textContent = `만 ${age}세 · ${profile.gender}`;
 
-  const scores = computeScores();
+  const scores = await computeScores();
   const badge = document.getElementById('famStatusBadge');
-  if(scores.overall >= 60){ badge.textContent = '정상'; badge.className = 'badge good'; }
+  if(scores.overall == null){ badge.textContent = '데이터 수집 중'; badge.className = 'badge warn'; }
+  else if(scores.overall >= 60){ badge.textContent = '정상'; badge.className = 'badge good'; }
   else { badge.textContent = '주의 필요'; badge.className = 'badge warn'; }
 
+  const fmt = (v, threshold) => v == null ? '<div class="value">-</div>' : `<div class="value ${v>=threshold?'good':'warn'}">${v}/100</div>`;
   const grid = document.getElementById('famStatGrid');
   grid.innerHTML = `
-    <div class="stat-card"><div class="label">수면</div><div class="value ${scores.sleep>=75?'good':'warn'}">${scores.sleep}/100</div></div>
-    <div class="stat-card"><div class="label">영양</div><div class="value ${scores.nutri>=75?'good':'warn'}">${scores.nutri}/100</div></div>
-    <div class="stat-card"><div class="label">활동</div><div class="value ${scores.act>=70?'good':'warn'}">${scores.act}/100</div></div>
-    <div class="stat-card"><div class="label">심리</div><div class="value ${scores.mental>=75?'good':'warn'}">${scores.mental}/100</div></div>
+    <div class="stat-card"><div class="label">수면</div>${fmt(scores.sleep,75)}</div>
+    <div class="stat-card"><div class="label">영양</div>${fmt(scores.nutri,75)}</div>
+    <div class="stat-card"><div class="label">활동</div>${fmt(scores.act,70)}</div>
+    <div class="stat-card"><div class="label">심리</div>${fmt(scores.mental,75)}</div>
   `;
 
   document.getElementById('famSummary').innerHTML = `<b style="color:var(--blue)">[${profile.name}님 소식]</b><br>${familySummary(scores)}`;
@@ -1115,19 +1168,6 @@ async function sendMessage(text){
     await storeSet(todayKey('messages'), messages.slice(-30));
     extractAndMergeSignals(text, reply); // 기다리지 않고 백그라운드로 실행 (대화 속도에 영향 없게)
     await maybeAskFeedback();
-  }
-
-  addTyping();
-  try{
-    const reply = await callBomi(text);
-    removeTyping();
-    addBubble('assistant', reply);
-    messages.push({role:'assistant', content:reply});
-    await storeSet(todayKey('messages'), messages.slice(-30));
-    await maybeAskFeedback();
-  }catch(e){
-    removeTyping();
-    addBubble('assistant', '지금 연결이 원활하지 않아요. 잠시 후 다시 말씀해 주세요 🙏');
   }
   document.getElementById('sendBtn').disabled = false;
 }
