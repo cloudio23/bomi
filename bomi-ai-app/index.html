@@ -784,7 +784,7 @@ async function renderReport(){
 
   let recordDays = 1;
   try{
-    recordDays = Math.max(1, localKeysWithPrefix('messages:').length);
+   recordDays = Math.max(1, (await storeKeysWithPrefix('messages:')).length);
   }catch(e){}
   document.getElementById('recordDaysBadge').textContent = `${recordDays}일 기록됨`;
 
@@ -999,23 +999,13 @@ async function saveFeedback(text){
     });
   }catch(e){}
 }
-
 async function renderFeedbackList(){
   const container = document.getElementById('feedbackList');
   container.innerHTML = '불러오는 중...';
   try{
-    const keys = localKeysWithPrefix('feedback:').slice(-20).reverse();
-    if(keys.length === 0){
-      container.innerHTML = '<div class="cl-empty">아직 접수된 피드백이 없어요</div>';
-      return;
-    }
-    const items = [];
-    for(const k of keys){
-      const v = await storeGet(k);
-      if(v) items.push(v);
-    }
-    container.innerHTML = '';
+    const items = await fetchAllFeedback();
     if(items.length === 0){ container.innerHTML = '<div class="cl-empty">아직 접수된 피드백이 없어요</div>'; return; }
+    container.innerHTML = '';
     items.forEach(fb=>{
       const d = new Date(fb.ts);
       const row = document.createElement('div');
