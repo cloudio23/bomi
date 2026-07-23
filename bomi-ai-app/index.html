@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>보미 AI - 프로토타입 v2</title>
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#1861FE">
@@ -113,20 +113,20 @@ body{
 
   /* ---------- CHAT ---------- */
   .header{
-   background: var(--blue) !important;
-   color: #fff;
-   /* 아이폰 노치/아일랜드 영역 크기만큼 위쪽 패딩을 확보 */
+    background: var(--blue) !important;
+    color: #fff;
+    /* 아이폰 노치/아일랜드 영역 크기만큼 위쪽 패딩을 강제로 늘려줍니다 */
     padding-top: calc(env(safe-area-inset-top, 20px) + 12px) !important;
-   padding-bottom: 16px !important;
-   padding-left: 16px !important;
-   padding-right: 16px !important;
-   display: flex;
-   align-items: center;
-   justify-content: space-between;
-   flex-shrink: 0;
-   width: 100%;
-   box-sizing: border-box;
-   border-radius: 0 !important;
+    padding-bottom: 16px !important;
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+    width: 100%;
+    box-sizing: border-box;
+    border-radius: 0 !important; /* 헤더 양옆 둥근모서리 제거 */
   }
   .header .who{ display:flex; align-items:center; gap:10px; }
   .avatar-sm{
