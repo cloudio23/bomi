@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>보미 AI - 프로토타입 v2</title>
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#1861FE">
@@ -102,14 +102,13 @@
 
   /* ---------- CHAT ---------- */
   .header{
-     background: var(--blue); 
-     color: #fff; 
-  /* 상단 아이폰 노치/아일랜드 영역만큼 패딩을 자동으로 더해줌 */
-     padding: calc(env(safe-area-inset-top, 20px) + 12px) 18px 16px 18px; 
-     display: flex; 
-     align-items: center; 
-     justify-content: space-between; 
-     flex-shrink: 0;
+    background: linear-gradient(180deg, #5185ff 0%, var(--blue) 100%); 
+    color:#fff; 
+    padding: 24px 18px 16px 18px; /* 윗쪽 패딩을 살짝 늘려 그라데이션 영역 확보 */
+    display:flex; 
+    align-items:center; 
+    justify-content:space-between; 
+    flex-shrink:0;
 }
   .header .who{ display:flex; align-items:center; gap:10px; }
   .avatar-sm{
