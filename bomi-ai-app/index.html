@@ -1283,3 +1283,26 @@ async function startApp(isNew){
       }
     }, 400); // 앱 실행 후 0.4초 뒤에 사라지기 시작
   });
+// 스플래시 화면을 확실히 제거하는 함수
+  function removeSplash() {
+    const splash = document.getElementById('splashScreen');
+    if (splash) {
+      splash.style.opacity = '0';
+      setTimeout(() => {
+        splash.remove();
+      }, 300); // 부드럽게 사라진 후 DOM에서 제거
+    }
+  }
+
+  // 1. 페이지 로드가 이미 완료된 경우 바로 실행
+  if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    setTimeout(removeSplash, 400);
+  } else {
+    // 2. 아직 로딩 중인 경우 이벤트 리스너 등록
+    window.addEventListener('DOMContentLoaded', () => {
+      setTimeout(removeSplash, 400);
+    });
+  }
+
+  // 3. 안전장치 (최대 1.5초 뒤 강제 삭제)
+  setTimeout(removeSplash, 1500);
