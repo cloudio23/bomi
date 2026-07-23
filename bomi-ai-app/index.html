@@ -493,9 +493,10 @@ let notifSettings = { report:true, proactive:true, mental:true };
 let messages = [];
 let checklistState = {};       // today's done/not-done map, keyed by item id
 let checklistItems = [];       // configurable list of {id, label}
-let checklistEnabled = true;   // shown/hidden in chat
+let checklistEnabled = false;  // shown/hidden in chat — 사용자가 첫 대화에서 "필요해요"라고 답해야 켜짐
 let pinnedExpanded = true;
 let pendingFeedback = false;
+let awaitingChecklistConsent = false; // 첫 대화에서 "체크리스트 필요하세요?" 답을 기다리는 중인지
 let lastFeedbackAskDate = null; // ISO date string of the last time the feedback question was asked
 const FEEDBACK_TRIGGER = 3;          // minimum user messages in today's chat before asking
 const FEEDBACK_INTERVAL_DAYS = 7;    // don't ask again within this many days
@@ -1187,15 +1188,47 @@ document.querySelectorAll('.chip').forEach(chip=>{
 
 /* ============ APP START ============ */
 async function startApp(isNew){
-  document.getElementById('chatStatus').textContent = `${profile.name}님의 건강을 챙기는 중`;
-  checklistState = await storeGet(todayKey('checklist')) || {};
-  checklistItems = await storeGet('checklist-items');
-  if(!checklistItems){ checklistItems = DEFAULT_CHECKLIST_ITEMS.slice(); await storeSet('checklist-items', checklistItems); }
-  const enabledStored = await storeGet('checklist-enabled');
-  checklistEnabled = enabledStored === null ? true : enabledStored;
-  lastFeedbackAskDate = await storeGet('feedback-last-asked');
-  messages = await storeGet(todayKey('messages')) || [];
-  showScreen('chatScreen');
+ function classifyYesNo(text){
+  const t = (text || '').trim();
+  const negative = ['아니','괜찮','필요없','싫어','안 해','안해','됐어','됐습니다','노노','됫어'];
+  const positive = ['네','예','좋아','필요','응','그래','부탁','넵','좋습니다','필요해요','필요합니다','알려줘','해줘','필요할','도움'];
+  if(negative.some(w => t.includes(w))) return 'no';
+  if(positive.some(w => t.includes(w))) return 'yes';
+  return null;
+}
+
+async function sendMessage(text){
+  if(!text || !text.trim()) return;
+  document.getElementById('sendBtn').disabled = true;
+  addBubble('user', text);
+  messages.push({role:'user', content:text});
+  await storeSet(todayKey('messages'), messages.slice(-30));
+
+  if(awaitingChecklistConsent){
+    const answer = classifyYesNo(text);
+    if(answer === 'yes' || answer === 'no'){
+      awaitingChecklistConsent = false;
+      addTyping();
+      let reply;
+      if(answer === 'yes'){
+        checklistEnabled = true;
+        await storeSet('checklist-enabled', true);
+        reply = '좋아요! 이제부터 대화창 위쪽에 "오늘의 체크리스트"가 표시될 거예요. 항목을 누르면 완료 체크가 되고, 상단 메뉴(☰)의 프로필에서 "체크리스트 관리"를 열면 항목을 추가하거나 지우실 수 있어요. 언제든 편하게 바꾸세요 😊';
+      } else {
+        reply = '알겠습니다, 그럼 지금은 체크리스트 없이 편하게 대화만 나눠요. 나중에 필요해지시면 상단 메뉴(☰)의 프로필에서 "체크리스트 관리"를 켜시면 바로 사용하실 수 있어요.';
+      }
+      setTimeout(async ()=>{
+        removeTyping();
+        addBubble('assistant', reply);
+        messages.push({role:'assistant', content:reply});
+        await storeSet(todayKey('messages'), messages.slice(-30));
+        renderPinnedChecklist();
+        document.getElementById('sendBtn').disabled = false;
+      }, 400);
+      return;
+    }
+    awaitingChecklistConsent = false;
+  }
 
   if(messages.length === 0){
     const intro = `${profile.name}님, 반가워요! 보미가 매일 이런 걸 여쭤볼게요:
