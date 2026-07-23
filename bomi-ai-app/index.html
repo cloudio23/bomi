@@ -292,6 +292,11 @@ body{
 </style>
 </head>
 <body>
+<!-- 🚀 새로 추가할 스플래시(로딩) 화면 -->
+  <div id="splashScreen" style="position:fixed; top:0; left:0; width:100vw; height:100vh; background:#ffffff; display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:9999; transition: opacity 0.3s ease;">
+    <div style="font-size: 24px; font-weight: 700; color: #2A60F8; margin-bottom: 8px;">보미 AI</div>
+    <div style="font-size: 13px; color: #888;">당신을 위한 건강 비서</div>
+  </div>
 
 <div class="app">
 
@@ -1266,3 +1271,15 @@ async function startApp(isNew){
 </script>
 </body>
 </html>
+
+// --- 기존 초기화 및 렌더링 코드들의 맨 마지막 줄에 추가 ---
+
+  window.addEventListener('DOMContentLoaded', () => {
+    setTimeout(() => {
+      const splash = document.getElementById('splashScreen');
+      if (splash) {
+        splash.style.opacity = '0'; // 투명하게 만듦
+        setTimeout(() => splash.remove(), 300); // 0.3초 뒤에 HTML에서 완전히 삭제
+      }
+    }, 400); // 앱 실행 후 0.4초 뒤에 사라지기 시작
+  });
