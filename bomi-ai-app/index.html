@@ -162,7 +162,14 @@ body{
   .check-item input{ width:19px; height:19px; accent-color:var(--blue); cursor:pointer; flex-shrink:0; }
   .check-item.done span.label{ text-decoration:line-through; color:var(--sub); }
 
-  .quickchips{ display:flex; gap:8px; padding:0 16px 10px 16px; overflow-x:auto; flex-shrink:0; }
+  .quickchips{ 
+  display:flex; 
+  gap:8px; 
+  padding:10px 16px; /* 위아래 패딩을 주어 배경이 자연스럽게 보이게 함 */
+  overflow-x:auto; 
+  flex-shrink:0; 
+  background: #EFF3FB; /* 대화창 하단 배경색과 맞춤 (또는 대화창과 같은 그라데이션 적용 가능) */
+}
   .chip{ flex-shrink:0; background:#fff; border:1px solid var(--line); color:var(--ink); font-size:13px; font-weight:600;
     padding:8px 13px; border-radius:999px; cursor:pointer; white-space:nowrap; }
   .chip:hover{ background:#F3F6FC; }
