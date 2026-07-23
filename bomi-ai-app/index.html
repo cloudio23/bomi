@@ -9,7 +9,7 @@
 <link rel="apple-touch-icon" href="/icon-192.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="보미"> 
+<meta name="apple-mobile-web-app-title" content="보미">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root{
@@ -384,7 +384,7 @@
       </div>
       <div class="section-label">📮 접수된 피드백 <span style="font-weight:400;color:var(--sub);">(전체 테스터 공개)</span></div>
       <div class="info-card">
-        <div class="crm-note">⚠️ 지금은 이 기기(브라우저)에 저장된 피드백만 보여요. 여러 사람이 각자의 폰으로 남긴 피드백을 한곳에서 모아 보려면, 진짜 데이터베이스(서버)를 연결해야 해요.</div>
+        <div class="crm-note">⚠️ 이 목록은 Supabase에 연결된 모든 사용자의 피드백이 모여요. 지금은 로그인이 없어서 보안상 "누구나 볼 수 있는" 상태예요 — 여러 어르신을 대상으로 정식 운영하시려면 로그인(Supabase Auth) 연결이 필요해요.</div>
         <div id="feedbackList"></div>
         <button class="cl-add" id="refreshFeedback">새로고침</button>
       </div>
@@ -504,7 +504,8 @@ let obStep = 1;
 let obData = { name:'', birthYear:'', gender:'', height:'', weight:'', interests:[] };
 
 /* ============ SUPABASE SETUP ============ */
-// ⚠️ Supabase 프로젝트를 만든 뒤, 아래 두 값을 실제 값으로 바꿔주세요.
+// ⚠️ Supabase 프로젝트를 만든 뒤, 아래 두 값을 프로젝트 설정(Settings → API)에서
+// 복사해 넣어주세요. anon key는 공개되어도 되는 키예요(RLS로 보호합니다).
 const SUPABASE_URL = 'https://xxlwbshzawqebrcpvtmm.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_iuJ7_AIR1DLLVZR2Py-ktQ_F13eNsAE';
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -1033,7 +1034,7 @@ function systemPrompt(){
 역할: 수면, 식사, 통증, 복약, 정서 상태를 먼저 챙기고, 관심사(${profile.interests.join(', ')})를 활용해 친밀하게 대화하세요.
 규칙:
 - 문장 하나하나는 짧고 쉽게 끊어 쓰되, 답변 전체 길이는 상황에 맞게 조절하세요. 안부·감정 대화는 2~3문장으로 짧게, 길찾기·정보 요청처럼 구체적인 답이 필요한 질문에는 5~7문장까지 써서 충분히 설명하세요.
-- 마크다운 문법 중 굵게(**텍스트**)는 버스/지하철 번호, 지역·정류장 이름, 약 이름처럼 한눈에 띄어야 하는 핵심 단어에만 사용하세요. 문장 전체나 매 문장마다 쓰지 말고, 답변당 2~3곳 이내로 꼭 필요한 곳에만. # 제목이나 - 목록 기호는 쓰지 마세요. 번호를 매길 땐 "1. 2." 처럼 숫자만 쓰세요.
+- 마크다운 문법 중 굵게(**텍스트**)는 버스/지하철 번호, 역·정류장 이름, 약 이름처럼 한눈에 띄어야 하는 핵심 단어에만 사용하세요. 문장 전체나 매 문장마다 쓰지 말고, 답변당 2~3곳 이내로 꼭 필요한 곳에만. # 제목이나 - 목록 기호는 쓰지 마세요. 번호를 매길 땐 "1. 2." 처럼 숫자만 쓰세요.
 - 정보 요청(길찾기, 날씨 등)에 답할 땐 필요한 정보만 정확히 전달하고, "궁금한 점 있으면 물어보세요", "오늘 하루도 즐겁게 보내세요" 같은 상투적인 끝인사는 붙이지 마세요. 안부·감정 대화에서만 그런 다정한 마무리를 쓰세요.
 - 의학적 진단/처방은 하지 말고, 이상 증상엔 병원 방문이나 가벼운 스트레칭을 권유하세요.
 - 이모지는 가끔 1개 정도만.`;
@@ -1066,6 +1067,7 @@ async function saveFeedback(text){
     });
   }catch(e){}
 }
+
 async function renderFeedbackList(){
   const container = document.getElementById('feedbackList');
   container.innerHTML = '불러오는 중...';
@@ -1137,12 +1139,48 @@ async function extractAndMergeSignals(userText, assistantText){
   }
 }
 
+function classifyYesNo(text){
+  const t = (text || '').trim();
+  const negative = ['아니','괜찮','필요없','싫어','안 해','안해','됐어','됐습니다','노노','됫어'];
+  const positive = ['네','예','좋아','필요','응','그래','부탁','넵','좋습니다','필요해요','필요합니다','알려줘','해줘','필요할','도움'];
+  if(negative.some(w => t.includes(w))) return 'no';
+  if(positive.some(w => t.includes(w))) return 'yes';
+  return null;
+}
+
 async function sendMessage(text){
   if(!text || !text.trim()) return;
   document.getElementById('sendBtn').disabled = true;
   addBubble('user', text);
   messages.push({role:'user', content:text});
   await storeSet(todayKey('messages'), messages.slice(-30));
+
+  if(awaitingChecklistConsent){
+    const answer = classifyYesNo(text);
+    if(answer === 'yes' || answer === 'no'){
+      awaitingChecklistConsent = false;
+      addTyping();
+      let reply;
+      if(answer === 'yes'){
+        checklistEnabled = true;
+        await storeSet('checklist-enabled', true);
+        reply = '좋아요! 이제부터 대화창 위쪽에 "오늘의 체크리스트"가 표시될 거예요. 항목을 누르면 완료 체크가 되고, 상단 메뉴(☰)의 프로필에서 "체크리스트 관리"를 열면 항목을 추가하거나 지우실 수 있어요. 언제든 편하게 바꾸세요 😊';
+      } else {
+        reply = '알겠습니다, 그럼 지금은 체크리스트 없이 편하게 대화만 나눠요. 나중에 필요해지시면 상단 메뉴(☰)의 프로필에서 "체크리스트 관리"를 켜시면 바로 사용하실 수 있어요.';
+      }
+      setTimeout(async ()=>{
+        removeTyping();
+        addBubble('assistant', reply);
+        messages.push({role:'assistant', content:reply});
+        await storeSet(todayKey('messages'), messages.slice(-30));
+        renderPinnedChecklist();
+        document.getElementById('sendBtn').disabled = false;
+      }, 400);
+      return;
+    }
+    // 대답이 애매하면(체크리스트 얘기가 아니면) 그냥 평소 대화로 넘어감
+    awaitingChecklistConsent = false;
+  }
 
   if(pendingFeedback){
     pendingFeedback = false;
@@ -1198,7 +1236,7 @@ async function startApp(isNew){
   messages = await storeGet(todayKey('messages')) || [];
   showScreen('chatScreen');
 
- if(messages.length === 0){
+  if(messages.length === 0){
     const intro = `${profile.name}님, 만나 뵈어 너무 반갑습니다! 저는 앞으로 ${profile.name}님과 함께할 보미예요 😊
 
 그런데 하나 여쭤보고 싶은 게 있어요 — 혹시 매일 약 드시는 시간이나 식사, 산책 같은 걸 깜빡하고 놓치실 때 없으신가요? 그런 일상을 매일 잊지 않게 챙겨드리는 체크리스트가 있으면 도움이 되실까요?`;
@@ -1212,46 +1250,13 @@ async function startApp(isNew){
   renderPinnedChecklist();
 }
 
-function classifyYesNo(text){
-  const t = (text || '').trim();
-  const negative = ['아니','괜찮','필요없','싫어','안 해','안해','됐어','됐습니다','노노','됫어'];
-  const positive = ['네','예','좋아','필요','응','그래','부탁','넵','좋습니다','필요해요','필요합니다','알려줘','해줘','필요할','도움'];
-  if(negative.some(w => t.includes(w))) return 'no';
-  if(positive.some(w => t.includes(w))) return 'yes';
-  return null;
-}
-
-async function sendMessage(text){
-  if(!text || !text.trim()) return;
-  document.getElementById('sendBtn').disabled = true;
-  addBubble('user', text);
-  messages.push({role:'user', content:text});
-  await storeSet(todayKey('messages'), messages.slice(-30));
-
-  if(awaitingChecklistConsent){
-    const answer = classifyYesNo(text);
-    if(answer === 'yes' || answer === 'no'){
-      awaitingChecklistConsent = false;
-      addTyping();
-      let reply;
-      if(answer === 'yes'){
-        checklistEnabled = true;
-        await storeSet('checklist-enabled', true);
-        reply = '좋아요! 이제부터 대화창 위쪽에 "오늘의 체크리스트"가 표시될 거예요. 항목을 누르면 완료 체크가 되고, 상단 메뉴(☰)의 프로필에서 "체크리스트 관리"를 열면 항목을 추가하거나 지우실 수 있어요. 언제든 편하게 바꾸세요 😊';
-      } else {
-        reply = '알겠습니다, 그럼 지금은 체크리스트 없이 편하게 대화만 나눠요. 나중에 필요해지시면 상단 메뉴(☰)의 프로필에서 "체크리스트 관리"를 켜시면 바로 사용하실 수 있어요.';
-      }
-      setTimeout(async ()=>{
-        removeTyping();
-        addBubble('assistant', reply);
-        messages.push({role:'assistant', content:reply});
-        await storeSet(todayKey('messages'), messages.slice(-30));
-        renderPinnedChecklist();
-        document.getElementById('sendBtn').disabled = false;
-      }, 400);
-      return;
-    }
-    awaitingChecklistConsent = false;
+(async function init(){
+  profile = await storeGet('profile');
+  notifSettings = (await storeGet('notif-settings')) || notifSettings;
+  if(profile){
+    startApp(false);
+  } else {
+    renderObStep();
   }
 })();if('serviceWorker' in navigator){
   window.addEventListener('load', ()=>{ navigator.serviceWorker.register('/sw.js').catch(()=>{}); });
