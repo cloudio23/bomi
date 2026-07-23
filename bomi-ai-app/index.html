@@ -39,16 +39,16 @@
   }
   .app{
     width:100%;
-    max-width:480px;
+    max-width: 100%;    /* 제한 해제 */
     background:var(--card);
-    border-radius:28px;
+    border-radius:0;
     overflow:hidden;
-    box-shadow:0 20px 60px rgba(16,24,40,0.18);
+    box-shadow: none;   /* 화면에 꽉 찰 때는 그림자를 없애는 게 깔끔합니다 */
     display:flex;
     flex-direction:column;
-    height:84vh;
-    min-height:680px;
-    border:1px solid var(--line);
+    height:100vh;
+    min-height:100vh;
+   border: none;       /* 테두리 제거 */
     position:relative;
   }
   .screen{ display:none; flex-direction:column; height:100%; }
