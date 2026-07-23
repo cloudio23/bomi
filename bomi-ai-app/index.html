@@ -42,7 +42,11 @@
     position: fixed;  /* 👉 추가: 화면 고정 */
     width: 100vw;
  @media (max-width: 480px), (display-mode: standalone){
-  body{ padding:0; }
+   body{ 
+    padding: 0; /* 👉 좌우 및 상하 여백을 완전히 제거 */
+    margin: 0;
+    background: var(--blue); /* 배경이 빈틈없이 차도록 설정 */
+  }
   .app{
     width:100%;
     max-width: 100%;
@@ -102,11 +106,11 @@
   .btn.ghost{ background:#F1F3F8; color:var(--sub); flex:0 0 96px; }
 
   /* ---------- CHAT ---------- */
-  .header{
+  .header {
   background: var(--blue);
   color: #fff;
-  /* 핵심: 위쪽 안전 영역(아일랜드) 크기만큼 패딩을 더해서 파란색 영역을 위로 확장합니다 */
-  padding-top: calc(env(safe-area-inset-top, 0px) + 16px);
+  /* 핵심: 아일랜드 영역까지 파란색 배경이 침범하도록 위쪽 패딩을 안전 영역 크기만큼 대폭 늘림 */
+  padding-top: calc(env(safe-area-inset-top, 20px) + 14px);
   padding-bottom: 16px;
   padding-left: 18px;
   padding-right: 18px;
@@ -114,6 +118,7 @@
   align-items: center;
   justify-content: space-between;
   flex-shrink: 0;
+  margin-top: calc(-1 * env(safe-area-inset-top, 20px)); /* 👉 위로 바짝 끌어올려 아일랜드 영역까지 파란색으로 덮음 */
 }
   .header .who{ display:flex; align-items:center; gap:10px; }
   .avatar-sm{
