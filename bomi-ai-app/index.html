@@ -704,9 +704,12 @@ document.getElementById('obNext').addEventListener('click', async ()=>{
   };
   await storeSet('profile', profile);
   await storeSet('notif-settings', notifSettings);
-  startApp(true);
-});
-
+  function startApp(isNewUser) {
+  // 기존에 실행되던 앱 초기화 로직들...
+  
+  // 👉 이 부분이 반드시 들어가야 대화창 화면이 활성화됩니다!
+  showScreen('chatScreen'); 
+}
 function makeCrmId(name, year){
   let h = 0;
   const s = (name||'') + (year||'');
