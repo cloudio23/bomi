@@ -1257,52 +1257,30 @@ async function startApp(isNew){
   renderPinnedChecklist();
 }
 
+// 스플래시 화면을 확실히 제거하는 함수
+function removeSplash() {
+  const splash = document.getElementById('splashScreen');
+  if (splash) {
+    splash.style.opacity = '0';
+    setTimeout(() => {
+      splash.remove();
+    }, 300);
+  }
+}
+
 (async function init(){
   profile = await storeGet('profile');
   notifSettings = (await storeGet('notif-settings')) || notifSettings;
+  
   if(profile){
-    startApp(false);
+    await startApp(false);
   } else {
     renderObStep();
   }
-})();if('serviceWorker' in navigator){
-  window.addEventListener('load', ()=>{ navigator.serviceWorker.register('/sw.js').catch(()=>{}); });
-}
-</script>
-</body>
-</html>
+  
+// 데이터 로딩과 화면 렌더링이 끝난 직후 스플래시 제거
+  setTimeout(removeSplash, 300);
+})();
 
-// --- 기존 초기화 및 렌더링 코드들의 맨 마지막 줄에 추가 ---
-
-  window.addEventListener('DOMContentLoaded', () => {
-    setTimeout(() => {
-      const splash = document.getElementById('splashScreen');
-      if (splash) {
-        splash.style.opacity = '0'; // 투명하게 만듦
-        setTimeout(() => splash.remove(), 300); // 0.3초 뒤에 HTML에서 완전히 삭제
-      }
-    }, 400); // 앱 실행 후 0.4초 뒤에 사라지기 시작
-  });
-// 스플래시 화면을 확실히 제거하는 함수
-  function removeSplash() {
-    const splash = document.getElementById('splashScreen');
-    if (splash) {
-      splash.style.opacity = '0';
-      setTimeout(() => {
-        splash.remove();
-      }, 300); // 부드럽게 사라진 후 DOM에서 제거
-    }
-  }
-
-  // 1. 페이지 로드가 이미 완료된 경우 바로 실행
-  if (document.readyState === 'complete' || document.readyState === 'interactive') {
-    setTimeout(removeSplash, 400);
-  } else {
-    // 2. 아직 로딩 중인 경우 이벤트 리스너 등록
-    window.addEventListener('DOMContentLoaded', () => {
-      setTimeout(removeSplash, 400);
-    });
-  }
-
-  // 3. 안전장치 (최대 1.5초 뒤 강제 삭제)
-  setTimeout(removeSplash, 1500);
+// 만약을 대비한 안전장치 (1.5초 뒤 무조건 강제 삭제)
+setTimeout(removeSplash, 1500);
