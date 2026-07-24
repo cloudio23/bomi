@@ -534,7 +534,6 @@ let notifSettings = { report:true, proactive:true, mental:true };
 let messages = [];
 let checklistState = {};       // today's done/not-done map, keyed by item id
 let checklistItems = [];       // configurable list of {id, label}
-let checklistEnabled = true;   // shown/hidden in chat
 let pinnedExpanded = true;
 let pendingFeedback = false;
 let lastFeedbackAskDate = null; // ISO date string of the last time the feedback question was asked
@@ -704,13 +703,9 @@ document.getElementById('obNext').addEventListener('click', async ()=>{
   };
   await storeSet('profile', profile);
   await storeSet('notif-settings', notifSettings);
-  function startApp(isNewUser) {
-  // 기존에 실행되던 앱 초기화 로직들...
-  
-  // 👉 이 부분이 반드시 들어가야 대화창 화면이 활성화됩니다!
-  showScreen('chatScreen'); 
-}
-function makeCrmId(name, year){
+  startApp(true);
+});
+  function makeCrmId(name, year){
   let h = 0;
   const s = (name||'') + (year||'');
   for(const c of s){ h = (h*31 + c.charCodeAt(0)) >>> 0; }
@@ -1242,18 +1237,13 @@ async function startApp(isNew){
   showScreen('chatScreen');
 
   if(messages.length === 0){
-    const intro = `${profile.name}님, 반가워요! 보미가 매일 이런 걸 여쭤볼게요:
+    const intro = `${profile.name}님, 만나 뵈어 너무 반갑습니다! 저는 앞으로 ${profile.name}님과 함께할 보미예요 😊
 
-• 오늘 컨디션은 어떠신지
-• 어젯밤은 푹 주무셨는지
-• 식사는 잘 챙겨 드셨는지
-• 요즘 마음 상태는 어떤지
-• ${profile.interests[0]||'관심사'} 활동은 즐기고 계신지
-
-이렇게 매일 대화를 나누면서 ${profile.name}님만의 건강리포트를 만들어 드릴게요! 궁금한 게 있으면 언제든 물어보세요 😊`;
+그런데 하나 여쭤보고 싶은 게 있어요 — 혹시 매일 약 드시는 시간이나 식사, 산책 같은 걸 깜빡하고 놓치실 때 없으신가요? 그런 일상을 매일 잊지 않게 챙겨드리는 체크리스트가 있으면 도움이 되실까요?`;
     addBubble('assistant', intro);
     messages.push({role:'assistant', content:intro});
     await storeSet(todayKey('messages'), messages);
+    awaitingChecklistConsent = true;
   } else {
     messages.forEach(m=>addBubble(m.role, m.content));
   }
