@@ -109,16 +109,16 @@
 
 /* ---------- CHAT ---------- */
 .header{
-  background: var(--bg); /* 전체 배경색과 똑같은 #EFF3FB로 설정 */
-  color: var(--ink); 
-  padding: 12px 16px 8px 16px; /* 적당한 위아래 여백을 주어 버튼이 잘리지 않게 함 */
-  margin-top: 0; 
-  display: flex; 
-  align-items: center; 
-  justify-content: flex-end; 
-  flex-shrink: 0;
-  border-bottom: none; 
-}
+    background: transparent !important; /* 헤더를 완전 투명하게 설정 */
+    color: var(--ink); 
+    padding: 16px 16px 8px 16px; /* 위쪽 여백(16px)을 주어 설정 버튼이 잘리지 않고 아래로 내려오게 함 */
+    margin-top: 0; 
+    display: flex; 
+    align-items: center; 
+    justify-content: flex-end; 
+    flex-shrink: 0;
+    border-bottom: none !important; 
+  }
 .header .who{ display:flex; align-items:center; gap:10px; }
 .avatar-sm{
   width:34px; height:34px; border-radius:50%; background:var(--blue); color:#fff;
