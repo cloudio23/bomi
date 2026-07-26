@@ -108,10 +108,10 @@
   .btn.ghost{ background:#F1F3F8; color:var(--sub); flex:0 0 96px; }
 
 /* ---------- CHAT ---------- */
-.header{
-    background: transparent !important; /* 헤더를 완전 투명하게 설정 */
+.header {
+    background: var(--bg) !important; 
     color: var(--ink); 
-    padding: 16px 16px 8px 16px; /* 위쪽 여백(16px)을 주어 설정 버튼이 잘리지 않고 아래로 내려오게 함 */
+    padding: max(16px, env(safe-area-inset-top)) 16px 8px 16px; /* 모바일 안전 영역 반영 */
     margin-top: 0; 
     display: flex; 
     align-items: center; 
