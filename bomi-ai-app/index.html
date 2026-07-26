@@ -109,15 +109,15 @@
 
   /* ---------- CHAT ---------- */
 .header{
-  background: transparent; 
+  background: transparent !important; 
   color: var(--ink); 
-  padding: 8px 16px 0 16px; /* 위쪽 패딩(12px)을 줄이거나 0으로 조정 */
-  margin-top: env(safe-area-inset-top); /* 아이폰 노치/다이나믹 아일랜드 대응이 필요 없다면 제거 가능 */
+  padding: 0 16px; 
+  margin-top: -12px; /* 위쪽으로 강제로 밀어올리기 */
   display: flex; 
   align-items: center; 
   justify-content: flex-end; 
   flex-shrink: 0;
-  border-bottom: none; 
+  border-bottom: none !important;
 }
 .header .who{ display:flex; align-items:center; gap:10px; }
 .avatar-sm{
