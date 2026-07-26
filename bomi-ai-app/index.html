@@ -126,22 +126,21 @@
 }
 .header .name{ font-size:16px; font-weight:800; color:var(--ink); }
 .header .status{ font-size:12px; color:var(--sub); }
-.iconbtn{
-  background:#F1F3F8; border:none; color:var(--sub); width:36px; height:36px;
-  border-radius:10px; font-size:16px; cursor:pointer;
-}
-iconbtn{
-  background: rgba(255, 255, 255, 0.85); 
-  border: 1px solid var(--line); 
-  color: var(--sub); 
-  width: 36px; 
-  height: 36px;
-  border-radius: 12px; 
-  font-size: 16px; 
-  cursor: pointer;
-  box-shadow: 0 2px 6px rgba(16, 24, 40, 0.04);
-}
-.iconbtn:hover{ background: #fff; }
+.iconbtn {
+    background: rgba(255, 255, 255, 0.85); 
+    border: 1px solid var(--line); 
+    color: var(--sub); 
+    width: 44px; /* 기존 36px에서 확대 */
+    height: 44px; /* 기존 36px에서 확대 */
+    border-radius: 14px; 
+    font-size: 24px; /* 아이콘 크기 확대 */
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(16, 24, 40, 0.04);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .iconbtn:hover { background: #fff; }
 
 .chat {
     flex: 1; 
@@ -204,9 +203,9 @@ iconbtn{
 
   /* ---------- PROFILE ---------- */
   .subheader{ display:flex; align-items:center; gap:12px; padding:16px 18px; border-bottom:1px solid var(--line); flex-shrink:0; }
-  .backbtn{ background:none; border:none; font-size:20px; cursor:pointer; color:var(--ink); padding:4px; }
+  .backbtn{ background:none; border:none; font-size:24px; cursor:pointer; color:var(--ink); padding:4px; }
   .subheader .title{ font-size:16px; font-weight:800; color:var(--ink); flex:1; }
-  .editbtn{ background:none; border:none; font-size:16px; cursor:pointer; color:var(--sub); }
+  .editbtn{ background:none; border:none; font-size:24px; cursor:pointer; color:var(--sub); }
 
   .scroll{ flex:1; overflow-y:auto; padding:20px 18px; background:#F7F9FC; }
 
