@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<meta charset="UTF-8">
+<meta charset="UTF-ㄹ8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>보미 AI - 프로토타입 v2</title>
 <link rel="manifest" href="/manifest.json">
@@ -705,7 +705,6 @@ document.getElementById('editNameBtn').addEventListener('click', async ()=>{
     profile.name = newName.trim();
     await storeSet('profile', profile);
     renderProfile();
-    document.getElementById('chatStatus').textContent = `${profile.name}님의 건강을 챙기는 중`;
   }
 });
 document.querySelectorAll('.tab').forEach(t=>{
