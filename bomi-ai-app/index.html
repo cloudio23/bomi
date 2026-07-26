@@ -28,13 +28,13 @@
     --mental:#E0637A;
   }
   *{box-sizing:border-box;}
- body{
+ body {
     margin: 0;
     font-family: "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", -apple-system, sans-serif;
     background: var(--bg);
     display: flex;
     justify-content: center;
-    padding: 0 12px 24px 12px; /* 위쪽 패딩을 0으로 붙여서 브라우저 상단 끝까지 배경색이 차도록 함 */
+    padding: 0 12px 24px 12px; /* 위쪽 패딩을 0으로 설정 */
     min-height: 100vh;
   }
   .app{
@@ -111,7 +111,7 @@
 .header {
     background: var(--bg) !important; 
     color: var(--ink); 
-    padding: max(16px, env(safe-area-inset-top)) 16px 8px 16px; /* 모바일 안전 영역 반영 */
+    padding: env(safe-area-inset-top, 8px) 16px 4px 16px; /* 위쪽 여백을 슬림하게 줄여서 대화창이 더 높이 올라오게 함 */
     margin-top: 0; 
     display: flex; 
     align-items: center; 
@@ -143,8 +143,15 @@ iconbtn{
 }
 .iconbtn:hover{ background: #fff; }
 
-  .chat{ flex:1; overflow-y:auto; padding:18px 16px; display:flex; flex-direction:column; gap:12px;
-    background:linear-gradient(180deg,#F7F9FF 0%,#EFF3FB 100%); }
+.chat {
+    flex: 1; 
+    overflow-y: auto; 
+    padding: 0 16px 18px 16px; /* 위쪽 패딩을 0으로 바꿔서 대화창이 최상단까지 올라오게 함 */
+    display: flex; 
+    flex-direction: column; 
+    gap: 12px;
+    background: linear-gradient(180deg, #F7F9FF 0%, #EFF3FB 100%); 
+  }
   .row{ display:flex; }
   .row.bot{ justify-content:flex-start; }
   .row.user{ justify-content:flex-end; }
