@@ -107,12 +107,12 @@
   .btn.primary:disabled{ background:#C6CEDD; cursor:not-allowed; }
   .btn.ghost{ background:#F1F3F8; color:var(--sub); flex:0 0 96px; }
 
-  /* ---------- CHAT ---------- */
+/* ---------- CHAT ---------- */
 .header{
   background: transparent !important; 
   color: var(--ink); 
-  padding: 0 16px; 
-  margin-top: -12px; /* 위쪽으로 강제로 밀어올리기 */
+  padding: env(safe-area-inset-top, 10px) 16px 0 16px; /* 상단 상태바 영역만큼 자연스럽게 여백 확보 */
+  margin-top: 0; /* 마이너스 값 제거 */
   display: flex; 
   align-items: center; 
   justify-content: flex-end; 
