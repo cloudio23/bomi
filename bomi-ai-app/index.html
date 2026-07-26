@@ -1239,8 +1239,6 @@ document.querySelectorAll('.chip').forEach(chip=>{
 
 /* ============ APP START ============ */
 async function startApp(isNew){
-  document.getElementById('chatStatus').textContent = `${profile.name}님의 건강을 챙기는 중`;
-  checklistState = await storeGet(todayKey('checklist')) || {};
   checklistItems = await storeGet('checklist-items');
   if(!checklistItems){ checklistItems = DEFAULT_CHECKLIST_ITEMS.slice(); await storeSet('checklist-items', checklistItems); }
   const enabledStored = await storeGet('checklist-enabled');
