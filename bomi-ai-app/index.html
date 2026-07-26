@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-ㄹ8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>보미 AI - 프로토타입 v2</title>
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#1861FE">
@@ -109,9 +109,9 @@
 
 /* ---------- CHAT ---------- */
 .header {
-    background: transparent !important; /* 헤더를 완전 투명하게 설정 */; 
+    background: var(--bg) !important; 
     color: var(--ink); 
-    padding: env(safe-area-inset-top, 8px) 16px 4px 16px; /* 위쪽 여백을 슬림하게 줄여서 대화창이 더 높이 올라오게 함 */
+    padding: 8px 16px 4px 16px; /* 위쪽 여백을 최소화하여 화면 끝으로 밀착 */
     margin-top: 0; 
     display: flex; 
     align-items: center; 
