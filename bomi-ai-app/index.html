@@ -129,14 +129,8 @@
   .bubble{ max-width:78%; padding:13px 15px; border-radius:18px; font-size:16px; line-height:1.55; font-weight:500; white-space:pre-line; }
   .bubble.user{ background:#EDEAE4; color:var(--ink); border-bottom-right-radius:4px; }
 
-  /* ---------- AI 응답 블록 (카나나 스타일 — 말풍선 없이, 링 아이콘 + 텍스트) ---------- */
+  /* ---------- AI 응답 블록 (말풍선 없이 텍스트만) ---------- */
   .ai-block{ display:flex; flex-direction:column; gap:10px; max-width:94%; }
-  .ai-ring{
-    width:22px; height:22px; border-radius:50%; flex-shrink:0;
-    background: conic-gradient(from 0deg, var(--navy), var(--blue), var(--accent-soft), var(--navy));
-    -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 4px), #fff calc(100% - 4px));
-    mask: radial-gradient(farthest-side, transparent calc(100% - 4px), #fff calc(100% - 4px));
-  }
   .ai-content{ display:flex; flex-direction:column; gap:10px; }
   .ai-text{ font-size:16px; line-height:1.6; font-weight:500; color:var(--ink); white-space:pre-line; }
   .ai-thinking{ font-size:14px; color:var(--sub); font-weight:600; }
@@ -159,17 +153,18 @@
   }
   .option-link:hover{ color:var(--blue); }
 
-  /* ---------- 생각 중일 때 은은하게 번지는 그라디언트 배경 ----------
-     타이핑 인디케이터 자체의 pseudo-element로 붙여서, 스크롤 위치와
-     상관없이 인디케이터가 나타나고 사라질 때 같이 나타나고 사라지게 함. */
-  #typingRow{ position:relative; }
-  #typingRow::before{
-    content:""; position:absolute; left:-16px; right:-16px; top:-16px; bottom:-140px;
-    background: radial-gradient(120% 100% at 25% 0%, rgba(156,122,84,0.30), rgba(111,86,54,0.14) 45%, transparent 75%);
-    filter:blur(8px); z-index:-1; pointer-events:none;
-    opacity:0; animation: thinkFadeIn .5s ease forwards;
+  /* ---------- 생각 중일 때 대화창 하단에 오로라처럼 일렁이는 그라디언트 바
+     (기존 팔레트 톤 사용 — 목소리 버튼의 오로라 보더와 같은 색 계열) ---------- */
+  .thinking-aurora{
+    height:7px; border-radius:999px; margin-top:2px;
+    background: linear-gradient(90deg, var(--accent-soft), var(--blue), var(--navy), var(--blue), var(--accent-soft));
+    background-size: 250% 100%;
+    animation: auroraShimmer 2s ease-in-out infinite;
   }
-  @keyframes thinkFadeIn{ to{ opacity:1; } }
+  @keyframes auroraShimmer{
+    0%{ background-position: 0% 50%; }
+    100%{ background-position: 250% 50%; }
+  }
 
   .checklist-card{ background:#fff; border:1px solid var(--line); border-radius:16px; padding:15px; max-width:86%; }
   .checklist-title{ font-size:13px; font-weight:800; color:var(--blue); margin-bottom:9px; }
@@ -183,26 +178,34 @@
     padding:8px 13px; border-radius:999px; cursor:pointer; white-space:nowrap; }
   .chip:hover{ background:#F5F1EA; }
 
-  .inputbar{ position:relative; min-height:64px; padding:12px 14px 16px 14px; background:#fff; border-top:1px solid var(--line); flex-shrink:0; }
-  .roundicon{ width:40px; height:40px; border-radius:50%; border:none; background:#F1EEE7; color:var(--sub); font-size:16px; cursor:pointer; flex-shrink:0; }
-  .inputbar input{ flex:1; border:1px solid var(--line); background:var(--bg); border-radius:999px; padding:12px 16px; font-size:15px; outline:none; min-width:0; }
-  .inputbar input:focus{ border-color:var(--blue); }
-  .sendbtn{ background:var(--blue); border:none; color:#fff; width:42px; height:42px; border-radius:50%; font-size:17px; cursor:pointer; flex-shrink:0; }
-  .sendbtn:disabled{ background:#C7BEB0; cursor:not-allowed; }
+  .inputbar{ position:relative; min-height:78px; padding:14px 16px 20px 16px; background:#F6F3EE; flex-shrink:0; }
+  .roundicon{ width:36px; height:36px; border-radius:50%; border:none; background:none; color:var(--sub); font-size:16px; cursor:pointer; flex-shrink:0; }
+  .inputbar input{ flex:1; border:none; background:transparent; padding:12px 6px; font-size:15px; outline:none; min-width:0; color:var(--ink); }
+  .sendbtn{ background:var(--blue); border:none; color:#fff; width:38px; height:38px; border-radius:50%; font-size:16px; cursor:pointer; flex-shrink:0; box-shadow:0 2px 8px rgba(156,122,84,0.35); }
+  .sendbtn:disabled{ background:#C7BEB0; box-shadow:none; cursor:not-allowed; }
 
-  /* ---------- INPUT DOCK (camera / keyboard / voice) ---------- */
+  /* ---------- INPUT DOCK (camera / keyboard / voice) — 카나나처럼 대화창
+     배경에 녹아든 채로 버튼/입력창만 그림자로 떠 있는 느낌 ---------- */
   .dock, .typebar{
-    position:absolute; left:14px; right:14px; top:12px; bottom:16px;
+    position:absolute; left:16px; right:16px; top:14px; bottom:20px;
     display:flex; align-items:center;
     transition: opacity .28s ease, transform .32s cubic-bezier(.22,1,.36,1);
   }
   .dock{ justify-content:space-around; }
-  .typebar{ gap:8px; opacity:0; transform:scale(.94); pointer-events:none; }
+  .typebar{
+    gap:4px; opacity:0; transform:scale(.94); pointer-events:none;
+    background:#fff; border-radius:999px; padding:5px 5px 5px 18px;
+    box-shadow:0 10px 28px rgba(35,32,27,0.16);
+  }
   .inputbar.mode-type .dock{ opacity:0; transform:scale(1.05); pointer-events:none; }
   .inputbar.mode-type .typebar{ opacity:1; transform:scale(1); pointer-events:auto; }
-  .dockbtn{ display:flex; flex-direction:column; align-items:center; gap:4px; background:none; border:none;
-    padding:6px 18px; border-radius:16px; cursor:pointer; color:var(--sub); }
-  .dockbtn:hover, .dockbtn:active{ background:#F1EEE7; }
+  .dockbtn{
+    display:flex; flex-direction:column; align-items:center; gap:4px;
+    background:#fff; border:none; border-radius:18px; padding:10px 22px;
+    box-shadow:0 4px 14px rgba(35,32,27,0.10);
+    cursor:pointer; color:var(--sub);
+  }
+  .dockbtn:hover, .dockbtn:active{ box-shadow:0 6px 18px rgba(35,32,27,0.15); }
   .dockbtn .dockbtn-icon{ display:flex; }
   .dockbtn .dockbtn-icon svg{ width:23px; height:23px; display:block; }
   .dockbtn .dockbtn-label{ font-size:12px; font-weight:700; }
@@ -244,7 +247,7 @@
   .toast.show{ opacity:1; transform:translate(-50%,0); }
 
   @media (prefers-reduced-motion: reduce){
-    .dock, .typebar, .cameraOverlay, .auroraBorder, .toast{ transition:none !important; animation:none !important; }
+    .dock, .typebar, .cameraOverlay, .auroraBorder, .toast, .thinking-aurora{ transition:none !important; animation:none !important; }
   }
 
   /* ---------- PINNED CHECKLIST (header button opens this as a dropdown,
@@ -1082,32 +1085,39 @@ function addBubble(role, text){
 // userText: the question this answer responds to (used by the retry button
 // to regenerate). Pass null for messages with no clear preceding question
 // (e.g. the onboarding intro) — the retry button hides itself in that case.
+// 피드백 아이콘 줄은 매 답변마다 보여주면 번잡해서, "어려운 작업"(길고 실질적인
+// 답변)일 때만 보여줍니다 — 짧은 잡담성 답변에는 안 보이게 하는 단순한 기준으로
+// 글자 수를 씀 (정교한 신호가 없어서 택한 실용적 근사치).
+const FEEDBACK_MIN_LENGTH = 80;
+
 function addAssistantBlock(text, userText){
   const chat = document.getElementById('chat');
+  const showFeedback = text.length >= FEEDBACK_MIN_LENGTH;
   const wrap = document.createElement('div');
   wrap.className = 'ai-block';
   wrap.innerHTML = `
-    <div class="ai-ring"></div>
     <div class="ai-content">
       <div class="ai-text"></div>
       <div class="ai-disclaimer">${AI_DISCLAIMER}</div>
-      <div class="ai-feedback">
+      ${showFeedback ? `<div class="ai-feedback">
         <button class="fb-icon" type="button" data-fb="up" aria-label="좋아요">${FB_ICONS.up}</button>
         <button class="fb-icon" type="button" data-fb="down" aria-label="별로예요">${FB_ICONS.down}</button>
         <button class="fb-icon" type="button" data-fb="retry" aria-label="다시 생성">${FB_ICONS.retry}</button>
         <button class="fb-icon" type="button" data-fb="share" aria-label="공유">${FB_ICONS.share}</button>
-      </div>
+      </div>` : ''}
     </div>`;
   wrap.querySelector('.ai-text').textContent = text;
-  const upBtn = wrap.querySelector('[data-fb="up"]');
-  const downBtn = wrap.querySelector('[data-fb="down"]');
-  const retryBtn = wrap.querySelector('[data-fb="retry"]');
-  const shareBtn = wrap.querySelector('[data-fb="share"]');
-  upBtn.addEventListener('click', ()=> handleFeedbackVote(upBtn, downBtn, 'up', text));
-  downBtn.addEventListener('click', ()=> handleFeedbackVote(upBtn, downBtn, 'down', text));
-  if(userText){ retryBtn.addEventListener('click', ()=> regenerateReply(userText)); }
-  else { retryBtn.style.display = 'none'; }
-  shareBtn.addEventListener('click', ()=> shareText(text));
+  if(showFeedback){
+    const upBtn = wrap.querySelector('[data-fb="up"]');
+    const downBtn = wrap.querySelector('[data-fb="down"]');
+    const retryBtn = wrap.querySelector('[data-fb="retry"]');
+    const shareBtn = wrap.querySelector('[data-fb="share"]');
+    upBtn.addEventListener('click', ()=> handleFeedbackVote(upBtn, downBtn, 'up', text));
+    downBtn.addEventListener('click', ()=> handleFeedbackVote(upBtn, downBtn, 'down', text));
+    if(userText){ retryBtn.addEventListener('click', ()=> regenerateReply(userText)); }
+    else { retryBtn.style.display = 'none'; }
+    shareBtn.addEventListener('click', ()=> shareText(text));
+  }
   chat.appendChild(wrap);
   chat.scrollTop = chat.scrollHeight;
 }
@@ -1148,7 +1158,7 @@ function addTyping(){
   const chat = document.getElementById('chat');
   const wrap = document.createElement('div');
   wrap.className = 'ai-block'; wrap.id = 'typingRow';
-  wrap.innerHTML = `<div class="ai-ring"></div><div class="ai-thinking">생각 중</div>`;
+  wrap.innerHTML = `<div class="ai-thinking">생각 중</div><div class="thinking-aurora"></div>`;
   chat.appendChild(wrap);
   chat.scrollTop = chat.scrollHeight;
 }
