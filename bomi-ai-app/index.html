@@ -2,10 +2,10 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>보미 AI - 프로토타입 v2</title>
 <link rel="manifest" href="/manifest.json">
-<meta name="theme-color" content="#1861FE">
+<meta name="theme-color" content="#9C7A54">
 <link rel="apple-touch-icon" href="/icon-192.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -29,7 +29,8 @@
     --app-radius:28px;
   }
   *{box-sizing:border-box;}
-  html, body{ height:100%; }
+  html, body{ height:100%; overscroll-behavior:none; }
+  html{ touch-action:pan-y; }
   body{
     margin:0;
     font-family:"Pretendard","Apple SD Gothic Neo","Malgun Gothic",-apple-system,sans-serif;
@@ -40,6 +41,16 @@
     height:100vh;
     height:100dvh;
     overflow:hidden;
+    touch-action:none;
+    -webkit-user-select:none; user-select:none;
+    -webkit-touch-callout:none;
+    -webkit-tap-highlight-color:transparent;
+  }
+  /* 폼 입력과 실제 대화 내용은 평소처럼 선택/편집 가능해야 함 — 위의 user-select:none은
+     화면 자체를 드래그로 밀어서 생기는 텍스트 선택을 막으려는 것이지, 입력·복사를 막으려는
+     게 아님 */
+  input, textarea, .ai-text, .bubble{
+    -webkit-user-select:text; user-select:text;
   }
   .app{
     width:100%;
@@ -59,7 +70,7 @@
   .screen.active{ display:flex; }
 
   /* ---------- ONBOARDING ---------- */
-  #onboardingView{ padding:28px 24px; overflow-y:auto; }
+  #onboardingView{ padding:28px 24px; overflow-y:auto; touch-action:pan-y; overscroll-behavior:contain; }
   .dots{ display:flex; gap:6px; margin-bottom:26px; }
   .dots .d{ flex:1; height:5px; border-radius:99px; background:#E4E9F2; }
   .dots .d.active{ background:var(--navy); }
@@ -101,7 +112,7 @@
   /* ---------- CHAT ---------- */
   .header{
     position:relative;
-    background:#FAF8F5; color:var(--ink); padding:16px 18px;
+    background:#FAF8F5; color:var(--ink); padding:10px 18px;
     display:flex; align-items:center; justify-content:space-between; flex-shrink:0;
   }
   .header .brand{
@@ -123,7 +134,7 @@
   }
 
   .chat{ flex:1; overflow-y:auto; padding:18px 16px; display:flex; flex-direction:column; gap:16px;
-    background:linear-gradient(180deg,#FAF8F5 0%,#F6F3EE 100%); }
+    background:linear-gradient(180deg,#FAF8F5 0%,#F6F3EE 100%); touch-action:pan-y; overscroll-behavior:contain; }
   .row{ display:flex; }
   .row.user{ justify-content:flex-end; }
   .bubble{ max-width:78%; padding:13px 15px; border-radius:18px; font-size:16px; line-height:1.55; font-weight:500; white-space:pre-line; }
@@ -156,7 +167,7 @@
   /* ---------- 생각 중일 때 대화창 하단에 오로라처럼 일렁이는 그라디언트 바
      (기존 팔레트 톤 사용 — 목소리 버튼의 오로라 보더와 같은 색 계열) ---------- */
   .thinking-aurora{
-    height:7px; border-radius:999px; margin-top:2px;
+    height:16px; border-radius:999px; margin-top:2px;
     background: linear-gradient(90deg, var(--accent-soft), var(--blue), var(--navy), var(--blue), var(--accent-soft));
     background-size: 250% 100%;
     animation: auroraShimmer 2s ease-in-out infinite;
@@ -178,7 +189,7 @@
     padding:8px 13px; border-radius:999px; cursor:pointer; white-space:nowrap; }
   .chip:hover{ background:#F5F1EA; }
 
-  .inputbar{ position:relative; min-height:78px; padding:14px 16px 20px 16px; background:#F6F3EE; flex-shrink:0; }
+  .inputbar{ position:relative; min-height:62px; padding:6px 16px 10px 16px; background:#F6F3EE; flex-shrink:0; }
   .roundicon{ width:36px; height:36px; border-radius:50%; border:none; background:none; color:var(--sub); font-size:16px; cursor:pointer; flex-shrink:0; }
   .inputbar input{ flex:1; border:none; background:transparent; padding:12px 6px; font-size:15px; outline:none; min-width:0; color:var(--ink); }
   .sendbtn{ background:var(--blue); border:none; color:#fff; width:38px; height:38px; border-radius:50%; font-size:16px; cursor:pointer; flex-shrink:0; box-shadow:0 2px 8px rgba(156,122,84,0.35); }
@@ -187,7 +198,7 @@
   /* ---------- INPUT DOCK (camera / keyboard / voice) — 카나나처럼 대화창
      배경에 녹아든 채로 버튼/입력창만 그림자로 떠 있는 느낌 ---------- */
   .dock, .typebar{
-    position:absolute; left:16px; right:16px; top:14px; bottom:20px;
+    position:absolute; left:16px; right:16px; top:6px; bottom:10px;
     display:flex; align-items:center;
     transition: opacity .28s ease, transform .32s cubic-bezier(.22,1,.36,1);
   }
@@ -200,15 +211,15 @@
   .inputbar.mode-type .dock{ opacity:0; transform:scale(1.05); pointer-events:none; }
   .inputbar.mode-type .typebar{ opacity:1; transform:scale(1); pointer-events:auto; }
   .dockbtn{
-    display:flex; flex-direction:column; align-items:center; gap:4px;
-    background:#fff; border:none; border-radius:18px; padding:10px 22px;
+    display:flex; align-items:center; justify-content:center;
+    width:52px; height:52px; flex-shrink:0;
+    background:#fff; border:none; border-radius:50%;
     box-shadow:0 4px 14px rgba(35,32,27,0.10);
     cursor:pointer; color:var(--sub);
   }
   .dockbtn:hover, .dockbtn:active{ box-shadow:0 6px 18px rgba(35,32,27,0.15); }
   .dockbtn .dockbtn-icon{ display:flex; }
-  .dockbtn .dockbtn-icon svg{ width:23px; height:23px; display:block; }
-  .dockbtn .dockbtn-label{ font-size:12px; font-weight:700; }
+  .dockbtn .dockbtn-icon svg{ width:24px; height:24px; display:block; }
 
   /* ---------- VOICE AURORA (screen-edge glow, slide 12 음성대화 preview) ---------- */
   @property --angle{ syntax:'<angle>'; inherits:false; initial-value:0deg; }
@@ -271,7 +282,7 @@
   .subheader .title{ font-size:16px; font-weight:800; color:var(--ink); flex:1; }
   .editbtn{ background:none; border:none; font-size:16px; cursor:pointer; color:var(--sub); }
 
-  .scroll{ flex:1; overflow-y:auto; padding:20px 18px; background:#F8F6F2; }
+  .scroll{ flex:1; overflow-y:auto; padding:20px 18px; background:#F8F6F2; touch-action:pan-y; overscroll-behavior:contain; }
 
   .profile-hero{ display:flex; align-items:center; gap:14px; margin-bottom:20px; }
   .avatar-lg{ width:58px; height:58px; border-radius:50%; background:var(--navy); color:#fff;
@@ -381,8 +392,8 @@
       border:none;
       box-shadow:none;
     }
-    .header{ padding-top:calc(16px + env(safe-area-inset-top)); }
-    .inputbar{ padding-bottom:calc(16px + env(safe-area-inset-bottom)); }
+    .header{ padding-top:calc(10px + env(safe-area-inset-top)); }
+    .inputbar{ padding-bottom:calc(10px + env(safe-area-inset-bottom)); }
     #onboardingView{ padding-top:calc(28px + env(safe-area-inset-top)); padding-bottom:calc(28px + env(safe-area-inset-bottom)); }
   }
 </style>
@@ -447,7 +458,6 @@
               <circle cx="12" cy="13" r="3.2"/>
             </svg>
           </span>
-          <span class="dockbtn-label">카메라</span>
         </button>
         <button class="dockbtn" id="keyboardBtn" aria-label="글자로 말하기">
           <span class="dockbtn-icon">
@@ -456,7 +466,6 @@
               <path d="M7 10h.01M10.5 10h.01M14 10h.01M17 10h.01M7 13.5h10"/>
             </svg>
           </span>
-          <span class="dockbtn-label">키보드</span>
         </button>
         <button class="dockbtn" id="voiceBtn" aria-label="음성으로 대화하기 (준비 중)">
           <span class="dockbtn-icon">
@@ -465,7 +474,6 @@
               <path d="M6 11a6 6 0 0 0 12 0M12 17v3.2M9 20.5h6"/>
             </svg>
           </span>
-          <span class="dockbtn-label">대화</span>
         </button>
       </div>
       <div class="typebar" id="typeBar">
@@ -1090,7 +1098,9 @@ function addBubble(role, text){
 // 글자 수를 씀 (정교한 신호가 없어서 택한 실용적 근사치).
 const FEEDBACK_MIN_LENGTH = 80;
 
-function addAssistantBlock(text, userText){
+// animate: true일 때 텍스트를 타자기처럼 한 글자씩 보여줌 (실시간 새 답변용).
+// 과거 대화 replay나 인트로 메시지는 animate 없이 즉시 표시.
+function addAssistantBlock(text, userText, animate){
   const chat = document.getElementById('chat');
   const showFeedback = text.length >= FEEDBACK_MIN_LENGTH;
   const wrap = document.createElement('div');
@@ -1098,15 +1108,16 @@ function addAssistantBlock(text, userText){
   wrap.innerHTML = `
     <div class="ai-content">
       <div class="ai-text"></div>
-      <div class="ai-disclaimer">${AI_DISCLAIMER}</div>
-      ${showFeedback ? `<div class="ai-feedback">
+      <div class="ai-disclaimer" style="display:none;">${AI_DISCLAIMER}</div>
+      ${showFeedback ? `<div class="ai-feedback" style="display:none;">
         <button class="fb-icon" type="button" data-fb="up" aria-label="좋아요">${FB_ICONS.up}</button>
         <button class="fb-icon" type="button" data-fb="down" aria-label="별로예요">${FB_ICONS.down}</button>
         <button class="fb-icon" type="button" data-fb="retry" aria-label="다시 생성">${FB_ICONS.retry}</button>
         <button class="fb-icon" type="button" data-fb="share" aria-label="공유">${FB_ICONS.share}</button>
       </div>` : ''}
     </div>`;
-  wrap.querySelector('.ai-text').textContent = text;
+  const textEl = wrap.querySelector('.ai-text');
+  const disclaimerEl = wrap.querySelector('.ai-disclaimer');
   if(showFeedback){
     const upBtn = wrap.querySelector('[data-fb="up"]');
     const downBtn = wrap.querySelector('[data-fb="down"]');
@@ -1120,6 +1131,34 @@ function addAssistantBlock(text, userText){
   }
   chat.appendChild(wrap);
   chat.scrollTop = chat.scrollHeight;
+
+  const revealTrailer = ()=>{
+    disclaimerEl.style.display = '';
+    if(showFeedback) wrap.querySelector('.ai-feedback').style.display = '';
+    chat.scrollTop = chat.scrollHeight;
+  };
+  if(animate){
+    typewriterReveal(chat, textEl, text).then(revealTrailer);
+  } else {
+    textEl.textContent = text;
+    revealTrailer();
+  }
+}
+
+// 텍스트를 한 글자씩(성능을 위해 몇 글자씩 묶어서) 채워 넣는 타자기 효과.
+// 실제 API 스트리밍이 아니라, 이미 다 받은 응답을 화면에서만 흉내 내는 것.
+function typewriterReveal(chat, el, text, msPerTick){
+  msPerTick = msPerTick || 16;
+  const charsPerTick = 2;
+  return new Promise(resolve=>{
+    let i = 0;
+    const timer = setInterval(()=>{
+      i = Math.min(text.length, i + charsPerTick);
+      el.textContent = text.slice(0, i);
+      chat.scrollTop = chat.scrollHeight;
+      if(i >= text.length){ clearInterval(timer); resolve(); }
+    }, msPerTick);
+  });
 }
 
 async function handleFeedbackVote(upBtn, downBtn, kind, messageText){
@@ -1144,13 +1183,13 @@ async function regenerateReply(userText){
     const raw = await callBomi(userText);
     const { text: reply, options } = parseBomiReply(raw);
     removeTyping();
-    addAssistantBlock(reply, userText);
+    addAssistantBlock(reply, userText, true);
     messages.push({role:'assistant', content:reply});
     await storeSet(todayKey('messages'), messages.slice(-30));
     if(options.length) addSuggestedOptions(options);
   }catch(e){
     removeTyping();
-    addAssistantBlock('지금 연결이 원활하지 않아요. 잠시 후 다시 말씀해 주세요 🙏', userText);
+    addAssistantBlock('지금 연결이 원활하지 않아요. 잠시 후 다시 말씀해 주세요 🙏', userText, true);
   }
 }
 
@@ -1289,13 +1328,13 @@ async function sendMessage(text){
     const raw = await callBomi(text);
     const { text: reply, options } = parseBomiReply(raw);
     removeTyping();
-    addAssistantBlock(reply, text);
+    addAssistantBlock(reply, text, true);
     messages.push({role:'assistant', content:reply});
     await storeSet(todayKey('messages'), messages.slice(-30));
     if(options.length) addSuggestedOptions(options);
   }catch(e){
     removeTyping();
-    addAssistantBlock('지금 연결이 원활하지 않아요. 잠시 후 다시 말씀해 주세요 🙏', text);
+    addAssistantBlock('지금 연결이 원활하지 않아요. 잠시 후 다시 말씀해 주세요 🙏', text, true);
   }
   document.getElementById('sendBtn').disabled = false;
 }
