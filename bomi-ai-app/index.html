@@ -99,16 +99,14 @@
 
   /* ---------- CHAT ---------- */
   .header{
+    position:relative;
     background:#F7F9FF; color:var(--ink); padding:16px 18px;
-    display:flex; align-items:center; justify-content:space-between; flex-shrink:0;
+    display:flex; align-items:center; justify-content:flex-end; flex-shrink:0;
   }
-  .header .who{ display:flex; align-items:center; gap:10px; }
-  .avatar-sm{
-    width:34px; height:34px; border-radius:50%; background:var(--blue); color:#fff;
-    display:flex; align-items:center; justify-content:center; font-weight:800; font-size:15px; flex-shrink:0;
+  .header .brand{
+    position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+    font-size:20px; font-weight:800; color:var(--ink); letter-spacing:0.3px;
   }
-  .header .name{ font-size:16px; font-weight:800; color:var(--ink); }
-  .header .status{ font-size:12px; color:var(--sub); }
   .iconbtn{
     background:transparent; border:none; color:var(--sub); width:36px; height:36px;
     border-radius:10px; font-size:18px; cursor:pointer;
@@ -210,7 +208,7 @@
   }
 
   /* ---------- PINNED CHECKLIST ---------- */
-  .pinned-checklist{ flex-shrink:0; background:#fff; border-bottom:1px solid var(--line); }
+  .pinned-checklist{ flex-shrink:0; background:#F7F9FF; border-bottom:1px solid var(--line); }
   .pinned-head{ display:flex; align-items:center; justify-content:space-between; padding:12px 16px; cursor:pointer; }
   .pinned-head .lb{ font-size:13px; font-weight:800; color:var(--blue); display:flex; align-items:center; gap:6px; }
   .pinned-head .prog{ font-size:12px; font-weight:700; color:var(--sub); background:#F1F3F8; padding:3px 9px; border-radius:999px; }
@@ -370,14 +368,8 @@
   <!-- ===== CHAT ===== -->
   <div class="screen" id="chatScreen">
     <div class="header">
-      <div class="who">
-        <div class="avatar-sm">보미</div>
-        <div>
-          <div class="name">보미 <span style="font-weight:600;font-size:11px;opacity:0.85;">AI 건강케어 비서</span></div>
-          <div class="status" id="chatStatus">건강을 챙기는 중</div>
-        </div>
-      </div>
-      <button class="iconbtn" id="menuBtn" aria-label="설정">⚙️</button>
+      <div class="brand">보미</div>
+      <button class="iconbtn" id="menuBtn" aria-label="설정">☰</button>
     </div>
     <div class="pinned-checklist" id="pinnedChecklist" style="display:none;">
       <div class="pinned-head" id="pinnedHead">
@@ -609,10 +601,6 @@ let checklistState = {};       // today's done/not-done map, keyed by item id
 let checklistItems = [];       // configurable list of {id, label}
 let checklistEnabled = true;   // shown/hidden in chat
 let pinnedExpanded = true;
-let pendingFeedback = false;
-let lastFeedbackAskDate = null; // ISO date string of the last time the feedback question was asked
-const FEEDBACK_TRIGGER = 3;          // minimum user messages in today's chat before asking
-const FEEDBACK_INTERVAL_DAYS = 7;    // don't ask again within this many days
 let obStep = 1;
 let obData = { name:'', birthYear:'', gender:'', height:'', weight:'', interests:[] };
 
@@ -757,7 +745,6 @@ document.getElementById('editNameBtn').addEventListener('click', async ()=>{
     profile.name = newName.trim();
     await storeSet('profile', profile);
     renderProfile();
-    document.getElementById('chatStatus').textContent = `${profile.name}님의 건강을 챙기는 중`;
   }
 });
 document.querySelectorAll('.tab').forEach(t=>{
@@ -1069,18 +1056,18 @@ function systemPrompt(){
 오늘의 체크리스트 현황(어르신이 복약/식사/일정을 기억 못 하실 때 이 정보로 정확히 답해주세요):
 ${checklistLines}
 규칙:
-- 답변은 3문장 이내로 짧게.
+- 답변은 단답으로 끝내지 말고, 자연스러운 대화체로 보통 3~5문장 정도 편하게 이야기하듯 답하세요. 짧은 게 목표가 아니라, 대화가 계속 이어지는 느낌이 목표입니다.
 - 의학적 진단/처방은 하지 말고, 이상 증상엔 병원 방문이나 가벼운 스트레칭을 권유하세요.
 - 이모지는 가끔 1개 정도만.
 - 매일 아침 인사나 안부 질문은 최대한 다양하게 표현하고, 최근에 나눈 대화 내용을 반영해 형식적으로 반복되지 않도록 하세요.
 
-주제별 답변 형식 (해당하는 주제면 반드시 이 형식을 따르세요 — 짧고 정확하게 답해서 불필요한 토큰을 쓰지 마세요):
-- 검색/일반 지식: 결론을 먼저 한 문장으로, 필요하면 근거를 한 문장 더. 총 2~3문장.
-- 지도/길찾기/교통: 실시간 위치·시간표 정보는 아직 연결되어 있지 않으니 구체적인 경로나 시간을 절대 지어내지 말고, "정확한 정보는 아직 준비 중이에요"라고 안내한 뒤 도움이 될 만한 일반적인 방법만 안내하세요.
-- 사주/운세: 재미로 보는 것임을 짧게 밝히고 3문장 이내로. "반드시 ~된다" 같은 단정적 예언 표현은 쓰지 마세요.
-- 경제/주가/투자: 특정 종목의 매수·매도를 추천하지 말고, 실시간 시세는 확인할 수 없다고 안내한 뒤 일반적인 경제 개념 설명 정도로만 답하세요.
+주제별 답변 형식 (해당하는 주제면 이 방향을 따르되, 위 규칙대로 단답으로 끝내지 마세요):
+- 검색/일반 지식: 결론을 먼저 한두 문장으로 말한 뒤, 어르신이 궁금해하실 배경이나 이유를 자연스럽게 덧붙이세요.
+- 지도/길찾기/교통: 실시간 위치·시간표 정보는 아직 연결되어 있지 않으니 구체적인 경로나 시간을 절대 지어내지 말고, "정확한 정보는 아직 준비 중이에요"라고 안내한 뒤 도움이 될 만한 일반적인 방법을 편하게 풀어서 안내하세요.
+- 사주/운세: 재미로 보는 것임을 짧게 밝히고, 오늘 하루에 도움이 될 만한 이야기로 조금 풀어서 답하세요. "반드시 ~된다" 같은 단정적 예언 표현은 쓰지 마세요.
+- 경제/주가/투자: 특정 종목의 매수·매도를 추천하지 말고, 실시간 시세는 확인할 수 없다고 안내한 뒤 일반적인 경제 개념을 이해하기 쉽게 풀어서 설명하세요.
 - 부동산 정책/정치 뉴스: 사실 위주로 중립적으로 요약하고, 특정 정당·정책에 대한 찬반 의견이나 지지 표현은 절대 하지 마세요.
-- 말벗/정서적 대화: 답변 끝에 짧은 질문 하나를 되돌려줘서 어르신이 계속 이야기를 이어가시게 하세요.
+- 말벗/정서적 대화: 충분히 공감하며 이야기를 들어준 뒤, 답변 끝에 질문 하나를 되돌려줘서 어르신이 계속 이야기를 이어가시게 하세요.
 
 답변을 마친 다음 줄에, 어르신이 이어서 하실 법한 짧은 말 2~3개를 아래 형식으로 반드시 덧붙이세요 (형식을 벗어나지 마세요, 이 줄은 화면에 그대로 안 보이고 선택 버튼으로 바뀝니다):
 [[선택지: 옵션1 | 옵션2 | 옵션3]]
@@ -1144,48 +1131,12 @@ async function renderFeedbackList(){
 }
 document.getElementById('refreshFeedback').addEventListener('click', renderFeedbackList);
 
-function daysSince(dateStr){
-  if(!dateStr) return Infinity;
-  const then = new Date(dateStr);
-  const now = new Date();
-  return Math.floor((now - then) / (1000*60*60*24));
-}
-
-async function maybeAskFeedback(){
-  if(daysSince(lastFeedbackAskDate) < FEEDBACK_INTERVAL_DAYS) return;
-  const userTurns = messages.filter(m=>m.role==='user').length;
-  if(userTurns >= FEEDBACK_TRIGGER){
-    lastFeedbackAskDate = new Date().toISOString();
-    await storeSet('feedback-last-asked', lastFeedbackAskDate);
-    const q = '사용에 불편감은 없으신가요? 얘기해주신다면 즉각 반영하여 개선하도록 하겠습니다!';
-    addBubble('assistant', q);
-    messages.push({role:'assistant', content:q});
-    await storeSet(todayKey('messages'), messages.slice(-30));
-    pendingFeedback = true;
-  }
-}
-
 async function sendMessage(text){
   if(!text || !text.trim()) return;
   document.getElementById('sendBtn').disabled = true;
   addBubble('user', text);
   messages.push({role:'user', content:text});
   await storeSet(todayKey('messages'), messages.slice(-30));
-
-  if(pendingFeedback){
-    pendingFeedback = false;
-    await saveFeedback(text);
-    addTyping();
-    setTimeout(async ()=>{
-      removeTyping();
-      const ack = '개발자에게 전달드리도록 하겠습니다. 즉각 반영하여 이용에 불편 없도록 하겠습니다~ 또 필요하신 내용이 있으시면 언제든지 말씀 주세요!';
-      addBubble('assistant', ack);
-      messages.push({role:'assistant', content:ack});
-      await storeSet(todayKey('messages'), messages.slice(-30));
-      document.getElementById('sendBtn').disabled = false;
-    }, 500);
-    return;
-  }
 
   addTyping();
   try{
@@ -1196,7 +1147,6 @@ async function sendMessage(text){
     messages.push({role:'assistant', content:reply});
     await storeSet(todayKey('messages'), messages.slice(-30));
     if(options.length) addSuggestedOptions(options);
-    await maybeAskFeedback();
   }catch(e){
     removeTyping();
     addBubble('assistant', '지금 연결이 원활하지 않아요. 잠시 후 다시 말씀해 주세요 🙏');
@@ -1260,13 +1210,11 @@ document.getElementById('voiceBtn').addEventListener('click', ()=>{
 
 /* ============ APP START ============ */
 async function startApp(isNew){
-  document.getElementById('chatStatus').textContent = `${profile.name}님의 건강을 챙기는 중`;
   checklistState = await storeGet(todayKey('checklist')) || {};
   checklistItems = await storeGet('checklist-items');
   if(!checklistItems){ checklistItems = DEFAULT_CHECKLIST_ITEMS.slice(); await storeSet('checklist-items', checklistItems); }
   const enabledStored = await storeGet('checklist-enabled');
   checklistEnabled = enabledStored === null ? true : enabledStored;
-  lastFeedbackAskDate = await storeGet('feedback-last-asked');
   messages = await storeGet(todayKey('messages')) || [];
   showScreen('chatScreen');
 
