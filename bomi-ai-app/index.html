@@ -12,13 +12,14 @@
 <meta name="apple-mobile-web-app-title" content="보미">
 <style>
   :root{
-    --blue:#1861FE;
-    --navy:#16326B;
-    --ink:#101828;
-    --sub:#667085;
-    --bg:#EFF3FB;
+    --blue:#9C7A54;
+    --navy:#6F5636;
+    --accent-soft:#F0E7D8;
+    --ink:#23201B;
+    --sub:#7A6F5F;
+    --bg:#F6F3EE;
     --card:#FFFFFF;
-    --line:#E4E9F2;
+    --line:#E7E1D6;
     --good:#16A34A;
     --warn:#D97706;
     --sleep:#22C55E;
@@ -66,26 +67,26 @@
   .ob-sub{ font-size:14px; color:var(--sub); margin-bottom:24px; }
   .ob-input{
     width:100%; border:1.5px solid var(--line); border-radius:14px;
-    padding:16px; font-size:18px; outline:none; background:#FAFBFD; color:var(--ink);
+    padding:16px; font-size:18px; outline:none; background:#FAF9F6; color:var(--ink);
   }
   .ob-input:focus{ border-color:var(--navy); background:#fff; }
   .ob-field-label{ font-size:13px; color:var(--sub); margin:16px 0 6px 0; }
   .gender-row{ display:flex; gap:12px; margin-top:4px; }
   .gender-card{
     flex:1; border:1.5px solid var(--line); border-radius:14px; padding:22px 0;
-    text-align:center; cursor:pointer; background:#FAFBFD;
+    text-align:center; cursor:pointer; background:#FAF9F6;
   }
-  .gender-card .sym{ font-size:22px; display:block; margin-bottom:6px; color:#B7C3DB; }
+  .gender-card .sym{ font-size:22px; display:block; margin-bottom:6px; color:#C7BEB0; }
   .gender-card .lb{ font-size:15px; font-weight:700; color:var(--sub); }
-  .gender-card.selected{ border-color:var(--navy); background:#EEF2FF; }
+  .gender-card.selected{ border-color:var(--navy); background:var(--accent-soft); }
   .gender-card.selected .sym, .gender-card.selected .lb{ color:var(--navy); }
   .ob-textarea{
     width:100%; min-height:88px; border:1.5px solid var(--line); border-radius:14px;
-    padding:14px; font-size:16px; outline:none; background:#FAFBFD; resize:none; font-family:inherit;
+    padding:14px; font-size:16px; outline:none; background:#FAF9F6; resize:none; font-family:inherit;
   }
   .ob-textarea:focus{ border-color:var(--navy); background:#fff; }
   .tip-box{
-    display:flex; gap:10px; background:#EEF2FF; border-radius:12px; padding:12px 14px;
+    display:flex; gap:10px; background:var(--accent-soft); border-radius:12px; padding:12px 14px;
     margin-top:14px; font-size:13px; color:var(--navy); line-height:1.5;
   }
   .ob-footer{ margin-top:auto; display:flex; gap:10px; padding-top:24px; }
@@ -94,13 +95,13 @@
     cursor:pointer;
   }
   .btn.primary{ background:var(--navy); color:#fff; }
-  .btn.primary:disabled{ background:#C6CEDD; cursor:not-allowed; }
-  .btn.ghost{ background:#F1F3F8; color:var(--sub); flex:0 0 96px; }
+  .btn.primary:disabled{ background:#D8D0C1; cursor:not-allowed; }
+  .btn.ghost{ background:#F1EEE7; color:var(--sub); flex:0 0 96px; }
 
   /* ---------- CHAT ---------- */
   .header{
     position:relative;
-    background:#F7F9FF; color:var(--ink); padding:16px 18px;
+    background:#FAF8F5; color:var(--ink); padding:16px 18px;
     display:flex; align-items:center; justify-content:space-between; flex-shrink:0;
   }
   .header .brand{
@@ -113,7 +114,7 @@
     border-radius:10px; font-size:18px; cursor:pointer;
     display:flex; align-items:center; justify-content:center;
   }
-  .iconbtn:hover{ background:#F1F3F8; }
+  .iconbtn:hover{ background:#F1EEE7; }
   .iconbtn svg{ width:20px; height:20px; display:block; }
   .iconbtn .badge-dot{
     position:absolute; top:1px; right:0px; min-width:15px; height:15px; padding:0 3px;
@@ -121,43 +122,73 @@
     display:flex; align-items:center; justify-content:center; line-height:1;
   }
 
-  .chat{ flex:1; overflow-y:auto; padding:18px 16px; display:flex; flex-direction:column; gap:12px;
-    background:linear-gradient(180deg,#F7F9FF 0%,#EFF3FB 100%); }
+  .chat{ flex:1; overflow-y:auto; padding:18px 16px; display:flex; flex-direction:column; gap:16px;
+    background:linear-gradient(180deg,#FAF8F5 0%,#F6F3EE 100%); }
   .row{ display:flex; }
-  .row.bot{ justify-content:flex-start; }
   .row.user{ justify-content:flex-end; }
   .bubble{ max-width:78%; padding:13px 15px; border-radius:18px; font-size:16px; line-height:1.55; font-weight:500; white-space:pre-line; }
-  .bubble.bot{ background:#fff; color:var(--ink); border:1px solid var(--line); border-bottom-left-radius:4px; }
-  .bubble.user{ background:var(--blue); color:#fff; border-bottom-right-radius:4px; }
-  .typing{ display:flex; gap:5px; padding:14px; }
-  .typing span{ width:7px; height:7px; border-radius:50%; background:#B7C3DB; animation:bounce 1.1s infinite ease-in-out; }
-  .typing span:nth-child(2){ animation-delay:0.15s; }
-  .typing span:nth-child(3){ animation-delay:0.3s; }
-  @keyframes bounce{ 0%,60%,100%{ transform:translateY(0); } 30%{ transform:translateY(-5px); } }
+  .bubble.user{ background:#EDEAE4; color:var(--ink); border-bottom-right-radius:4px; }
+
+  /* ---------- AI 응답 블록 (카나나 스타일 — 말풍선 없이, 링 아이콘 + 텍스트) ---------- */
+  .ai-block{ display:flex; flex-direction:column; gap:10px; max-width:94%; }
+  .ai-ring{
+    width:22px; height:22px; border-radius:50%; flex-shrink:0;
+    background: conic-gradient(from 0deg, var(--navy), var(--blue), var(--accent-soft), var(--navy));
+    -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 4px), #fff calc(100% - 4px));
+    mask: radial-gradient(farthest-side, transparent calc(100% - 4px), #fff calc(100% - 4px));
+  }
+  .ai-content{ display:flex; flex-direction:column; gap:10px; }
+  .ai-text{ font-size:16px; line-height:1.6; font-weight:500; color:var(--ink); white-space:pre-line; }
+  .ai-thinking{ font-size:14px; color:var(--sub); font-weight:600; }
+  .ai-disclaimer{ font-size:11px; color:var(--sub); line-height:1.5; }
+  .ai-feedback{ display:flex; gap:8px; }
+  .fb-icon{
+    width:30px; height:30px; border-radius:50%; border:1px solid var(--line); background:#fff;
+    display:flex; align-items:center; justify-content:center; color:var(--sub); cursor:pointer; padding:0;
+  }
+  .fb-icon svg{ width:15px; height:15px; display:block; }
+  .fb-icon:hover{ background:#F1EEE7; }
+  .fb-icon.active{ border-color:var(--blue); color:var(--blue); background:var(--accent-soft); }
+
+  /* ---------- 예상 답변 선택지 (카나나 스타일 — 점선 밑줄 텍스트 링크) ---------- */
+  .reply-options{ display:flex; flex-direction:column; align-items:flex-start; gap:10px; max-width:94%; }
+  .option-link{
+    background:none; border:none; padding:0; cursor:pointer;
+    font-size:15px; font-weight:600; color:var(--ink); text-decoration:underline dotted;
+    text-underline-offset:4px; text-align:left;
+  }
+  .option-link:hover{ color:var(--blue); }
+
+  /* ---------- 생각 중일 때 은은하게 번지는 그라디언트 배경 ----------
+     타이핑 인디케이터 자체의 pseudo-element로 붙여서, 스크롤 위치와
+     상관없이 인디케이터가 나타나고 사라질 때 같이 나타나고 사라지게 함. */
+  #typingRow{ position:relative; }
+  #typingRow::before{
+    content:""; position:absolute; left:-16px; right:-16px; top:-16px; bottom:-140px;
+    background: radial-gradient(120% 100% at 25% 0%, rgba(156,122,84,0.30), rgba(111,86,54,0.14) 45%, transparent 75%);
+    filter:blur(8px); z-index:-1; pointer-events:none;
+    opacity:0; animation: thinkFadeIn .5s ease forwards;
+  }
+  @keyframes thinkFadeIn{ to{ opacity:1; } }
 
   .checklist-card{ background:#fff; border:1px solid var(--line); border-radius:16px; padding:15px; max-width:86%; }
   .checklist-title{ font-size:13px; font-weight:800; color:var(--blue); margin-bottom:9px; }
-  .check-item{ display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid #F1F3F8; font-size:15px; color:var(--ink); cursor:pointer; }
+  .check-item{ display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid #F1EEE7; font-size:15px; color:var(--ink); cursor:pointer; }
   .check-item:last-child{ border-bottom:none; }
   .check-item input{ width:19px; height:19px; accent-color:var(--blue); cursor:pointer; flex-shrink:0; }
   .check-item.done span.label{ text-decoration:line-through; color:var(--sub); }
 
-  .quickchips{ display:flex; gap:8px; padding:8px 16px 10px 16px; overflow-x:auto; flex-shrink:0; background:#EFF3FB; }
+  .quickchips{ display:flex; gap:8px; padding:8px 16px 10px 16px; overflow-x:auto; flex-shrink:0; background:#F6F3EE; }
   .chip{ flex-shrink:0; background:#fff; border:1px solid var(--line); color:var(--ink); font-size:13px; font-weight:600;
     padding:8px 13px; border-radius:999px; cursor:pointer; white-space:nowrap; }
-  .chip:hover{ background:#F3F6FC; }
-
-  /* AI가 응답 끝에 제안하는 예상 답변 선택지 (systemPrompt의 [[선택지: ...]] 파싱 결과) */
-  .reply-options{ display:flex; flex-wrap:wrap; gap:8px; max-width:86%; padding:2px 0 4px 0; }
-  .chip.suggested{ background:#EEF2FF; border-color:#C9D6FB; color:var(--navy); font-family:inherit; }
-  .chip.suggested:hover{ background:#E2E9FF; }
+  .chip:hover{ background:#F5F1EA; }
 
   .inputbar{ position:relative; min-height:64px; padding:12px 14px 16px 14px; background:#fff; border-top:1px solid var(--line); flex-shrink:0; }
-  .roundicon{ width:40px; height:40px; border-radius:50%; border:none; background:#F1F3F8; color:var(--sub); font-size:16px; cursor:pointer; flex-shrink:0; }
+  .roundicon{ width:40px; height:40px; border-radius:50%; border:none; background:#F1EEE7; color:var(--sub); font-size:16px; cursor:pointer; flex-shrink:0; }
   .inputbar input{ flex:1; border:1px solid var(--line); background:var(--bg); border-radius:999px; padding:12px 16px; font-size:15px; outline:none; min-width:0; }
   .inputbar input:focus{ border-color:var(--blue); }
   .sendbtn{ background:var(--blue); border:none; color:#fff; width:42px; height:42px; border-radius:50%; font-size:17px; cursor:pointer; flex-shrink:0; }
-  .sendbtn:disabled{ background:#B7C3DB; cursor:not-allowed; }
+  .sendbtn:disabled{ background:#C7BEB0; cursor:not-allowed; }
 
   /* ---------- INPUT DOCK (camera / keyboard / voice) ---------- */
   .dock, .typebar{
@@ -171,7 +202,7 @@
   .inputbar.mode-type .typebar{ opacity:1; transform:scale(1); pointer-events:auto; }
   .dockbtn{ display:flex; flex-direction:column; align-items:center; gap:4px; background:none; border:none;
     padding:6px 18px; border-radius:16px; cursor:pointer; color:var(--sub); }
-  .dockbtn:hover, .dockbtn:active{ background:#F1F3F8; }
+  .dockbtn:hover, .dockbtn:active{ background:#F1EEE7; }
   .dockbtn .dockbtn-icon{ display:flex; }
   .dockbtn .dockbtn-icon svg{ width:23px; height:23px; display:block; }
   .dockbtn .dockbtn-label{ font-size:12px; font-weight:700; }
@@ -237,7 +268,7 @@
   .subheader .title{ font-size:16px; font-weight:800; color:var(--ink); flex:1; }
   .editbtn{ background:none; border:none; font-size:16px; cursor:pointer; color:var(--sub); }
 
-  .scroll{ flex:1; overflow-y:auto; padding:20px 18px; background:#F7F9FC; }
+  .scroll{ flex:1; overflow-y:auto; padding:20px 18px; background:#F8F6F2; }
 
   .profile-hero{ display:flex; align-items:center; gap:14px; margin-bottom:20px; }
   .avatar-lg{ width:58px; height:58px; border-radius:50%; background:var(--navy); color:#fff;
@@ -250,7 +281,7 @@
   .info-grid .lb{ font-size:12px; color:var(--sub); margin-bottom:4px; }
   .info-grid .val{ font-size:15px; font-weight:700; color:var(--ink); }
 
-  .bmi-row{ display:flex; align-items:center; justify-content:space-between; margin-top:14px; padding-top:14px; border-top:1px solid #F1F3F8; }
+  .bmi-row{ display:flex; align-items:center; justify-content:space-between; margin-top:14px; padding-top:14px; border-top:1px solid #F1EEE7; }
   .bmi-row .lb{ font-size:12px; color:var(--sub); }
   .bmi-row .val{ font-size:22px; font-weight:800; color:var(--ink); }
   .badge{ font-size:12px; font-weight:700; padding:5px 10px; border-radius:999px; }
@@ -259,7 +290,7 @@
 
   .section-label{ font-size:13px; font-weight:800; color:var(--ink); margin:20px 0 10px 0; }
   .tags{ display:flex; flex-wrap:wrap; gap:8px; }
-  .tag{ background:#EEF2FF; color:var(--navy); font-size:13px; font-weight:600; padding:8px 12px; border-radius:999px; display:flex; align-items:center; gap:6px; }
+  .tag{ background:var(--accent-soft); color:var(--navy); font-size:13px; font-weight:600; padding:8px 12px; border-radius:999px; display:flex; align-items:center; gap:6px; }
   .tag .x{ cursor:pointer; opacity:0.6; }
   .tag-add{ background:#fff; border:1.5px dashed var(--line); color:var(--sub); font-size:13px; font-weight:700; padding:8px 14px; border-radius:999px; cursor:pointer; }
 
@@ -268,26 +299,26 @@
   .report-cta .lb{ font-size:15px; font-weight:800; color:#C23A56; display:flex; align-items:center; gap:8px; }
   .report-cta .arrow{ color:#C23A56; font-size:16px; }
 
-  .toggle-item{ display:flex; align-items:center; justify-content:space-between; padding:13px 0; border-bottom:1px solid #F1F3F8; }
+  .toggle-item{ display:flex; align-items:center; justify-content:space-between; padding:13px 0; border-bottom:1px solid #F1EEE7; }
   .toggle-item:last-child{ border-bottom:none; }
   .toggle-item .lb{ font-size:14px; font-weight:700; color:var(--ink); }
   .toggle-item .desc{ font-size:12px; color:var(--sub); margin-top:2px; }
   .switch{ position:relative; width:44px; height:26px; flex-shrink:0; }
   .switch input{ opacity:0; width:0; height:0; }
-  .slider{ position:absolute; inset:0; background:#D0D8E4; border-radius:999px; cursor:pointer; transition:0.2s; }
+  .slider{ position:absolute; inset:0; background:#DAD3C5; border-radius:999px; cursor:pointer; transition:0.2s; }
   .slider::before{ content:""; position:absolute; width:20px; height:20px; left:3px; top:3px; background:#fff; border-radius:50%; transition:0.2s; }
   .switch input:checked + .slider{ background:var(--blue); }
   .switch input:checked + .slider::before{ transform:translateX(18px); }
 
-  .cl-item-row{ display:flex; align-items:center; gap:8px; padding:8px 0; border-bottom:1px solid #F1F3F8; }
+  .cl-item-row{ display:flex; align-items:center; gap:8px; padding:8px 0; border-bottom:1px solid #F1EEE7; }
   .cl-item-row:last-child{ border-bottom:none; }
-  .cl-item-input{ flex:1; border:1px solid var(--line); border-radius:10px; padding:9px 11px; font-size:14px; outline:none; background:#FAFBFD; }
+  .cl-item-input{ flex:1; border:1px solid var(--line); border-radius:10px; padding:9px 11px; font-size:14px; outline:none; background:#FAF9F6; }
   .cl-item-input:focus{ border-color:var(--blue); background:#fff; }
   .cl-del{ background:#FFF1F1; color:#D9455A; border:none; width:30px; height:30px; border-radius:9px; font-size:14px; cursor:pointer; flex-shrink:0; }
-  .cl-add{ width:100%; margin-top:10px; background:#EEF2FF; color:var(--navy); border:none; border-radius:12px; padding:11px; font-size:14px; font-weight:700; cursor:pointer; }
+  .cl-add{ width:100%; margin-top:10px; background:var(--accent-soft); color:var(--navy); border:none; border-radius:12px; padding:11px; font-size:14px; font-weight:700; cursor:pointer; }
   .cl-empty{ font-size:13px; color:var(--sub); text-align:center; padding:14px 0; }
 
-  .fb-row{ padding:10px 0; border-bottom:1px solid #F1F3F8; }
+  .fb-row{ padding:10px 0; border-bottom:1px solid #F1EEE7; }
   .fb-row:last-child{ border-bottom:none; }
   .fb-meta{ font-size:11px; color:var(--sub); margin-bottom:3px; }
   .fb-msg{ font-size:14px; color:var(--ink); line-height:1.5; }
@@ -301,11 +332,11 @@
   .crm-row{ display:flex; align-items:center; justify-content:space-between; margin-top:6px; }
   .crm-id{ font-size:16px; font-weight:800; color:var(--ink); letter-spacing:0.5px; }
   .crm-note{ font-size:11px; color:var(--sub); margin-bottom:8px; }
-  .copybtn{ background:#F1F3F8; border:none; color:var(--sub); font-size:12px; padding:6px 10px; border-radius:8px; cursor:pointer; }
+  .copybtn{ background:#F1EEE7; border:none; color:var(--sub); font-size:12px; padding:6px 10px; border-radius:8px; cursor:pointer; }
 
   /* ---------- REPORT ---------- */
-  .report-badge{ font-size:12px; font-weight:700; color:var(--blue); background:#EEF2FF; padding:5px 10px; border-radius:999px; margin-left:auto; }
-  .tabs{ display:flex; background:#F1F3F8; border-radius:12px; padding:4px; margin-bottom:16px; }
+  .report-badge{ font-size:12px; font-weight:700; color:var(--blue); background:var(--accent-soft); padding:5px 10px; border-radius:999px; margin-left:auto; }
+  .tabs{ display:flex; background:#F1EEE7; border-radius:12px; padding:4px; margin-bottom:16px; }
   .tab{ flex:1; text-align:center; padding:9px 0; font-size:14px; font-weight:700; color:var(--sub); border-radius:9px; cursor:pointer; }
   .tab.active{ background:#fff; color:var(--navy); box-shadow:0 1px 4px rgba(16,24,40,0.08); }
   .date-nav{ display:flex; align-items:center; justify-content:space-between; background:#fff; border:1px solid var(--line); border-radius:14px; padding:12px 16px; margin-bottom:16px; }
@@ -324,7 +355,7 @@
   .metric-top{ display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
   .metric-top .lb{ font-size:14px; font-weight:800; color:var(--ink); display:flex; align-items:center; gap:6px; }
   .metric-top .score{ font-size:15px; font-weight:800; }
-  .bar-track{ height:8px; background:#F1F3F8; border-radius:99px; overflow:hidden; margin-bottom:8px; }
+  .bar-track{ height:8px; background:#F1EEE7; border-radius:99px; overflow:hidden; margin-bottom:8px; }
   .bar-fill{ height:100%; border-radius:99px; }
   .metric-sub{ font-size:12px; color:var(--sub); }
 
@@ -478,7 +509,7 @@
         <div class="lb">💗 건강리포트 서비스</div>
         <div class="arrow">›</div>
       </div>
-      <div class="report-cta" id="familyCta" style="background:#EEF2FF;border-color:#C9D6FB;">
+      <div class="report-cta" id="familyCta" style="background:var(--accent-soft);border-color:#E3D2B4;">
         <div class="lb" style="color:var(--navy);">👨‍👩‍👧 가족 리포트 미리보기</div>
         <div class="arrow" style="color:var(--navy);">›</div>
       </div>
@@ -879,7 +910,7 @@ async function renderReport(){
 
   document.getElementById('scoreNum').textContent = overall;
   const ring = document.getElementById('scoreRing');
-  ring.style.background = `conic-gradient(var(--navy) ${overall}%, #EEF1F6 ${overall}%)`;
+  ring.style.background = `conic-gradient(var(--navy) ${overall}%, #EFEBE3 ${overall}%)`;
   document.getElementById('scoreCap').textContent = overall>=80 ? '컨디션이 아주 좋아요' : overall>=60 ? '무난한 상태예요' : '조금 더 챙겨볼까요';
 
   setMetric('sleep', sleep, `수면시간 ${Math.round(sleep/100*8)}h · 수면질 ${sleep>=75?'숙면':'보통'}`);
@@ -1027,28 +1058,104 @@ document.getElementById('addChecklistItem').addEventListener('click', async ()=>
 
 /* ============ CHAT LOGIC ============ */
 
+const FB_ICONS = {
+  up: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7 11v9H4v-9h3Zm3 9h7.5a2 2 0 0 0 1.94-1.51l1.36-5.4A2 2 0 0 0 18.86 10H14l.7-4.2a1.6 1.6 0 0 0-2.86-1.24L8 9.5"/></svg>',
+  down: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7 13V4H4v9h3Zm3-9H17.5a2 2 0 0 1 1.94 1.51l1.36 5.4A2 2 0 0 1 18.86 14H14l.7 4.2a1.6 1.6 0 0 1-2.86 1.24L8 14.5"/></svg>',
+  retry: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 0 1 13.66-5.66M20 12a8 8 0 0 1-13.66 5.66"/><path d="M17.5 3.5v3.3h-3.3M6.5 20.5v-3.3h3.3"/></svg>',
+  share: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V4M8 8l4-4 4 4"/><path d="M5 14v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"/></svg>',
+};
+const AI_DISCLAIMER = 'AI가 생성한 응답은 정확하지 않을 수 있어요. 중요한 내용은 확인해 주세요.';
+
 function addBubble(role, text){
+  if(role !== 'user'){ addAssistantBlock(text, null); return; }
   const chat = document.getElementById('chat');
   const row = document.createElement('div');
-  row.className = 'row ' + (role==='user' ? 'user' : 'bot');
+  row.className = 'row user';
   const b = document.createElement('div');
-  b.className = 'bubble ' + (role==='user' ? 'user' : 'bot');
+  b.className = 'bubble user';
   b.textContent = text;
   row.appendChild(b);
   chat.appendChild(row);
   chat.scrollTop = chat.scrollHeight;
 }
+
+// userText: the question this answer responds to (used by the retry button
+// to regenerate). Pass null for messages with no clear preceding question
+// (e.g. the onboarding intro) — the retry button hides itself in that case.
+function addAssistantBlock(text, userText){
+  const chat = document.getElementById('chat');
+  const wrap = document.createElement('div');
+  wrap.className = 'ai-block';
+  wrap.innerHTML = `
+    <div class="ai-ring"></div>
+    <div class="ai-content">
+      <div class="ai-text"></div>
+      <div class="ai-disclaimer">${AI_DISCLAIMER}</div>
+      <div class="ai-feedback">
+        <button class="fb-icon" type="button" data-fb="up" aria-label="좋아요">${FB_ICONS.up}</button>
+        <button class="fb-icon" type="button" data-fb="down" aria-label="별로예요">${FB_ICONS.down}</button>
+        <button class="fb-icon" type="button" data-fb="retry" aria-label="다시 생성">${FB_ICONS.retry}</button>
+        <button class="fb-icon" type="button" data-fb="share" aria-label="공유">${FB_ICONS.share}</button>
+      </div>
+    </div>`;
+  wrap.querySelector('.ai-text').textContent = text;
+  const upBtn = wrap.querySelector('[data-fb="up"]');
+  const downBtn = wrap.querySelector('[data-fb="down"]');
+  const retryBtn = wrap.querySelector('[data-fb="retry"]');
+  const shareBtn = wrap.querySelector('[data-fb="share"]');
+  upBtn.addEventListener('click', ()=> handleFeedbackVote(upBtn, downBtn, 'up', text));
+  downBtn.addEventListener('click', ()=> handleFeedbackVote(upBtn, downBtn, 'down', text));
+  if(userText){ retryBtn.addEventListener('click', ()=> regenerateReply(userText)); }
+  else { retryBtn.style.display = 'none'; }
+  shareBtn.addEventListener('click', ()=> shareText(text));
+  chat.appendChild(wrap);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+async function handleFeedbackVote(upBtn, downBtn, kind, messageText){
+  upBtn.classList.toggle('active', kind === 'up');
+  downBtn.classList.toggle('active', kind === 'down');
+  await saveFeedback(`[${kind === 'up' ? '👍' : '👎'}] ${messageText}`);
+}
+
+async function shareText(text){
+  if(navigator.share){
+    try{ await navigator.share({ text }); return; }catch(e){ /* user cancelled or unsupported, fall through */ }
+  }
+  if(navigator.clipboard){
+    try{ await navigator.clipboard.writeText(text); showToast('복사했어요'); return; }catch(e){}
+  }
+  showToast('공유 기능을 사용할 수 없어요');
+}
+
+async function regenerateReply(userText){
+  addTyping();
+  try{
+    const raw = await callBomi(userText);
+    const { text: reply, options } = parseBomiReply(raw);
+    removeTyping();
+    addAssistantBlock(reply, userText);
+    messages.push({role:'assistant', content:reply});
+    await storeSet(todayKey('messages'), messages.slice(-30));
+    if(options.length) addSuggestedOptions(options);
+  }catch(e){
+    removeTyping();
+    addAssistantBlock('지금 연결이 원활하지 않아요. 잠시 후 다시 말씀해 주세요 🙏', userText);
+  }
+}
+
 function addTyping(){
   const chat = document.getElementById('chat');
-  const row = document.createElement('div');
-  row.className = 'row bot'; row.id = 'typingRow';
-  row.innerHTML = `<div class="bubble bot"><div class="typing"><span></span><span></span><span></span></div></div>`;
-  chat.appendChild(row); chat.scrollTop = chat.scrollHeight;
+  const wrap = document.createElement('div');
+  wrap.className = 'ai-block'; wrap.id = 'typingRow';
+  wrap.innerHTML = `<div class="ai-ring"></div><div class="ai-thinking">생각 중</div>`;
+  chat.appendChild(wrap);
+  chat.scrollTop = chat.scrollHeight;
 }
 function removeTyping(){ const t = document.getElementById('typingRow'); if(t) t.remove(); }
 
 // Splits the trailing "[[선택지: A | B | C]]" marker (see systemPrompt()) off
-// the model's reply so it renders as tappable chips instead of literal text.
+// the model's reply so it renders as tappable suggestion links instead of literal text.
 function parseBomiReply(raw){
   const match = raw.match(/\n?\[\[\s*선택지\s*:\s*([^\]]+)\]\]\s*$/);
   if(!match) return { text: raw.trim(), options: [] };
@@ -1059,20 +1166,17 @@ function parseBomiReply(raw){
 
 function addSuggestedOptions(options){
   const chat = document.getElementById('chat');
-  const row = document.createElement('div');
-  row.className = 'row bot';
   const wrap = document.createElement('div');
   wrap.className = 'reply-options';
   options.forEach(opt=>{
-    const chip = document.createElement('button');
-    chip.type = 'button';
-    chip.className = 'chip suggested';
-    chip.textContent = opt;
-    chip.addEventListener('click', ()=> sendMessage(opt));
-    wrap.appendChild(chip);
+    const link = document.createElement('button');
+    link.type = 'button';
+    link.className = 'option-link';
+    link.textContent = opt;
+    link.addEventListener('click', ()=> sendMessage(opt));
+    wrap.appendChild(link);
   });
-  row.appendChild(wrap);
-  chat.appendChild(row);
+  chat.appendChild(wrap);
   chat.scrollTop = chat.scrollHeight;
 }
 
@@ -1175,13 +1279,13 @@ async function sendMessage(text){
     const raw = await callBomi(text);
     const { text: reply, options } = parseBomiReply(raw);
     removeTyping();
-    addBubble('assistant', reply);
+    addAssistantBlock(reply, text);
     messages.push({role:'assistant', content:reply});
     await storeSet(todayKey('messages'), messages.slice(-30));
     if(options.length) addSuggestedOptions(options);
   }catch(e){
     removeTyping();
-    addBubble('assistant', '지금 연결이 원활하지 않아요. 잠시 후 다시 말씀해 주세요 🙏');
+    addAssistantBlock('지금 연결이 원활하지 않아요. 잠시 후 다시 말씀해 주세요 🙏', text);
   }
   document.getElementById('sendBtn').disabled = false;
 }
@@ -1264,7 +1368,11 @@ async function startApp(isNew){
     messages.push({role:'assistant', content:intro});
     await storeSet(todayKey('messages'), messages);
   } else {
-    messages.forEach(m=>addBubble(m.role, m.content));
+    let lastUserText = null;
+    messages.forEach(m=>{
+      if(m.role === 'user'){ addBubble('user', m.content); lastUserText = m.content; }
+      else { addAssistantBlock(m.content, lastUserText); }
+    });
   }
   renderPinnedChecklist();
 }
