@@ -189,7 +189,7 @@
     padding:8px 13px; border-radius:999px; cursor:pointer; white-space:nowrap; }
   .chip:hover{ background:#F5F1EA; }
 
-  .inputbar{ position:relative; min-height:62px; padding:6px 16px 10px 16px; background:#F6F3EE; flex-shrink:0; }
+  .inputbar{ position:relative; min-height:82px; padding:8px 16px 12px 16px; background:#F6F3EE; flex-shrink:0; }
   .roundicon{ width:36px; height:36px; border-radius:50%; border:none; background:none; color:var(--sub); font-size:16px; cursor:pointer; flex-shrink:0; }
   .inputbar input{ flex:1; border:none; background:transparent; padding:12px 6px; font-size:15px; outline:none; min-width:0; color:var(--ink); }
   .sendbtn{ background:var(--blue); border:none; color:#fff; width:38px; height:38px; border-radius:50%; font-size:16px; cursor:pointer; flex-shrink:0; box-shadow:0 2px 8px rgba(156,122,84,0.35); }
@@ -198,7 +198,7 @@
   /* ---------- INPUT DOCK (camera / keyboard / voice) — 카나나처럼 대화창
      배경에 녹아든 채로 버튼/입력창만 그림자로 떠 있는 느낌 ---------- */
   .dock, .typebar{
-    position:absolute; left:16px; right:16px; top:6px; bottom:10px;
+    position:absolute; left:16px; right:16px; top:8px; bottom:22px;
     display:flex; align-items:center;
     transition: opacity .28s ease, transform .32s cubic-bezier(.22,1,.36,1);
   }
@@ -393,7 +393,7 @@
       box-shadow:none;
     }
     .header{ padding-top:calc(10px + env(safe-area-inset-top)); }
-    .inputbar{ padding-bottom:calc(10px + env(safe-area-inset-bottom)); }
+    .inputbar{ padding-bottom:calc(14px + env(safe-area-inset-bottom)); }
     #onboardingView{ padding-top:calc(28px + env(safe-area-inset-top)); padding-bottom:calc(28px + env(safe-area-inset-bottom)); }
   }
 </style>
@@ -1148,7 +1148,7 @@ function addAssistantBlock(text, userText, animate){
 // 텍스트를 한 글자씩(성능을 위해 몇 글자씩 묶어서) 채워 넣는 타자기 효과.
 // 실제 API 스트리밍이 아니라, 이미 다 받은 응답을 화면에서만 흉내 내는 것.
 function typewriterReveal(chat, el, text, msPerTick){
-  msPerTick = msPerTick || 16;
+  msPerTick = msPerTick || 26;
   const charsPerTick = 2;
   return new Promise(resolve=>{
     let i = 0;
