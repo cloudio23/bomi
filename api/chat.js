@@ -24,7 +24,7 @@ async function buildSajuContext(sajuBirth) {
   if (sajuBirth.calendarType === 'lunar') {
     const converted = await convertLunarToSolar({ year: sajuBirth.year, month, day, isLeapMonth: !!sajuBirth.isLeapMonth });
     if (!converted) {
-      return `\n\n[사주 참고 정보] 사용자는 음력 ${sajuBirth.year}년 ${month}월 ${day}일생입니다(지금은 음력→양력 변환이 안 돼서 정밀한 사주팔자 계산은 못 했어요). 연도 중심으로만 가볍게 답하고, 마치 정확한 사주팔자를 계산한 것처럼 단정적으로 말하지 마세요.`;
+      return `\n\n[사주 참고 정보] 사용자는 음력 ${sajuBirth.year}년 ${month}월 ${day}일생입니다(지금은 음력→양력 변환이 안 돼서 정밀한 사주팔자 계산은 못 했어요). 절대로 음력 날짜를 직접 양력으로 환산하려 하지 말고("양력 ~월 ~일에 해당합니다" 같은 문장 금지), 구체적인 날짜·사주팔자·띠를 단정하지 말고 연도만 언급하며 가볍게 답하세요.`;
     }
     solar = converted;
   }
