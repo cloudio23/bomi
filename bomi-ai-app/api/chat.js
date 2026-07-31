@@ -7,7 +7,7 @@
 import { callAI } from '../lib/aiProviders.mjs';
 import { calculateBaziPillars, describeBaziPillarsKorean } from '../lib/bazi.mjs';
 import { convertLunarToSolar } from '../lib/lunarConvert.mjs';
-import { geocodePlace, resolvePlace, searchTransitRoutes, pickRoutes, describeRoutesKorean } from '../lib/transit.mjs';
+import { resolvePlace, searchTransitRoutes, pickRoutes, describeRoutesKorean } from '../lib/transit.mjs';
 
 // 클라이언트가 사주 정보(생년월일시)를 보내면, LLM이 사주팔자를 직접(부정확하게)
 // "지어내게" 하는 대신 검증된 만세력 조회 테이블로 정밀 계산해서 그 결과를
@@ -44,6 +44,10 @@ async function buildSajuContext(sajuBirth) {
 // 경로 조회 중 하나라도 실패하면(키 미설정, 장소 못 찾음 등) "못 찾았다"고
 // 솔직히 안내하도록 지시할 뿐, 절대 그럴듯한 가짜 경로를 만들어내라고 하지 않습니다.
 //
+// destination/origin은 둘 다 resolvePlace()가 처리하는 형태(자동완성으로 이미
+// 좌표가 확정된 {lat,lng,placeName} 또는 직접 타이핑만 한 {text})로 옵니다 —
+// 자동완성으로 고른 경우 여기서 다시 지오코딩하지 않고 그 좌표를 그대로 씁니다.
+//
 // 참고: "정류장에 실제로 몇 분 후 버스가 도착하는지"(실시간 도착 예측)는
 // ODsay가 주지 않는 정보라(경로/소요시간까지만 제공) 여기 포함하지 않았습니다 —
 // 필요하면 TAGO(국가대중교통정보센터) API를 별도로 더 붙여야 합니다.
@@ -56,9 +60,10 @@ async function buildTransitContext(transitQuery) {
     return `\n\n[교통 참고 정보] "${originLabel}"의 위치를 찾지 못했어요. 구체적인 경로·시간을 절대 지어내지 말고, 출발지를 못 찾았다고 안내한 뒤 더 구체적으로 다시 말씀해달라고 요청하세요.`;
   }
 
-  const dest = await geocodePlace(transitQuery.destination);
+  const dest = await resolvePlace(transitQuery.destination);
   if (!dest) {
-    return `\n\n[교통 참고 정보] "${transitQuery.destination}"의 위치를 찾지 못했어요. 구체적인 경로·시간을 절대 지어내지 말고, 목적지를 못 찾았다고 안내한 뒤 조금 더 구체적으로(예: 정확한 지명) 다시 말씀해달라고 요청하세요.`;
+    const destLabel = transitQuery.destination.text || '목적지';
+    return `\n\n[교통 참고 정보] "${destLabel}"의 위치를 찾지 못했어요. 구체적인 경로·시간을 절대 지어내지 말고, 목적지를 못 찾았다고 안내한 뒤 조금 더 구체적으로(예: 정확한 지명) 다시 말씀해달라고 요청하세요.`;
   }
 
   const paths = await searchTransitRoutes({
@@ -66,7 +71,7 @@ async function buildTransitContext(transitQuery) {
     endLat: dest.lat, endLng: dest.lng,
   });
   if (!paths) {
-    return `\n\n[교통 참고 정보] ${origin.placeName}에서 "${transitQuery.destination}"(${dest.placeName})까지 가는 대중교통 경로를 찾지 못했어요. 구체적인 시간·노선·요금을 절대 지어내지 말고, 경로 조회에 실패했다고 솔직히 안내하세요.`;
+    return `\n\n[교통 참고 정보] ${origin.placeName}에서 ${dest.placeName}까지 가는 대중교통 경로를 찾지 못했어요. 구체적인 시간·노선·요금을 절대 지어내지 말고, 경로 조회에 실패했다고 솔직히 안내하세요.`;
   }
 
   const routes = pickRoutes(paths, transitQuery.preference || 'any');
