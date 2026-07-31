@@ -27,6 +27,7 @@
     --activity:#8BAA3C;
     --mental:#E0637A;
     --app-radius:28px;
+    --chat-font-scale:1;
   }
   *{box-sizing:border-box;}
   html, body{ height:100%; overscroll-behavior:none; }
@@ -137,13 +138,13 @@
     background:linear-gradient(180deg,#FAF8F5 0%,#F6F3EE 100%); touch-action:pan-y; overscroll-behavior:contain; }
   .row{ display:flex; }
   .row.user{ justify-content:flex-end; }
-  .bubble{ max-width:78%; padding:13px 15px; border-radius:18px; font-size:16px; line-height:1.55; font-weight:500; white-space:pre-line; }
+  .bubble{ max-width:78%; padding:13px 15px; border-radius:18px; font-size:calc(16px * var(--chat-font-scale)); line-height:1.55; font-weight:500; white-space:pre-line; }
   .bubble.user{ background:#EDEAE4; color:var(--ink); border-bottom-right-radius:4px; }
 
   /* ---------- AI 응답 블록 (말풍선 없이 텍스트만) ---------- */
   .ai-block{ display:flex; flex-direction:column; gap:10px; max-width:94%; }
   .ai-content{ display:flex; flex-direction:column; gap:10px; }
-  .ai-text{ font-size:16px; line-height:1.6; font-weight:500; color:var(--ink); white-space:pre-line; }
+  .ai-text{ font-size:calc(16px * var(--chat-font-scale)); line-height:1.6; font-weight:500; color:var(--ink); white-space:pre-line; }
   .ai-thinking{ font-size:14px; color:var(--sub); font-weight:600; }
   .ai-disclaimer{ font-size:11px; color:var(--sub); line-height:1.5; }
   .ai-feedback{ display:flex; gap:8px; }
@@ -156,10 +157,10 @@
   .fb-icon.active{ border-color:var(--blue); color:var(--blue); background:var(--accent-soft); }
 
   /* ---------- 예상 답변 선택지 (카나나 스타일 — 점선 밑줄 텍스트 링크) ---------- */
-  .reply-options{ display:flex; flex-direction:column; align-items:flex-start; gap:10px; max-width:94%; }
+  .reply-options{ display:flex; flex-direction:column; align-items:stretch; gap:18px; max-width:94%; }
   .option-link{
-    background:none; border:none; padding:0; cursor:pointer;
-    font-size:15px; font-weight:600; color:var(--ink); text-decoration:underline dotted;
+    background:none; border:none; padding:10px 4px; cursor:pointer; min-height:44px;
+    font-size:calc(15px * var(--chat-font-scale)); font-weight:600; color:var(--ink); text-decoration:underline dotted;
     text-underline-offset:4px; text-align:left;
   }
   .option-link:hover{ color:var(--blue); }
@@ -184,9 +185,9 @@
   .check-item input{ width:19px; height:19px; accent-color:var(--blue); cursor:pointer; flex-shrink:0; }
   .check-item.done span.label{ text-decoration:line-through; color:var(--sub); }
 
-  .quickchips{ display:flex; gap:8px; padding:8px 16px 10px 16px; overflow-x:auto; flex-shrink:0; background:#F6F3EE; }
-  .chip{ flex-shrink:0; background:#fff; border:1px solid var(--line); color:var(--ink); font-size:13px; font-weight:600;
-    padding:8px 13px; border-radius:999px; cursor:pointer; white-space:nowrap; }
+  .quickchips{ display:flex; gap:12px; padding:10px 16px 14px 16px; overflow-x:auto; flex-shrink:0; background:#F6F3EE; }
+  .chip{ flex-shrink:0; background:#fff; border:1px solid var(--line); color:var(--ink); font-size:calc(15px * var(--chat-font-scale)); font-weight:600;
+    padding:13px 20px; min-height:44px; border-radius:999px; cursor:pointer; white-space:nowrap; }
   .chip:hover{ background:#F5F1EA; }
 
   .inputbar{ position:relative; min-height:82px; padding:8px 16px 12px 16px; background:#F6F3EE; flex-shrink:0; }
@@ -364,11 +365,6 @@
   .fb-meta{ font-size:11px; color:var(--sub); margin-bottom:3px; }
   .fb-msg{ font-size:14px; color:var(--ink); line-height:1.5; }
 
-  .stat-card{ background:#fff; border:1px solid var(--line); border-radius:14px; padding:14px; }
-  .stat-card .label{ font-size:12px; color:var(--sub); margin-bottom:6px; }
-  .stat-card .value{ font-size:20px; font-weight:800; color:var(--ink); }
-  .stat-card .value.good{ color:var(--good); }
-  .stat-card .value.warn{ color:var(--warn); }
 
   .crm-row{ display:flex; align-items:center; justify-content:space-between; margin-top:6px; }
   .crm-id{ font-size:16px; font-weight:800; color:var(--ink); letter-spacing:0.5px; }
@@ -555,10 +551,6 @@
         <div class="lb">💗 건강리포트 서비스</div>
         <div class="arrow">›</div>
       </div>
-      <div class="report-cta" id="familyCta" style="background:var(--accent-soft);border-color:#E3D2B4;">
-        <div class="lb" style="color:var(--navy);">👨‍👩‍👧 가족 리포트 미리보기</div>
-        <div class="arrow" style="color:var(--navy);">›</div>
-      </div>
 
       <div class="section-label">체크리스트 관리</div>
       <div class="info-card">
@@ -570,6 +562,16 @@
       <div class="info-card" id="checklistItemsCard">
         <div id="checklistItemRows"></div>
         <button class="cl-add" id="addChecklistItem">+ 항목 추가</button>
+      </div>
+
+      <div class="section-label">화면 설정</div>
+      <div class="info-card">
+        <div class="lb" style="font-size:14px;font-weight:700;color:var(--ink);margin-bottom:10px;">글씨 크기</div>
+        <div class="gender-row" id="textSizeRow">
+          <div class="gender-card" data-size="0.85"><span class="lb">작게</span></div>
+          <div class="gender-card" data-size="1"><span class="lb">보통</span></div>
+          <div class="gender-card" data-size="1.25"><span class="lb">크게</span></div>
+        </div>
       </div>
 
       <div class="section-label">권한 설정</div>
@@ -681,34 +683,6 @@
       </div>
 
       <div class="source-note" id="sourceNote"></div>
-    </div>
-  </div>
-
-  <!-- ===== FAMILY REPORT (PREVIEW) ===== -->
-  <div class="screen" id="familyScreen">
-    <div class="subheader">
-      <button class="backbtn" id="familyBack">←</button>
-      <div class="title">가족 리포트 미리보기</div>
-    </div>
-    <div class="scroll">
-      <div class="crm-note" style="margin-bottom:16px;">👀 실제 서비스에서는 보호자(자녀)가 별도 계정으로 접속해서 보는 화면이에요. 지금은 같은 기기에서 미리보기만 보여드려요.</div>
-
-      <div class="profile-hero">
-        <div class="avatar-lg" id="famAvatar"></div>
-        <div>
-          <div class="pname" id="famName"></div>
-          <div class="psub" id="famSub"></div>
-        </div>
-        <div class="badge" id="famStatusBadge" style="margin-left:auto;"></div>
-      </div>
-
-      <div class="stat-grid" id="famStatGrid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;"></div>
-
-      <div class="section-label">이번 주 소식</div>
-      <div class="report-note" style="background:#fff;border:1px solid var(--line);border-left:4px solid var(--blue);border-radius:12px;padding:14px 16px;font-size:14px;line-height:1.7;color:var(--ink);" id="famSummary"></div>
-
-      <div class="section-label">체크리스트 현황</div>
-      <div class="info-card" id="famChecklistCard"></div>
     </div>
   </div>
 
@@ -1002,10 +976,33 @@ function renderProfile(){
   document.getElementById('togglePush').checked = !!notifSettings.push;
   document.getElementById('toggleReport').checked = notifSettings.report;
   document.getElementById('toggleMental').checked = notifSettings.mental;
+  renderTextSizeSelection();
   loadCheckinSettingsUI();
 }
 document.getElementById('toggleReport').addEventListener('change', async (e)=>{ notifSettings.report = e.target.checked; await storeSet('notif-settings', notifSettings); });
 document.getElementById('toggleMental').addEventListener('change', async (e)=>{ notifSettings.mental = e.target.checked; await storeSet('notif-settings', notifSettings); });
+
+/* ============ 글씨 크기 설정 ============ */
+// 채팅 본문·선택지·서제스천 칩 글씨 크기만 조절합니다(--chat-font-scale 변수).
+// 화면 구조(레이아웃 라벨 등)까지 다 키우면 오히려 깨질 수 있어, 실제로
+// "읽고 답하는" 텍스트 위주로 범위를 좁혔습니다.
+function applyTextScale(){
+  document.documentElement.style.setProperty('--chat-font-scale', (profile && profile.textScale) || 1);
+}
+function renderTextSizeSelection(){
+  const scale = String((profile && profile.textScale) || 1);
+  document.querySelectorAll('#textSizeRow .gender-card').forEach(card=>{
+    card.classList.toggle('selected', card.dataset.size === scale);
+  });
+}
+document.querySelectorAll('#textSizeRow .gender-card').forEach(card=>{
+  card.addEventListener('click', async ()=>{
+    profile.textScale = Number(card.dataset.size);
+    await storeSet('profile', profile);
+    applyTextScale();
+    renderTextSizeSelection();
+  });
+});
 
 /* ============ 건강 안부 문자 (시간 설정 가능) ============ */
 // 실제 발송 여부/시간은 서버(bomi_checkin_settings, api/send-checkins.js 크론)가
@@ -1257,53 +1254,6 @@ function setMetric(key, score, sub){
 document.getElementById('dPrev').addEventListener('click', ()=>{});
 document.getElementById('dNext').addEventListener('click', ()=>{});
 
-/* ============ FAMILY REPORT (PREVIEW) ============ */
-function familySummary(scores){
-  const parts = [];
-  parts.push(scores.sleep>=75 ? '수면은 안정적이에요.' : '수면 점수가 평소보다 낮아서 조금 더 지켜봐야 해요.');
-  parts.push(scores.nutri>=75 ? '식사도 잘 챙기고 계세요.' : '식사 횟수가 다소 불규칙했어요.');
-  parts.push(scores.act>=70 ? '활동량도 늘었어요.' : '오늘은 활동량이 적은 편이었어요, 가볍게 산책을 권해드렸어요.');
-  parts.push(scores.mental>=75 ? '기분도 좋아 보이세요 😊' : '요즘 기분 상태는 보통이에요, 안부 전화 한 통 드려보는 건 어떨까요?');
-  return parts.join(' ');
-}
-
-async function renderFamily(){
-  const age = new Date().getFullYear() - profile.birthYear;
-  document.getElementById('famAvatar').textContent = profile.name.charAt(0);
-  document.getElementById('famName').textContent = profile.name + '님';
-  document.getElementById('famSub').textContent = `만 ${age}세 · ${profile.gender}`;
-
-  const scores = computeScores();
-  const badge = document.getElementById('famStatusBadge');
-  if(scores.overall >= 60){ badge.textContent = '정상'; badge.className = 'badge good'; }
-  else { badge.textContent = '주의 필요'; badge.className = 'badge warn'; }
-
-  const grid = document.getElementById('famStatGrid');
-  grid.innerHTML = `
-    <div class="stat-card"><div class="label">수면</div><div class="value ${scores.sleep>=75?'good':'warn'}">${scores.sleep}/100</div></div>
-    <div class="stat-card"><div class="label">영양</div><div class="value ${scores.nutri>=75?'good':'warn'}">${scores.nutri}/100</div></div>
-    <div class="stat-card"><div class="label">활동</div><div class="value ${scores.act>=70?'good':'warn'}">${scores.act}/100</div></div>
-    <div class="stat-card"><div class="label">심리</div><div class="value ${scores.mental>=75?'good':'warn'}">${scores.mental}/100</div></div>
-  `;
-
-  document.getElementById('famSummary').innerHTML = `<b style="color:var(--blue)">[${profile.name}님 소식]</b><br>${familySummary(scores)}`;
-
-  const clCard = document.getElementById('famChecklistCard');
-  clCard.innerHTML = '';
-  if(checklistItems.length === 0){
-    clCard.innerHTML = '<div class="cl-empty">등록된 체크리스트가 없어요</div>';
-  } else {
-    checklistItems.forEach(item=>{
-      const done = !!checklistState[item.id];
-      const row = document.createElement('div');
-      row.className = 'toggle-item';
-      row.innerHTML = `<div class="lb">${item.label}</div><div class="badge ${done?'good':'warn'}">${done?'완료':'대기'}</div>`;
-      clCard.appendChild(row);
-    });
-  }
-}
-document.getElementById('familyCta').addEventListener('click', ()=>{ renderFamily(); showScreen('familyScreen'); });
-document.getElementById('familyBack').addEventListener('click', ()=>{ renderProfile(); showScreen('profileScreen'); });
 
 /* ============ PINNED CHECKLIST (chat header bar) ============ */
 function renderPinnedChecklist(){
@@ -1990,6 +1940,7 @@ function hideSplash(){
 (async function init(){
   profile = await storeGet('profile');
   notifSettings = (await storeGet('notif-settings')) || notifSettings;
+  applyTextScale();
   if(profile){
     // 예전 버전(이름+연도 해시, 예: "M123456")으로 만들어진 연동 코드는
     // 유니크성이 보장되지 않으므로, UUID 형식이 아니면 한 번 새로 발급.
