@@ -262,36 +262,30 @@
   }
 
   /* ---------- SPLASH SCREEN (앱 첫 실행 시 잠깐 노출되는 브랜드 화면 —
-     로고/태그라인이 순차적으로 페이드인되고, 준비되면 아래 화면으로 페이드아웃) ---------- */
+     로고 아이콘 → 워드마크/태그라인 순서로 페이드인되고, 준비되면 아래 화면으로 페이드아웃) ---------- */
   .splash-screen{
     position:absolute; inset:0; z-index:200;
     border-radius:var(--app-radius);
-    background:linear-gradient(160deg, var(--navy) 0%, var(--blue) 100%);
-    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px;
+    background:#fff;
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:18px;
     transition:opacity .5s ease-in-out;
   }
   .splash-screen.fade-out{ opacity:0; pointer-events:none; }
-  .splash-mark{
-    width:76px; height:76px; border-radius:24px; background:rgba(255,255,255,0.16);
-    display:flex; align-items:center; justify-content:center;
-    font-size:32px; font-weight:800; color:#fff;
+  .splash-icon-img{
+    width:104px; height:auto;
     opacity:0; animation: splashIn .55s ease-in-out forwards;
   }
-  .splash-word{
-    font-size:30px; font-weight:800; color:#fff; letter-spacing:0.5px;
+  .splash-word-img{
+    width:200px; height:auto;
     opacity:0; animation: splashIn .55s ease-in-out forwards; animation-delay:.2s;
   }
-  .splash-tagline{
-    font-size:14px; font-weight:600; color:rgba(255,255,255,0.8); letter-spacing:0.2px;
-    opacity:0; animation: splashIn .55s ease-in-out forwards; animation-delay:.4s;
-  }
   @keyframes splashIn{
-    from{ opacity:0; transform:translateY(10px); }
+    from{ opacity:0; transform:translateY(8px); }
     to{ opacity:1; transform:translateY(0); }
   }
   @media (prefers-reduced-motion: reduce){
     .splash-screen{ transition:none !important; }
-    .splash-mark, .splash-word, .splash-tagline{ animation:none !important; opacity:1 !important; transform:none !important; }
+    .splash-icon-img, .splash-word-img{ animation:none !important; opacity:1 !important; transform:none !important; }
   }
 
   /* ---------- PINNED CHECKLIST (header button opens this as a dropdown,
@@ -436,9 +430,8 @@
 <div class="app">
 
   <div class="splash-screen" id="splashScreen">
-    <div class="splash-mark">보</div>
-    <div class="splash-word">보미</div>
-    <div class="splash-tagline">매일 챙기는 건강 습관</div>
+    <img class="splash-icon-img" src="/splash-icon.png" alt="" />
+    <img class="splash-word-img" src="/splash-wordmark.png" alt="Bomi — Interactive health care AI" />
   </div>
 
   <div class="auroraBorder" id="auroraBorder"></div>
@@ -579,6 +572,11 @@
       <div class="section-label">알림 설정</div>
       <div class="info-card">
         <div class="toggle-item">
+          <div><div class="lb">실시간 알림(푸시)</div><div class="desc">앱을 안 열어도 보미가 안부를 물어보거나 연동 요청을 알려드려요</div></div>
+          <label class="switch"><input type="checkbox" id="togglePush"><span class="slider"></span></label>
+        </div>
+        <div id="pushStatusNote" style="font-size:11px;color:var(--sub);margin:-6px 0 10px 0;"></div>
+        <div class="toggle-item">
           <div><div class="lb">건강리포트 알림</div><div class="desc">리포트 생성 시 알려드려요</div></div>
           <label class="switch"><input type="checkbox" id="toggleReport"><span class="slider"></span></label>
         </div>
@@ -592,9 +590,9 @@
         </div>
       </div>
 
-      <div class="section-label">CRM 고유번호</div>
+      <div class="section-label">연동 코드</div>
       <div class="info-card">
-        <div class="crm-note">이 번호는 CRM 연동 시 회원님을 식별하는 고유 식별자입니다.</div>
+        <div class="crm-note">담당 트레이너님께 이 코드를 알려주시면, 동의하에 건강 리포트를 트레이너님 화면과 연동할 수 있어요.</div>
         <div class="crm-row">
           <div class="crm-id" id="crmId"></div>
           <button class="copybtn" id="copyCrm">복사</button>
@@ -694,6 +692,21 @@
     </div>
   </div>
 
+  <!-- ===== CRM 연동 동의 ===== -->
+  <div class="screen" id="consentScreen">
+    <div style="padding:28px 24px;display:flex;flex-direction:column;height:100%;">
+      <div class="ob-title" style="margin-top:40px;">연동 요청이 왔어요</div>
+      <div class="ob-sub">담당 트레이너님이 보미의 건강 리포트 요약 공유를 요청했어요.</div>
+      <div class="tip-box" style="margin-top:0;">
+        💡 공유되는 건 수면·영양·활동·심리 요약 점수와 소견뿐이에요. 대화 내용 원본은 절대 전달되지 않고, 동의 후에도 프로필 화면에서 언제든 연동을 해제할 수 있어요.
+      </div>
+      <div class="ob-footer">
+        <button class="btn ghost" id="consentDeclineBtn" style="flex:1;">거절</button>
+        <button class="btn primary" id="consentApproveBtn" style="flex:1;">동의하고 공유하기</button>
+      </div>
+    </div>
+  </div>
+
 </div>
 
 <script>
@@ -704,10 +717,13 @@ const DEFAULT_CHECKLIST_ITEMS = [
   { id:'walk',   label:'오후 04:00 산책 30분' },
 ];
 const TOTAL_STEPS = 5;
+// 이 값은 공개되는 게 정상입니다(그래서 이름이 public) — 서버 쪽 VAPID_PRIVATE_KEY와
+// 반드시 한 쌍으로 발급된 값을 써야 합니다.
+const VAPID_PUBLIC_KEY = 'BEHe-CLJT7Y5q8Vk3aGKf1fqq-rkXGeKyN1Xbe-zG5QIhQalylfW7g8rRm3pm4QJBVqCPK8CUCvAxE8T5Fl4G8U';
 
 /* ============ STATE ============ */
 let profile = null;
-let notifSettings = { report:true, proactive:true, mental:true };
+let notifSettings = { report:true, proactive:true, mental:true, push:false };
 let messages = [];
 let checklistState = {};       // today's done/not-done map, keyed by item id
 let checklistItems = [];       // configurable list of {id, label}
@@ -828,18 +844,23 @@ document.getElementById('obNext').addEventListener('click', async ()=>{
     height: parseFloat(obData.height),
     weight: parseFloat(obData.weight),
     interests: obData.interests,
-    crmId: makeCrmId(obData.name, obData.birthYear)
+    crmId: makeLinkCode()
   };
   await storeSet('profile', profile);
   await storeSet('notif-settings', notifSettings);
   startApp(true);
 });
 
-function makeCrmId(name, year){
-  let h = 0;
-  const s = (name||'') + (year||'');
-  for(const c of s){ h = (h*31 + c.charCodeAt(0)) >>> 0; }
-  return 'M' + (100000 + (h % 900000));
+// 웹 CRM과의 연동에 쓰이는 진짜 유니크 식별자 (이전엔 이름+연도 해시라 충돌
+// 가능성이 있었음 — crypto.randomUUID 사용, 미지원 브라우저는 폴백으로 대체).
+function makeLinkCode(){
+  if(typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'){
+    return crypto.randomUUID();
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c=>{
+    const r = Math.random()*16|0, v = c==='x' ? r : (r&0x3|0x8);
+    return v.toString(16);
+  });
 }
 
 /* ============ NAVIGATION ============ */
@@ -917,6 +938,7 @@ function renderProfile(){
   tagArea.appendChild(addBtn);
 
   document.getElementById('crmId').textContent = profile.crmId;
+  document.getElementById('togglePush').checked = !!notifSettings.push;
   document.getElementById('toggleReport').checked = notifSettings.report;
   document.getElementById('toggleProactive').checked = notifSettings.proactive;
   document.getElementById('toggleMental').checked = notifSettings.mental;
@@ -924,12 +946,109 @@ function renderProfile(){
 document.getElementById('toggleReport').addEventListener('change', async (e)=>{ notifSettings.report = e.target.checked; await storeSet('notif-settings', notifSettings); });
 document.getElementById('toggleProactive').addEventListener('change', async (e)=>{ notifSettings.proactive = e.target.checked; await storeSet('notif-settings', notifSettings); });
 document.getElementById('toggleMental').addEventListener('change', async (e)=>{ notifSettings.mental = e.target.checked; await storeSet('notif-settings', notifSettings); });
+
+/* ============ 실시간 알림(웹 푸시) ============ */
+// 회원 폰이 지원하면(대부분의 갤럭시/크롬은 지원) 구독 정보를 서버에 등록해서
+// 앱을 안 열어도 "매일 아침 안부인사"·"연동 요청" 알림을 받을 수 있게 합니다.
+// 아이폰 사파리는 홈 화면에 설치된 상태에서만 웹 푸시가 동작하는 플랫폼 제약이 있음.
+function urlBase64ToUint8Array(base64String){
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const raw = atob(base64);
+  return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
+}
+
+function pushSupported(){
+  return 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+}
+
+async function enablePush(){
+  if(!pushSupported()) return { ok:false, reason:'unsupported' };
+  const permission = await Notification.requestPermission();
+  if(permission !== 'granted') return { ok:false, reason:'denied' };
+  const reg = await navigator.serviceWorker.ready;
+  let sub = await reg.pushManager.getSubscription();
+  if(!sub){
+    sub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+    });
+  }
+  try{
+    await fetch('/api/push-subscribe', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ bomiLinkCode: profile.crmId, subscription: sub.toJSON() }),
+    });
+  }catch(e){ return { ok:false, reason:'network' }; }
+  return { ok:true };
+}
+
+function renderPushStatusNote(text, isError){
+  const note = document.getElementById('pushStatusNote');
+  if(!note) return;
+  note.textContent = text;
+  note.style.color = isError ? 'var(--warn)' : 'var(--sub)';
+}
+
+document.getElementById('togglePush').addEventListener('change', async (e)=>{
+  if(!e.target.checked){
+    // 브라우저 구독 자체를 취소하진 않음(다시 켜면 그대로 이어지도록) — 서버에도
+    // 별도 "끄기" 신호를 보내지 않는 단순한 v1 동작.
+    notifSettings.push = false;
+    await storeSet('notif-settings', notifSettings);
+    return;
+  }
+  const result = await enablePush();
+  if(result.ok){
+    notifSettings.push = true;
+    await storeSet('notif-settings', notifSettings);
+    renderPushStatusNote('알림이 켜졌어요.');
+  }else{
+    e.target.checked = false;
+    const messages = {
+      unsupported: '이 브라우저는 알림을 지원하지 않아요.',
+      denied: '알림 권한이 거부됐어요. 브라우저 설정에서 허용해주세요.',
+      network: '알림 등록에 실패했어요. 잠시 후 다시 시도해주세요.',
+    };
+    renderPushStatusNote(messages[result.reason] || '알림을 켜지 못했어요.', true);
+  }
+});
 document.getElementById('copyCrm').addEventListener('click', ()=>{
   const id = document.getElementById('crmId').textContent;
   if(navigator.clipboard) navigator.clipboard.writeText(id);
   const btn = document.getElementById('copyCrm');
   const old = btn.textContent; btn.textContent = '복사됨'; setTimeout(()=>btn.textContent=old, 1200);
 });
+
+/* ============ CRM 연동 동의 화면 ============ */
+// 대기중인 연동 요청이 있는지는 기본적으로 푸시 알림(sw.js의 notificationclick →
+// /?consent=1)으로 알게 되지만, 알림을 놓쳤거나 아직 권한을 안 켠 회원을 위해
+// 앱을 열 때마다 한 번 가볍게 서버에 확인하는 안전망도 같이 둡니다.
+async function maybeShowConsentScreen(){
+  if(!profile) return;
+  try{
+    const res = await fetch('/api/check-link-status?code=' + encodeURIComponent(profile.crmId));
+    const data = await res.json();
+    if(data.status === 'pending'){
+      showScreen('consentScreen');
+    }
+  }catch(e){ /* 네트워크 문제면 그냥 넘어감 — 다음에 열 때 다시 확인하게 됨 */ }
+  if(location.search.includes('consent=1')){
+    history.replaceState(null, '', location.pathname);
+  }
+}
+
+async function respondToConsent(decision){
+  try{
+    await fetch('/api/consent-respond', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ bomiLinkCode: profile.crmId, decision }),
+    });
+  }catch(e){ /* 실패해도 일단 채팅 화면으로 보내고, 다음에 열 때 다시 확인하게 됨 */ }
+  showScreen('chatScreen');
+}
+document.getElementById('consentApproveBtn').addEventListener('click', ()=> respondToConsent('approved'));
+document.getElementById('consentDeclineBtn').addEventListener('click', ()=> respondToConsent('declined'));
 
 /* ============ REPORT SCREEN ============ */
 function seededRandom(seed){ const x = Math.sin(seed) * 10000; return x - Math.floor(x); }
@@ -1463,6 +1582,28 @@ async function startApp(isNew){
     });
   }
   renderPinnedChecklist();
+  syncHealthSummaryIfConsented();
+}
+
+// 앱을 열 때마다 하루 1회, 동의된 회원의 건강리포트 요약만 서버로 보냅니다.
+// 원본 대화가 아니라 이미 계산된 요약 점수/소견만 보내고, 동의 여부는 서버
+// (api/sync-health-summary.js)가 bomi_links.status로 다시 한 번 확인합니다 —
+// 클라이언트가 동의 안 된 상태에서 호출해도 서버가 조용히 무시하므로 안전합니다.
+async function syncHealthSummaryIfConsented(){
+  if(!profile || !profile.crmId) return;
+  try{
+    const { sleep, mental, nutri, act, overall } = computeScores();
+    const dateStr = new Date().toISOString().slice(0,10);
+    const summaryText = overall>=80 ? '컨디션이 아주 좋아요' : overall>=60 ? '무난한 상태예요' : '조금 더 챙겨볼까요';
+    await fetch('/api/sync-health-summary', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        bomiLinkCode: profile.crmId, date: dateStr,
+        sleepScore: sleep, nutritionScore: nutri, activityScore: act, mentalScore: mental, overallScore: overall,
+        summaryText,
+      }),
+    });
+  }catch(e){ /* 네트워크 문제면 조용히 넘어감 — 다음에 앱을 열 때 다시 시도됨 */ }
 }
 
 function hideSplash(){
@@ -1478,7 +1619,14 @@ function hideSplash(){
   profile = await storeGet('profile');
   notifSettings = (await storeGet('notif-settings')) || notifSettings;
   if(profile){
+    // 예전 버전(이름+연도 해시, 예: "M123456")으로 만들어진 연동 코드는
+    // 유니크성이 보장되지 않으므로, UUID 형식이 아니면 한 번 새로 발급.
+    if(!profile.crmId || !profile.crmId.includes('-')){
+      profile.crmId = makeLinkCode();
+      await storeSet('profile', profile);
+    }
     startApp(false);
+    maybeShowConsentScreen();
   } else {
     renderObStep();
   }
