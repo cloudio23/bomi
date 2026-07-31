@@ -185,6 +185,21 @@
   .check-item input{ width:19px; height:19px; accent-color:var(--blue); cursor:pointer; flex-shrink:0; }
   .check-item.done span.label{ text-decoration:line-through; color:var(--sub); }
 
+  /* ---------- 대중교통 출발지/도착지 자동완성 ---------- */
+  .autocomplete-wrap{ position:relative; margin-bottom:10px; }
+  .autocomplete-list{
+    position:absolute; left:0; right:0; top:100%; margin-top:4px; z-index:20;
+    background:#fff; border:1px solid var(--line); border-radius:10px;
+    box-shadow:0 8px 20px rgba(16,24,40,0.14); max-height:240px; overflow-y:auto;
+    display:none;
+  }
+  .autocomplete-list.show{ display:block; }
+  .autocomplete-item{ padding:11px 13px; cursor:pointer; border-bottom:1px solid #F1EEE7; }
+  .autocomplete-item:last-child{ border-bottom:none; }
+  .autocomplete-item:hover{ background:#FAF9F6; }
+  .autocomplete-item .place-name{ font-size:15px; font-weight:700; color:var(--ink); }
+  .autocomplete-item .place-addr{ font-size:12px; color:var(--sub); margin-top:2px; }
+
   .quickchips{ display:flex; gap:12px; padding:10px 16px 14px 16px; overflow-x:auto; flex-shrink:0; background:#F6F3EE; }
   .chip{ flex-shrink:0; background:#fff; border:1px solid var(--line); color:var(--ink); font-size:calc(15px * var(--app-font-scale)); font-weight:600;
     padding:13px 20px; min-height:44px; border-radius:999px; cursor:pointer; white-space:nowrap; }
@@ -1669,6 +1684,57 @@ function addInlineTextCard(title, placeholder, onConfirm){
 // 비웁니다. 출발지/목적지 텍스트 자체는 여기서 좌표로 바꾸지 않고(그건 서버가 함).
 let pendingTransitQuery = null;
 
+function escapeHtml(s){
+  const d = document.createElement('div');
+  d.textContent = s == null ? '' : String(s);
+  return d.innerHTML;
+}
+
+// 입력창 하나에 자동완성 목록 하나를 연결합니다. 타이핑 300ms 후 카카오 장소
+// 검색을 호출해서 후보를 보여주고(이름 굵게 + 주소 작게), 고르면 좌표까지
+// 같이 확정해서 onSelect로 넘깁니다 — 나중에 서버가 텍스트만 보고 다시
+// 지오코딩하는 것보다, 화면에서 실제로 고른 장소 좌표를 그대로 쓰는 게 더 정확함.
+function setupAutocomplete(inputEl, listEl, onSelect){
+  let debounceTimer = null;
+  let results = [];
+  function hide(){ listEl.classList.remove('show'); listEl.innerHTML = ''; }
+  function render(){
+    if(!results.length){ hide(); return; }
+    listEl.innerHTML = results.map((r,i)=>`
+      <div class="autocomplete-item" data-idx="${i}">
+        <div class="place-name">${escapeHtml(r.placeName)}</div>
+        ${r.address ? `<div class="place-addr">${escapeHtml(r.address)}</div>` : ''}
+      </div>
+    `).join('');
+    listEl.classList.add('show');
+    listEl.querySelectorAll('.autocomplete-item').forEach(item=>{
+      item.addEventListener('click', ()=>{
+        const r = results[Number(item.dataset.idx)];
+        inputEl.value = r.placeName;
+        hide();
+        onSelect(r);
+      });
+    });
+  }
+  inputEl.addEventListener('input', ()=>{
+    onSelect(null); // 직접 타이핑하면 이전에 골랐던 좌표는 무효화
+    clearTimeout(debounceTimer);
+    const query = inputEl.value.trim();
+    if(query.length < 2){ hide(); return; }
+    debounceTimer = setTimeout(async ()=>{
+      try{
+        const res = await fetch('/api/geocode-search?query=' + encodeURIComponent(query));
+        const data = await res.json();
+        results = data.results || [];
+        render();
+      }catch(e){ /* 자동완성은 있으면 좋고 없어도 그만 — 조용히 무시 */ }
+    }, 300);
+  });
+  document.addEventListener('click', (e)=>{
+    if(e.target !== inputEl && !listEl.contains(e.target)) hide();
+  });
+}
+
 // 출발지·도착지를 한 카드에서 같이 입력받습니다. 출발지를 비워두면 GPS 현재
 // 위치로 대체(finalizeTransitQuery에서 처리) — 위치 동의를 안 하셨어도 출발지를
 // 직접 입력하면 되므로, 이 흐름 자체를 위치 동의로 막지는 않습니다.
@@ -1679,39 +1745,61 @@ function addInlineRouteCard(onConfirm){
   wrap.innerHTML = `
     <div class="checklist-title">어디서 어디로 가시나요?</div>
     <div class="ob-field-label" style="margin-top:0;">출발지</div>
-    <input type="text" id="transitOriginInput" placeholder="비워두면 현재 위치로 안내해요" style="width:100%;border:1px solid var(--line);border-radius:10px;padding:10px;font-size:15px;margin-bottom:10px;background:#FAF9F6;color:var(--ink);">
+    <div class="autocomplete-wrap">
+      <input type="text" id="transitOriginInput" placeholder="비워두면 현재 위치로 안내해요" style="width:100%;border:1px solid var(--line);border-radius:10px;padding:10px;font-size:15px;background:#FAF9F6;color:var(--ink);">
+      <div class="autocomplete-list" id="transitOriginList"></div>
+    </div>
     <div class="ob-field-label">도착지</div>
-    <input type="text" id="transitDestInput" placeholder="예: 강남역, 서울대학교병원" style="width:100%;border:1px solid var(--line);border-radius:10px;padding:10px;font-size:15px;margin-bottom:10px;background:#FAF9F6;color:var(--ink);">
-    <button type="button" id="transitRouteConfirm" style="width:100%;padding:11px;border-radius:10px;border:none;background:var(--navy);color:#fff;font-weight:700;font-size:14px;cursor:pointer;">확인</button>
+    <div class="autocomplete-wrap">
+      <input type="text" id="transitDestInput" placeholder="예: 강남역, 서울대학교병원" style="width:100%;border:1px solid var(--line);border-radius:10px;padding:10px;font-size:15px;background:#FAF9F6;color:var(--ink);">
+      <div class="autocomplete-list" id="transitDestList"></div>
+    </div>
+    <button type="button" id="transitRouteConfirm" style="width:100%;padding:11px;border-radius:10px;border:none;background:var(--navy);color:#fff;font-weight:700;font-size:14px;cursor:pointer;margin-top:4px;">확인</button>
   `;
   chat.appendChild(wrap);
   chat.scrollTop = chat.scrollHeight;
+
+  let originResolved = null;
+  let destResolved = null;
+  setupAutocomplete(
+    wrap.querySelector('#transitOriginInput'), wrap.querySelector('#transitOriginList'),
+    (picked)=>{ originResolved = picked; }
+  );
+  setupAutocomplete(
+    wrap.querySelector('#transitDestInput'), wrap.querySelector('#transitDestList'),
+    (picked)=>{ destResolved = picked; }
+  );
+
   wrap.querySelector('#transitRouteConfirm').addEventListener('click', ()=>{
     const origin = wrap.querySelector('#transitOriginInput').value.trim();
     const destination = wrap.querySelector('#transitDestInput').value.trim();
     if(!destination) return;
     wrap.remove();
-    onConfirm({ origin, destination });
+    onConfirm({ origin, destination, originResolved, destResolved });
   });
   setTimeout(()=>wrap.querySelector('#transitDestInput').focus(), 50);
 }
 
 function startTransitFlow(){
-  addInlineRouteCard(({ origin, destination })=>{
-    askTransitPreference(origin, destination);
+  addInlineRouteCard(({ origin, destination, originResolved, destResolved })=>{
+    askTransitPreference(origin, destination, originResolved, destResolved);
   });
 }
 
-function askTransitPreference(origin, destination){
+function askTransitPreference(origin, destination, originResolved, destResolved){
   addLocalBubble('버스와 지하철 중 어느 쪽을 더 선호하세요?');
   addChoiceButtons(['버스 선호', '지하철 선호', '상관없음'], (choice)=>{
     const preference = choice === '버스 선호' ? 'bus' : choice === '지하철 선호' ? 'subway' : 'any';
-    finalizeTransitQuery(origin, destination, preference);
+    finalizeTransitQuery(origin, destination, preference, originResolved, destResolved);
   });
 }
 
-async function finalizeTransitQuery(origin, destination, preference){
-  let originPayload = origin ? { text: origin } : null;
+async function finalizeTransitQuery(origin, destination, preference, originResolved, destResolved){
+  // 자동완성으로 고른 좌표가 있으면 그걸 그대로 쓰고(가장 정확), 없으면 텍스트만
+  // 넘겨서 서버가 지오코딩하게 합니다(자동완성 없이 직접 타이핑한 경우 대비).
+  let originPayload = originResolved
+    ? { text: origin, lat: originResolved.lat, lng: originResolved.lng, placeName: originResolved.placeName }
+    : (origin ? { text: origin } : null);
   if(!originPayload){
     const loc = await getLocationIfConsented();
     if(loc){
@@ -1722,7 +1810,10 @@ async function finalizeTransitQuery(origin, destination, preference){
       return;
     }
   }
-  pendingTransitQuery = { destination, origin: originPayload, preference };
+  const destPayload = destResolved
+    ? { text: destination, lat: destResolved.lat, lng: destResolved.lng, placeName: destResolved.placeName }
+    : { text: destination };
+  pendingTransitQuery = { destination: destPayload, origin: originPayload, preference };
   sendMessage(`${origin ? origin+'에서 ' : ''}${destination}까지 가는 방법 알려줘`);
 }
 document.getElementById('transitChip').addEventListener('click', startTransitFlow);
