@@ -122,12 +122,12 @@
   }
   .iconbtn{
     position:relative;
-    background:transparent; border:none; color:var(--sub); width:46px; height:46px;
-    border-radius:12px; font-size:22px; cursor:pointer;
+    background:transparent; border:none; color:var(--sub); width:56px; height:56px;
+    border-radius:14px; font-size:26px; cursor:pointer;
     display:flex; align-items:center; justify-content:center;
   }
   .iconbtn:hover{ background:#F1EEE7; }
-  .iconbtn svg{ width:26px; height:26px; display:block; }
+  .iconbtn svg{ width:32px; height:32px; display:block; }
   .iconbtn .badge-dot{
     position:absolute; top:1px; right:0px; min-width:15px; height:15px; padding:0 3px;
     border-radius:999px; background:var(--blue); color:#fff; font-size:9px; font-weight:800;
@@ -306,9 +306,9 @@
 
   /* ---------- PROFILE ---------- */
   .subheader{ display:flex; align-items:center; gap:12px; padding:16px 18px; border-bottom:1px solid var(--line); flex-shrink:0; }
-  .backbtn{ background:none; border:none; font-size:26px; cursor:pointer; color:var(--ink); padding:10px; min-width:44px; min-height:44px; }
+  .backbtn{ background:none; border:none; font-size:32px; cursor:pointer; color:var(--ink); padding:14px; min-width:52px; min-height:52px; }
   .subheader .title{ font-size:calc(16px * var(--app-font-scale)); font-weight:800; color:var(--ink); flex:1; }
-  .editbtn{ background:none; border:none; font-size:24px; cursor:pointer; color:var(--sub); padding:10px; min-width:44px; min-height:44px; }
+  .editbtn{ background:none; border:none; font-size:30px; cursor:pointer; color:var(--sub); padding:14px; min-width:52px; min-height:52px; }
 
   .scroll{ flex:1; overflow-y:auto; padding:20px 18px; background:#F8F6F2; touch-action:pan-y; overscroll-behavior:contain; }
 
@@ -520,29 +520,33 @@
       <button class="editbtn" id="editNameBtn">✎</button>
     </div>
     <div class="scroll">
-      <div class="profile-hero">
-        <div class="avatar-lg" id="pfAvatar"></div>
-        <div>
-          <div class="pname" id="pfName"></div>
-          <div class="psub" id="pfSub"></div>
+      <div id="profileDisplayArea">
+        <div class="profile-hero">
+          <div class="avatar-lg" id="pfAvatar"></div>
+          <div>
+            <div class="pname" id="pfName"></div>
+            <div class="psub" id="pfSub"></div>
+          </div>
+        </div>
+
+        <div class="info-card">
+          <div class="info-grid">
+            <div><div class="lb">이름</div><div class="val" id="gName"></div></div>
+            <div><div class="lb">출생연도</div><div class="val" id="gYear"></div></div>
+            <div><div class="lb">성별</div><div class="val" id="gGender"></div></div>
+            <div><div class="lb">키 / 체중</div><div class="val" id="gHW"></div></div>
+          </div>
+          <div class="bmi-row">
+            <div><div class="lb">BMI 지수</div><div class="val" id="gBmi"></div></div>
+            <div class="badge" id="gBmiBadge"></div>
+          </div>
+          <div class="bmi-row" id="sajuDetailRow" style="display:none;">
+            <div><div class="lb">생일(음/양력) · 태어난 시간</div><div class="val" id="gBirthDetail" style="font-size:14px;"></div></div>
+          </div>
         </div>
       </div>
 
-      <div class="info-card">
-        <div class="info-grid">
-          <div><div class="lb">이름</div><div class="val" id="gName"></div></div>
-          <div><div class="lb">출생연도</div><div class="val" id="gYear"></div></div>
-          <div><div class="lb">성별</div><div class="val" id="gGender"></div></div>
-          <div><div class="lb">키 / 체중</div><div class="val" id="gHW"></div></div>
-        </div>
-        <div class="bmi-row">
-          <div><div class="lb">BMI 지수</div><div class="val" id="gBmi"></div></div>
-          <div class="badge" id="gBmiBadge"></div>
-        </div>
-        <div class="bmi-row" id="sajuDetailRow" style="display:none;">
-          <div><div class="lb">생일(음/양력) · 태어난 시간</div><div class="val" id="gBirthDetail" style="font-size:14px;"></div></div>
-        </div>
-      </div>
+      <div id="profileEditArea" style="display:none;"></div>
 
       <div class="section-label">관심사</div>
       <div class="tags" id="tagArea"></div>
@@ -568,9 +572,9 @@
       <div class="info-card">
         <div class="lb" style="font-size:14px;font-weight:700;color:var(--ink);margin-bottom:10px;">글씨 크기</div>
         <div class="gender-row" id="textSizeRow">
-          <div class="gender-card" data-size="0.85"><span class="lb">작게</span></div>
           <div class="gender-card" data-size="1"><span class="lb">보통</span></div>
-          <div class="gender-card" data-size="1.25"><span class="lb">크게</span></div>
+          <div class="gender-card" data-size="1.3"><span class="lb">크게</span></div>
+          <div class="gender-card" data-size="1.6"><span class="lb">아주 크게</span></div>
         </div>
       </div>
 
@@ -891,13 +895,105 @@ document.getElementById('menuBtn').addEventListener('click', ()=>{ renderProfile
 document.getElementById('profileBack').addEventListener('click', ()=> showScreen('chatScreen'));
 document.getElementById('reportCta').addEventListener('click', ()=>{ renderReport(); showScreen('reportScreen'); });
 document.getElementById('reportBack').addEventListener('click', ()=>{ renderProfile(); showScreen('profileScreen'); });
-document.getElementById('editNameBtn').addEventListener('click', async ()=>{
-  const newName = prompt('이름을 수정해 주세요', profile.name);
-  if(newName && newName.trim()){
-    profile.name = newName.trim();
+// 이름만 고칠 수 있던 걸 프로필 전체(성별/출생연도/키/체중/음양력/생일/태어난
+// 시간)를 한 화면에서 고칠 수 있는 폼으로 확장. 사주 흐름에서만 물어보던
+// 정보도 여기서 나중에 직접 바꾸거나 처음 입력할 수 있음.
+function renderProfileEditForm(){
+  const area = document.getElementById('profileEditArea');
+  const [curMonth, curDay] = (profile.birthMonthDay || '01-01').split('-');
+  const isLunar = profile.birthCalendarType === 'lunar';
+  const timeOptions = SAJU_HOUR_BLOCKS.map(b=>{
+    const isSelected = profile.birthTimePeriod ? profile.birthTimePeriod === b.label : b.label === '모르겠어요';
+    return `<option value="${b.label}" ${isSelected ? 'selected' : ''}>${b.label}</option>`;
+  }).join('');
+
+  area.innerHTML = `
+    <div class="info-card">
+      <div class="ob-field-label" style="margin-top:0;">이름</div>
+      <input class="ob-input" id="editName" value="${profile.name}" style="padding:12px;font-size:16px;">
+
+      <div class="ob-field-label">성별</div>
+      <div class="gender-row">
+        <div class="gender-card ${profile.gender==='남성'?'selected':''}" data-edit-gender="남성"><span class="lb">남성</span></div>
+        <div class="gender-card ${profile.gender==='여성'?'selected':''}" data-edit-gender="여성"><span class="lb">여성</span></div>
+      </div>
+
+      <div class="ob-field-label">출생연도</div>
+      <input class="ob-input" type="number" id="editBirthYear" value="${profile.birthYear}" style="padding:12px;font-size:16px;">
+
+      <div class="ob-field-label">키 (cm)</div>
+      <input class="ob-input" type="number" id="editHeight" value="${profile.height}" style="padding:12px;font-size:16px;">
+
+      <div class="ob-field-label">체중 (kg)</div>
+      <input class="ob-input" type="number" id="editWeight" value="${profile.weight}" style="padding:12px;font-size:16px;">
+
+      <div class="ob-field-label">생신 음력/양력 (사주용)</div>
+      <div class="gender-row">
+        <div class="gender-card ${!isLunar?'selected':''}" data-edit-cal="solar"><span class="lb">양력</span></div>
+        <div class="gender-card ${isLunar?'selected':''}" data-edit-cal="lunar"><span class="lb">음력</span></div>
+      </div>
+
+      <div class="ob-field-label">생일(월/일, 사주용)</div>
+      <input type="date" class="ob-input" id="editBirthDate" value="${profile.birthYear}-${curMonth}-${curDay}" style="padding:12px;font-size:16px;">
+
+      <div class="ob-field-label">태어난 시간(사주용)</div>
+      <select class="ob-input" id="editBirthTime" style="padding:12px;font-size:16px;">${timeOptions}</select>
+
+      <div class="ob-footer" style="padding-top:22px;margin-top:0;">
+        <button class="btn ghost" id="profileEditCancelBtn">취소</button>
+        <button class="btn primary" id="profileEditSaveBtn">저장</button>
+      </div>
+    </div>
+  `;
+
+  area.querySelectorAll('[data-edit-gender]').forEach(card=>{
+    card.addEventListener('click', ()=>{
+      area.querySelectorAll('[data-edit-gender]').forEach(c=>c.classList.remove('selected'));
+      card.classList.add('selected');
+    });
+  });
+  area.querySelectorAll('[data-edit-cal]').forEach(card=>{
+    card.addEventListener('click', ()=>{
+      area.querySelectorAll('[data-edit-cal]').forEach(c=>c.classList.remove('selected'));
+      card.classList.add('selected');
+    });
+  });
+
+  document.getElementById('profileEditCancelBtn').addEventListener('click', closeProfileEditForm);
+  document.getElementById('profileEditSaveBtn').addEventListener('click', async ()=>{
+    const name = document.getElementById('editName').value.trim();
+    if(!name) return;
+    profile.name = name;
+    const genderCard = area.querySelector('[data-edit-gender].selected');
+    if(genderCard) profile.gender = genderCard.dataset.editGender;
+    const yearVal = parseInt(document.getElementById('editBirthYear').value, 10);
+    if(yearVal) profile.birthYear = yearVal;
+    const heightVal = parseFloat(document.getElementById('editHeight').value);
+    if(heightVal) profile.height = heightVal;
+    const weightVal = parseFloat(document.getElementById('editWeight').value);
+    if(weightVal) profile.weight = weightVal;
+    const calCard = area.querySelector('[data-edit-cal].selected');
+    if(calCard) profile.birthCalendarType = calCard.dataset.editCal;
+    const dateVal = document.getElementById('editBirthDate').value;
+    if(dateVal) profile.birthMonthDay = dateVal.slice(5);
+    const timeVal = document.getElementById('editBirthTime').value;
+    const block = SAJU_HOUR_BLOCKS.find(b=>b.label === timeVal);
+    profile.birthTimePeriod = timeVal;
+    profile.birthHour = block ? block.hour : null;
+
     await storeSet('profile', profile);
+    closeProfileEditForm();
     renderProfile();
-  }
+  });
+}
+function closeProfileEditForm(){
+  document.getElementById('profileEditArea').style.display = 'none';
+  document.getElementById('profileDisplayArea').style.display = 'block';
+}
+document.getElementById('editNameBtn').addEventListener('click', ()=>{
+  renderProfileEditForm();
+  document.getElementById('profileDisplayArea').style.display = 'none';
+  document.getElementById('profileEditArea').style.display = 'block';
 });
 document.querySelectorAll('.tab').forEach(t=>{
   t.addEventListener('click', ()=>{
