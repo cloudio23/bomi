@@ -5,6 +5,31 @@
 // 무료 티어이고, AI_PROVIDER=anthropic 환경변수로 Claude로 수동 전환할 수
 // 있어요 (자동 폴백 아님 — 예상치 못한 과금을 막기 위한 의도적 설계).
 import { callAI } from '../lib/aiProviders.mjs';
+import { calculateBaziPillars, describeBaziPillarsKorean } from '../lib/bazi.mjs';
+
+// 클라이언트가 사주 정보(생년월일시)를 보내면, LLM이 사주팔자를 직접(부정확하게)
+// "지어내게" 하는 대신 검증된 만세력 조회 테이블로 정밀 계산해서 그 결과를
+// system 프롬프트에 사실로 박아 넣습니다 — AI는 계산이 아니라 해석/서술만 담당.
+// 양력만 정밀 계산 가능(lib/bazi.mjs 참고) — 음력이면 계산을 건너뛰고 연/월/일
+// 정보만 있다는 걸 알려서 AI가 그 안에서만 답하게 합니다(부정확한 사주팔자를
+// 확정적으로 말하지 않도록).
+function buildSajuContext(sajuBirth) {
+  if (!sajuBirth || !sajuBirth.monthDay) return '';
+  const [month, day] = sajuBirth.monthDay.split('-').map(Number);
+
+  if (sajuBirth.calendarType === 'lunar') {
+    return `\n\n[사주 참고 정보] 사용자는 음력 ${sajuBirth.year}년 ${month}월 ${day}일생입니다(음력→양력 변환 기능은 아직 없어 정밀한 사주팔자 계산은 못 했어요). 연도 중심으로만 가볍게 답하고, 마치 정확한 사주팔자를 계산한 것처럼 단정적으로 말하지 마세요.`;
+  }
+
+  const pillars = calculateBaziPillars({
+    year: sajuBirth.year, month, day,
+    hour: sajuBirth.hour === undefined ? null : sajuBirth.hour,
+  });
+  if (!pillars) {
+    return `\n\n[사주 참고 정보] 사용자는 양력 ${sajuBirth.year}년 ${month}월 ${day}일생입니다(계산 가능 범위 밖이라 정밀 사주팔자는 못 냈어요). 연도 중심으로만 가볍게 답하세요.`;
+  }
+  return `\n\n[사주 참고 정보] 아래는 정밀하게 계산된 실제 사주팔자입니다. 이 값을 사실로 삼아 해석해서 답하세요(직접 계산하지 말고 이미 계산된 값을 그대로 쓰세요):\n${describeBaziPillarsKorean(pillars)}`;
+}
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -13,13 +38,14 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { system, messages } = req.body || {};
+    const { system, messages, sajuBirth } = req.body || {};
     if (!messages || !Array.isArray(messages)) {
       res.status(400).json({ error: 'messages 배열이 필요해요.' });
       return;
     }
 
-    const reply = await callAI(system, messages, { maxTokens: 500 });
+    const fullSystem = (system || '') + buildSajuContext(sajuBirth);
+    const reply = await callAI(fullSystem, messages, { maxTokens: 500 });
     res.status(200).json({ reply });
   } catch (e) {
     res.status(500).json({ error: e.message });
