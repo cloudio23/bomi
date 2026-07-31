@@ -475,7 +475,7 @@
     <div class="quickchips">
       <div class="chip" data-msg="오늘 날씨 어때?">🔍 오늘 날씨 어때?</div>
       <div class="chip" data-msg="근처 버스 시간표 알려줘">🗺️ 버스 시간표</div>
-      <div class="chip" data-msg="오늘 나 운세 좀 봐줘">🔮 오늘 운세</div>
+      <div class="chip" id="sajuChip">🔮 오늘 운세</div>
       <div class="chip" data-msg="요즘 경기 어때?">💰 요즘 경기</div>
       <div class="chip" data-msg="그냥 심심해서 말 걸어봤어">💬 그냥 말벗</div>
       <div class="chip" data-msg="요즘 부동산 정책 뭐가 바뀌었어?">🏠 부동산 정책</div>
@@ -1510,7 +1510,9 @@ function parseBomiReply(raw){
   return { text, options: options.length ? options : [] };
 }
 
-function addSuggestedOptions(options){
+// 채팅 안에 탭 가능한 선택지 버튼 목록을 붙이는 공용 헬퍼. onSelect가 없으면
+// (AI 응답 뒤에 붙는 "예상 답변" 선택지처럼) 고른 텍스트를 그대로 전송합니다.
+function addChoiceButtons(options, onSelect){
   const chat = document.getElementById('chat');
   const wrap = document.createElement('div');
   wrap.className = 'reply-options';
@@ -1519,20 +1521,108 @@ function addSuggestedOptions(options){
     link.type = 'button';
     link.className = 'option-link';
     link.textContent = opt;
-    link.addEventListener('click', ()=> sendMessage(opt));
+    link.addEventListener('click', ()=>{
+      wrap.remove(); // 한 번 고르면 선택지는 사라지게(중복 선택 방지)
+      (onSelect || sendMessage)(opt);
+    });
     wrap.appendChild(link);
   });
   chat.appendChild(wrap);
   chat.scrollTop = chat.scrollHeight;
 }
 
+function addSuggestedOptions(options){
+  addChoiceButtons(options);
+}
+
+/* ============ 사주 업그레이드: 생일(월/일)·태어난 시간대 수집 + 운 선택 메뉴 ============ */
+// 프로필엔 출생연도(profile.birthYear)만 있어서(온보딩이 연도만 물어봄), 정확한
+// 사주(사주팔자는 년/월/일/시 네 기둥)를 보려면 월/일과 태어난 시간대가 더 필요함.
+// 매번 물어보면 번거로우니 한 번만 물어보고 profile에 저장해서 재사용합니다.
+const SAJU_BIRTH_TIME_PERIODS = ['새벽 (23시~05시)', '오전 (05시~11시)', '낮 (11시~17시)', '저녁 (17시~23시)', '모르겠어요'];
+const SAJU_TOPICS = ['오늘의 총운', '재물운', '애정운', '건강운', '하시는 일 운'];
+
+// 실제 AI 호출 없이 클라이언트가 미리 준비한 안내 문구를 보미가 말하는 것처럼
+// 보여줄 때 씁니다(사주 흐름의 질문들처럼) — AI 생성물이 아니므로 안내 문구/
+// 피드백 아이콘 없이 텍스트만 표시합니다(addBubble과 달리).
+function addLocalBubble(text){
+  const chat = document.getElementById('chat');
+  const wrap = document.createElement('div');
+  wrap.className = 'ai-block';
+  const content = document.createElement('div');
+  content.className = 'ai-content';
+  const textEl = document.createElement('div');
+  textEl.className = 'ai-text';
+  textEl.textContent = text;
+  content.appendChild(textEl);
+  wrap.appendChild(content);
+  chat.appendChild(wrap);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+function addInlineBirthDateCard(onConfirm){
+  const chat = document.getElementById('chat');
+  const wrap = document.createElement('div');
+  wrap.className = 'checklist-card';
+  wrap.innerHTML = `
+    <div class="checklist-title">생일(월/일)을 알려주세요</div>
+    <input type="date" id="sajuBirthDateInput" style="width:100%;border:1px solid var(--line);border-radius:10px;padding:10px;font-size:15px;margin-bottom:10px;background:#FAF9F6;color:var(--ink);">
+    <button type="button" id="sajuBirthDateConfirm" style="width:100%;padding:11px;border-radius:10px;border:none;background:var(--navy);color:#fff;font-weight:700;font-size:14px;cursor:pointer;">확인</button>
+  `;
+  chat.appendChild(wrap);
+  chat.scrollTop = chat.scrollHeight;
+  const input = wrap.querySelector('#sajuBirthDateInput');
+  input.value = `${profile.birthYear}-01-01`;
+  wrap.querySelector('#sajuBirthDateConfirm').addEventListener('click', ()=>{
+    if(!input.value) return;
+    const monthDay = input.value.slice(5); // "YYYY-MM-DD" -> "MM-DD"
+    wrap.remove();
+    onConfirm(monthDay);
+  });
+}
+
+function startSajuFlow(){
+  if(!profile.birthMonthDay){
+    addLocalBubble('사주를 더 정확히 봐드리려면 생일(월/일)이 필요해요. 알려주시겠어요?');
+    addInlineBirthDateCard(async (monthDay)=>{
+      profile.birthMonthDay = monthDay;
+      await storeSet('profile', profile);
+      askSajuBirthTimePeriod();
+    });
+  } else {
+    askSajuBirthTimePeriod();
+  }
+}
+
+function askSajuBirthTimePeriod(){
+  if(!profile.birthTimePeriod){
+    addLocalBubble('태어나신 시간대도 알려주시겠어요? 정확히 모르셔도 괜찮아요.');
+    addChoiceButtons(SAJU_BIRTH_TIME_PERIODS, async (choice)=>{
+      profile.birthTimePeriod = choice;
+      await storeSet('profile', profile);
+      showSajuTopicMenu();
+    });
+  } else {
+    showSajuTopicMenu();
+  }
+}
+
+function showSajuTopicMenu(){
+  addLocalBubble('어떤 운이 궁금하세요?');
+  addChoiceButtons(SAJU_TOPICS, (topic)=> sendMessage(`${topic} 봐주세요`));
+}
+document.getElementById('sajuChip').addEventListener('click', startSajuFlow);
+
 function systemPrompt(){
   const age = new Date().getFullYear() - profile.birthYear;
   const checklistLines = (checklistItems && checklistItems.length)
     ? checklistItems.map(it => `- ${it.label}: ${checklistState[it.id] ? '완료' : '아직 안 함'}`).join('\n')
     : '(등록된 체크리스트 없음)';
+  const sajuInfoLine = (profile.birthMonthDay || profile.birthTimePeriod)
+    ? `\n사주/운세용 추가 정보: ${profile.birthMonthDay ? `생일 ${profile.birthYear}년 ${profile.birthMonthDay.replace('-','월')}일` : ''}${profile.birthTimePeriod ? `, 태어난 시간대 ${profile.birthTimePeriod}` : ''} — 사주/운세 질문에는 이 정보를 실제로 반영해서 더 구체적으로 답하세요(연도만 아는 경우보다 훨씬 자세히).`
+    : '';
   return `당신은 '보미'라는 이름의 다정한 AI 건강케어 비서입니다.
-대화 상대: ${profile.name}님, 만 ${age}세, ${profile.gender}, 키 ${profile.height}cm, 체중 ${profile.weight}kg, 관심사: ${profile.interests.join(', ')}.
+대화 상대: ${profile.name}님, 만 ${age}세, ${profile.gender}, 키 ${profile.height}cm, 체중 ${profile.weight}kg, 관심사: ${profile.interests.join(', ')}.${sajuInfoLine}
 말투: 항상 존댓말, 짧고 쉬운 문장, 따뜻하고 친근하게. 호칭은 "${profile.name}님"으로.
 역할: 수면, 식사, 통증, 복약, 정서 상태를 먼저 챙기고, 관심사(${profile.interests.join(', ')})를 활용해 친밀하게 대화하세요.
 오늘의 체크리스트 현황(어르신이 복약/식사/일정을 기억 못 하실 때 이 정보로 정확히 답해주세요):
@@ -1546,7 +1636,7 @@ ${checklistLines}
 주제별 답변 형식 (해당하는 주제면 이 방향을 따르되, 위 규칙대로 단답으로 끝내지 마세요):
 - 검색/일반 지식: 결론을 먼저 한두 문장으로 말한 뒤, 어르신이 궁금해하실 배경이나 이유를 자연스럽게 덧붙이세요.
 - 지도/길찾기/교통: 실시간 위치·시간표 정보는 아직 연결되어 있지 않으니 구체적인 경로나 시간을 절대 지어내지 말고, "정확한 정보는 아직 준비 중이에요"라고 안내한 뒤 도움이 될 만한 일반적인 방법을 편하게 풀어서 안내하세요.
-- 사주/운세: 재미로 보는 것임을 짧게 밝히고, 오늘 하루에 도움이 될 만한 이야기로 조금 풀어서 답하세요. "반드시 ~된다" 같은 단정적 예언 표현은 쓰지 마세요.
+- 사주/운세: 재미로 보는 것임을 짧게 밝히고, 생일·태어난 시간대 정보가 있으면 그걸 반영해 그 사람만을 위한 이야기처럼 구체적으로 풀어서 답하세요(정보가 없으면 연 단위로만 가볍게). 사용자가 재물운/애정운/건강운/직장운/총운 중 무엇을 물었는지에 맞춰 그 주제 중심으로 답하세요. "반드시 ~된다" 같은 단정적 예언 표현은 쓰지 마세요.
 - 경제/주가/투자: 특정 종목의 매수·매도를 추천하지 말고, 실시간 시세는 확인할 수 없다고 안내한 뒤 일반적인 경제 개념을 이해하기 쉽게 풀어서 설명하세요.
 - 부동산 정책/정치 뉴스: 사실 위주로 중립적으로 요약하고, 특정 정당·정책에 대한 찬반 의견이나 지지 표현은 절대 하지 마세요.
 - 말벗/정서적 대화: 충분히 공감하며 이야기를 들어준 뒤, 답변 끝에 질문 하나를 되돌려줘서 어르신이 계속 이야기를 이어가시게 하세요.
@@ -1618,7 +1708,7 @@ document.getElementById('sendBtn').addEventListener('click', ()=>{
 document.getElementById('msgInput').addEventListener('keydown', (e)=>{
   if(e.key==='Enter'){ const text = e.target.value; e.target.value=''; sendMessage(text); }
 });
-document.querySelectorAll('.chip').forEach(chip=>{
+document.querySelectorAll('.chip[data-msg]').forEach(chip=>{
   chip.addEventListener('click', ()=> sendMessage(chip.dataset.msg));
 });
 
