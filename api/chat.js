@@ -7,6 +7,7 @@
 import { callAI } from '../lib/aiProviders.mjs';
 import { calculateBaziPillars, describeBaziPillarsKorean } from '../lib/bazi.mjs';
 import { convertLunarToSolar } from '../lib/lunarConvert.mjs';
+import { geocodePlace, searchTransitRoute, describeTransitRouteKorean } from '../lib/transit.mjs';
 
 // 클라이언트가 사주 정보(생년월일시)를 보내면, LLM이 사주팔자를 직접(부정확하게)
 // "지어내게" 하는 대신 검증된 만세력 조회 테이블로 정밀 계산해서 그 결과를
@@ -36,6 +37,31 @@ async function buildSajuContext(sajuBirth) {
   return `\n\n[사주 참고 정보] 아래는 정밀하게 계산된 실제 사주팔자입니다. 이 값을 사실로 삼아 해석해서 답하세요(직접 계산하지 말고 이미 계산된 값을 그대로 쓰세요):\n${describeBaziPillarsKorean(pillars)}`;
 }
 
+// 길찾기 흐름(index.html의 startTransitFlow)에서 목적지 이름 + 현재 위치가 오면,
+// 카카오 로컬 API로 목적지를 좌표로 바꾸고 ODsay API로 실제 경로를 조회해서
+// 그 결과를 system 프롬프트에 사실로 넣습니다 — AI는 경로/시간/요금을 직접
+// 지어내지 않고 이미 조회된 값만 설명합니다. 지오코딩·경로 조회 중 하나라도
+// 실패하면(키 미설정, 목적지 못 찾음 등) "못 찾았다"고 솔직히 안내하도록
+// 지시할 뿐, 절대 그럴듯한 가짜 경로를 만들어내라고 하지 않습니다.
+async function buildTransitContext(transitQuery) {
+  if (!transitQuery || !transitQuery.destination || !transitQuery.origin) return '';
+
+  const dest = await geocodePlace(transitQuery.destination);
+  if (!dest) {
+    return `\n\n[교통 참고 정보] "${transitQuery.destination}"의 위치를 찾지 못했어요. 구체적인 경로·시간을 절대 지어내지 말고, 목적지를 못 찾았다고 안내한 뒤 조금 더 구체적으로(예: 정확한 지명) 다시 말씀해달라고 요청하세요.`;
+  }
+
+  const route = await searchTransitRoute({
+    startLat: transitQuery.origin.lat, startLng: transitQuery.origin.lng,
+    endLat: dest.lat, endLng: dest.lng,
+  });
+  if (!route) {
+    return `\n\n[교통 참고 정보] "${transitQuery.destination}"(${dest.placeName})까지 가는 대중교통 경로를 찾지 못했어요. 구체적인 시간·노선·요금을 절대 지어내지 말고, 경로 조회에 실패했다고 솔직히 안내하세요.`;
+  }
+
+  return `\n\n[교통 참고 정보] 아래는 실제로 조회된 대중교통 경로입니다. 이 정보를 사실로 삼아 친절하게 설명하세요(직접 계산하거나 지어내지 마세요):\n${describeTransitRouteKorean(route, dest)}`;
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     res.status(405).json({ error: 'POST 요청만 가능해요.' });
@@ -43,13 +69,13 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { system, messages, sajuBirth } = req.body || {};
+    const { system, messages, sajuBirth, transitQuery } = req.body || {};
     if (!messages || !Array.isArray(messages)) {
       res.status(400).json({ error: 'messages 배열이 필요해요.' });
       return;
     }
 
-    const fullSystem = (system || '') + await buildSajuContext(sajuBirth);
+    const fullSystem = (system || '') + await buildSajuContext(sajuBirth) + await buildTransitContext(transitQuery);
     const reply = await callAI(fullSystem, messages, { maxTokens: 500 });
     res.status(200).json({ reply });
   } catch (e) {
