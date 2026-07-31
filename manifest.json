@@ -1,0 +1,14 @@
+{
+  "name": "보미 AI",
+  "short_name": "보미",
+  "description": "어르신을 위한 AI 건강케어 비서",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#EFF3FB",
+  "theme_color": "#1861FE",
+  "orientation": "portrait",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

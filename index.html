@@ -1,0 +1,1484 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>보미 AI - 프로토타입 v2</title>
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#9C7A54">
+<link rel="apple-touch-icon" href="/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="보미">
+<style>
+  :root{
+    --blue:#9C7A54;
+    --navy:#6F5636;
+    --accent-soft:#F0E7D8;
+    --ink:#23201B;
+    --sub:#7A6F5F;
+    --bg:#F6F3EE;
+    --card:#FFFFFF;
+    --line:#E7E1D6;
+    --good:#16A34A;
+    --warn:#D97706;
+    --sleep:#22C55E;
+    --nutri:#F5B301;
+    --activity:#8BAA3C;
+    --mental:#E0637A;
+    --app-radius:28px;
+  }
+  *{box-sizing:border-box;}
+  html, body{ height:100%; overscroll-behavior:none; }
+  html{ touch-action:pan-y; }
+  body{
+    margin:0;
+    font-family:"Pretendard","Apple SD Gothic Neo","Malgun Gothic",-apple-system,sans-serif;
+    background:var(--bg);
+    display:flex;
+    justify-content:center;
+    padding:24px 12px;
+    height:100vh;
+    height:100dvh;
+    overflow:hidden;
+    touch-action:none;
+    -webkit-user-select:none; user-select:none;
+    -webkit-touch-callout:none;
+    -webkit-tap-highlight-color:transparent;
+  }
+  /* 폼 입력과 실제 대화 내용은 평소처럼 선택/편집 가능해야 함 — 위의 user-select:none은
+     화면 자체를 드래그로 밀어서 생기는 텍스트 선택을 막으려는 것이지, 입력·복사를 막으려는
+     게 아님 */
+  input, textarea, .ai-text, .bubble{
+    -webkit-user-select:text; user-select:text;
+  }
+  .app{
+    width:100%;
+    max-width:420px;
+    background:var(--card);
+    border-radius:var(--app-radius);
+    overflow:hidden;
+    box-shadow:0 20px 60px rgba(16,24,40,0.18);
+    display:flex;
+    flex-direction:column;
+    height:84vh;
+    min-height:680px;
+    border:1px solid var(--line);
+    position:relative;
+  }
+  .screen{ display:none; flex-direction:column; height:100%; }
+  .screen.active{ display:flex; }
+
+  /* ---------- ONBOARDING ---------- */
+  #onboardingView{ padding:28px 24px; overflow-y:auto; touch-action:pan-y; overscroll-behavior:contain; }
+  .dots{ display:flex; gap:6px; margin-bottom:26px; }
+  .dots .d{ flex:1; height:5px; border-radius:99px; background:#E4E9F2; }
+  .dots .d.active{ background:var(--navy); }
+  .ob-title{ font-size:23px; font-weight:800; color:var(--ink); line-height:1.35; margin-bottom:6px; }
+  .ob-sub{ font-size:14px; color:var(--sub); margin-bottom:24px; }
+  .ob-input{
+    width:100%; border:1.5px solid var(--line); border-radius:14px;
+    padding:16px; font-size:18px; outline:none; background:#FAF9F6; color:var(--ink);
+  }
+  .ob-input:focus{ border-color:var(--navy); background:#fff; }
+  .ob-field-label{ font-size:13px; color:var(--sub); margin:16px 0 6px 0; }
+  .gender-row{ display:flex; gap:12px; margin-top:4px; }
+  .gender-card{
+    flex:1; border:1.5px solid var(--line); border-radius:14px; padding:22px 0;
+    text-align:center; cursor:pointer; background:#FAF9F6;
+  }
+  .gender-card .sym{ font-size:22px; display:block; margin-bottom:6px; color:#C7BEB0; }
+  .gender-card .lb{ font-size:15px; font-weight:700; color:var(--sub); }
+  .gender-card.selected{ border-color:var(--navy); background:var(--accent-soft); }
+  .gender-card.selected .sym, .gender-card.selected .lb{ color:var(--navy); }
+  .ob-textarea{
+    width:100%; min-height:88px; border:1.5px solid var(--line); border-radius:14px;
+    padding:14px; font-size:16px; outline:none; background:#FAF9F6; resize:none; font-family:inherit;
+  }
+  .ob-textarea:focus{ border-color:var(--navy); background:#fff; }
+  .tip-box{
+    display:flex; gap:10px; background:var(--accent-soft); border-radius:12px; padding:12px 14px;
+    margin-top:14px; font-size:13px; color:var(--navy); line-height:1.5;
+  }
+  .ob-footer{ margin-top:auto; display:flex; gap:10px; padding-top:24px; }
+  .btn{
+    flex:1; border:none; border-radius:14px; padding:16px; font-size:16px; font-weight:700;
+    cursor:pointer;
+  }
+  .btn.primary{ background:var(--navy); color:#fff; }
+  .btn.primary:disabled{ background:#D8D0C1; cursor:not-allowed; }
+  .btn.ghost{ background:#F1EEE7; color:var(--sub); flex:0 0 96px; }
+
+  /* ---------- CHAT ---------- */
+  .header{
+    position:relative;
+    background:#FAF8F5; color:var(--ink); padding:10px 18px;
+    display:flex; align-items:center; justify-content:space-between; flex-shrink:0;
+  }
+  .header .brand{
+    position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+    font-size:20px; font-weight:800; color:var(--ink); letter-spacing:0.3px;
+  }
+  .iconbtn{
+    position:relative;
+    background:transparent; border:none; color:var(--sub); width:36px; height:36px;
+    border-radius:10px; font-size:18px; cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .iconbtn:hover{ background:#F1EEE7; }
+  .iconbtn svg{ width:20px; height:20px; display:block; }
+  .iconbtn .badge-dot{
+    position:absolute; top:1px; right:0px; min-width:15px; height:15px; padding:0 3px;
+    border-radius:999px; background:var(--blue); color:#fff; font-size:9px; font-weight:800;
+    display:flex; align-items:center; justify-content:center; line-height:1;
+  }
+
+  .chat{ flex:1; overflow-y:auto; padding:18px 16px; display:flex; flex-direction:column; gap:16px;
+    background:linear-gradient(180deg,#FAF8F5 0%,#F6F3EE 100%); touch-action:pan-y; overscroll-behavior:contain; }
+  .row{ display:flex; }
+  .row.user{ justify-content:flex-end; }
+  .bubble{ max-width:78%; padding:13px 15px; border-radius:18px; font-size:16px; line-height:1.55; font-weight:500; white-space:pre-line; }
+  .bubble.user{ background:#EDEAE4; color:var(--ink); border-bottom-right-radius:4px; }
+
+  /* ---------- AI 응답 블록 (말풍선 없이 텍스트만) ---------- */
+  .ai-block{ display:flex; flex-direction:column; gap:10px; max-width:94%; }
+  .ai-content{ display:flex; flex-direction:column; gap:10px; }
+  .ai-text{ font-size:16px; line-height:1.6; font-weight:500; color:var(--ink); white-space:pre-line; }
+  .ai-thinking{ font-size:14px; color:var(--sub); font-weight:600; }
+  .ai-disclaimer{ font-size:11px; color:var(--sub); line-height:1.5; }
+  .ai-feedback{ display:flex; gap:8px; }
+  .fb-icon{
+    width:30px; height:30px; border-radius:50%; border:1px solid var(--line); background:#fff;
+    display:flex; align-items:center; justify-content:center; color:var(--sub); cursor:pointer; padding:0;
+  }
+  .fb-icon svg{ width:15px; height:15px; display:block; }
+  .fb-icon:hover{ background:#F1EEE7; }
+  .fb-icon.active{ border-color:var(--blue); color:var(--blue); background:var(--accent-soft); }
+
+  /* ---------- 예상 답변 선택지 (카나나 스타일 — 점선 밑줄 텍스트 링크) ---------- */
+  .reply-options{ display:flex; flex-direction:column; align-items:flex-start; gap:10px; max-width:94%; }
+  .option-link{
+    background:none; border:none; padding:0; cursor:pointer;
+    font-size:15px; font-weight:600; color:var(--ink); text-decoration:underline dotted;
+    text-underline-offset:4px; text-align:left;
+  }
+  .option-link:hover{ color:var(--blue); }
+
+  /* ---------- 생각 중일 때 대화창 하단에 오로라처럼 일렁이는 그라디언트 바
+     (기존 팔레트 톤 사용 — 목소리 버튼의 오로라 보더와 같은 색 계열) ---------- */
+  .thinking-aurora{
+    height:16px; border-radius:999px; margin-top:2px;
+    background: linear-gradient(90deg, var(--accent-soft), var(--blue), var(--navy), var(--blue), var(--accent-soft));
+    background-size: 250% 100%;
+    animation: auroraShimmer 2s ease-in-out infinite;
+  }
+  @keyframes auroraShimmer{
+    0%{ background-position: 0% 50%; }
+    100%{ background-position: 250% 50%; }
+  }
+
+  .checklist-card{ background:#fff; border:1px solid var(--line); border-radius:16px; padding:15px; max-width:86%; }
+  .checklist-title{ font-size:13px; font-weight:800; color:var(--blue); margin-bottom:9px; }
+  .check-item{ display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid #F1EEE7; font-size:15px; color:var(--ink); cursor:pointer; }
+  .check-item:last-child{ border-bottom:none; }
+  .check-item input{ width:19px; height:19px; accent-color:var(--blue); cursor:pointer; flex-shrink:0; }
+  .check-item.done span.label{ text-decoration:line-through; color:var(--sub); }
+
+  .quickchips{ display:flex; gap:8px; padding:8px 16px 10px 16px; overflow-x:auto; flex-shrink:0; background:#F6F3EE; }
+  .chip{ flex-shrink:0; background:#fff; border:1px solid var(--line); color:var(--ink); font-size:13px; font-weight:600;
+    padding:8px 13px; border-radius:999px; cursor:pointer; white-space:nowrap; }
+  .chip:hover{ background:#F5F1EA; }
+
+  .inputbar{ position:relative; min-height:82px; padding:8px 16px 12px 16px; background:#F6F3EE; flex-shrink:0; }
+  .roundicon{ width:36px; height:36px; border-radius:50%; border:none; background:none; color:var(--sub); font-size:16px; cursor:pointer; flex-shrink:0; }
+  .inputbar input{ flex:1; border:none; background:transparent; padding:12px 6px; font-size:15px; outline:none; min-width:0; color:var(--ink); }
+  .sendbtn{ background:var(--blue); border:none; color:#fff; width:38px; height:38px; border-radius:50%; font-size:16px; cursor:pointer; flex-shrink:0; box-shadow:0 2px 8px rgba(156,122,84,0.35); }
+  .sendbtn:disabled{ background:#C7BEB0; box-shadow:none; cursor:not-allowed; }
+
+  /* ---------- INPUT DOCK (camera / keyboard / voice) — 카나나처럼 대화창
+     배경에 녹아든 채로 버튼/입력창만 그림자로 떠 있는 느낌 ---------- */
+  .dock, .typebar{
+    position:absolute; left:16px; right:16px; top:8px; bottom:22px;
+    display:flex; align-items:center;
+    transition: opacity .28s ease, transform .32s cubic-bezier(.22,1,.36,1);
+  }
+  .dock{ justify-content:space-around; }
+  .typebar{
+    gap:4px; opacity:0; transform:scale(.94); pointer-events:none;
+    background:#fff; border-radius:999px; padding:5px 5px 5px 18px;
+    box-shadow:0 10px 28px rgba(35,32,27,0.16);
+  }
+  .inputbar.mode-type .dock{ opacity:0; transform:scale(1.05); pointer-events:none; }
+  .inputbar.mode-type .typebar{ opacity:1; transform:scale(1); pointer-events:auto; }
+  .dockbtn{
+    display:flex; align-items:center; justify-content:center;
+    width:52px; height:52px; flex-shrink:0;
+    background:#fff; border:none; border-radius:50%;
+    box-shadow:0 4px 14px rgba(35,32,27,0.10);
+    cursor:pointer; color:var(--sub);
+  }
+  .dockbtn:hover, .dockbtn:active{ box-shadow:0 6px 18px rgba(35,32,27,0.15); }
+  .dockbtn .dockbtn-icon{ display:flex; }
+  .dockbtn .dockbtn-icon svg{ width:24px; height:24px; display:block; }
+
+  /* ---------- VOICE AURORA (screen-edge glow, slide 12 음성대화 preview) ---------- */
+  @property --angle{ syntax:'<angle>'; inherits:false; initial-value:0deg; }
+  .auroraBorder{
+    position:absolute; inset:0; border-radius:var(--app-radius); padding:4px; z-index:5;
+    background: conic-gradient(from var(--angle,0deg), #6C63FF, #4CC9F0, #22C55E, #F5B301, #E0637A, #6C63FF);
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor; mask-composite: exclude;
+    opacity:0; pointer-events:none; transition:opacity .5s ease;
+  }
+  .auroraBorder.active{ opacity:1; animation: auroraSpin 5s linear infinite; }
+  @keyframes auroraSpin{ to{ --angle:360deg; } }
+
+  /* ---------- CAMERA OVERLAY (iris expand from button origin) ---------- */
+  .cameraOverlay{
+    position:absolute; inset:0; z-index:30; border-radius:var(--app-radius); background:#0B0B0F; color:#fff;
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; text-align:center;
+    clip-path: circle(0% at var(--ox,50%) var(--oy,90%));
+    transition: clip-path .55s cubic-bezier(.22,1,.36,1);
+    pointer-events:none;
+  }
+  .cameraOverlay.active{ clip-path: circle(145% at var(--ox,50%) var(--oy,90%)); pointer-events:auto; }
+  .cameraOverlay .camera-icon{ font-size:44px; opacity:.9; }
+  .cameraOverlay .camera-caption{ font-size:15px; line-height:1.6; font-weight:600; padding:0 32px; }
+  .cameraOverlay .camera-caption span{ display:block; font-size:13px; font-weight:400; opacity:.7; margin-top:6px; }
+  .camera-close{ position:absolute; top:16px; right:16px; width:44px; height:44px; border-radius:50%;
+    background:rgba(255,255,255,0.15); border:none; color:#fff; font-size:15px; cursor:pointer; }
+
+  /* ---------- TOAST ---------- */
+  .toast{
+    position:absolute; left:50%; bottom:96px; transform:translate(-50%, 8px); z-index:40;
+    background:rgba(16,24,40,0.92); color:#fff; font-size:13px; font-weight:600; white-space:nowrap;
+    padding:10px 16px; border-radius:999px; opacity:0; pointer-events:none;
+    transition: opacity .25s ease, transform .25s ease;
+  }
+  .toast.show{ opacity:1; transform:translate(-50%,0); }
+
+  @media (prefers-reduced-motion: reduce){
+    .dock, .typebar, .cameraOverlay, .auroraBorder, .toast, .thinking-aurora{ transition:none !important; animation:none !important; }
+  }
+
+  /* ---------- SPLASH SCREEN (앱 첫 실행 시 잠깐 노출되는 브랜드 화면 —
+     로고 아이콘 → 워드마크/태그라인 순서로 페이드인되고, 준비되면 아래 화면으로 페이드아웃) ---------- */
+  .splash-screen{
+    position:absolute; inset:0; z-index:200;
+    border-radius:var(--app-radius);
+    background:#fff;
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:18px;
+    transition:opacity .5s ease-in-out;
+  }
+  .splash-screen.fade-out{ opacity:0; pointer-events:none; }
+  .splash-icon-img{
+    width:104px; height:auto;
+    opacity:0; animation: splashIn .55s ease-in-out forwards;
+  }
+  .splash-word-img{
+    width:200px; height:auto;
+    opacity:0; animation: splashIn .55s ease-in-out forwards; animation-delay:.2s;
+  }
+  @keyframes splashIn{
+    from{ opacity:0; transform:translateY(8px); }
+    to{ opacity:1; transform:translateY(0); }
+  }
+  @media (prefers-reduced-motion: reduce){
+    .splash-screen{ transition:none !important; }
+    .splash-icon-img, .splash-word-img{ animation:none !important; opacity:1 !important; transform:none !important; }
+  }
+
+  /* ---------- PINNED CHECKLIST (header button opens this as a dropdown,
+     so by default the chat area gets the full space instead of a persistent bar) ---------- */
+  .pinned-checklist{
+    position:absolute; left:14px; right:14px; top:64px; z-index:15;
+    background:#fff; border:1px solid var(--line); border-radius:16px;
+    box-shadow:0 16px 36px rgba(16,24,40,0.14);
+    opacity:0; transform:translateY(-8px); pointer-events:none;
+    transition:opacity .2s ease, transform .2s ease;
+  }
+  .pinned-checklist.open{ opacity:1; transform:translateY(0); pointer-events:auto; }
+  .pinned-head{ display:flex; align-items:center; padding:12px 16px; }
+  .pinned-head .lb{ font-size:13px; font-weight:800; color:var(--blue); display:flex; align-items:center; gap:6px; }
+  .pinned-body{ padding:0 16px 12px 16px; }
+  .pinned-body .check-item{ font-size:14px; padding:7px 0; }
+
+  /* ---------- PROFILE ---------- */
+  .subheader{ display:flex; align-items:center; gap:12px; padding:16px 18px; border-bottom:1px solid var(--line); flex-shrink:0; }
+  .backbtn{ background:none; border:none; font-size:20px; cursor:pointer; color:var(--ink); padding:4px; }
+  .subheader .title{ font-size:16px; font-weight:800; color:var(--ink); flex:1; }
+  .editbtn{ background:none; border:none; font-size:16px; cursor:pointer; color:var(--sub); }
+
+  .scroll{ flex:1; overflow-y:auto; padding:20px 18px; background:#F8F6F2; touch-action:pan-y; overscroll-behavior:contain; }
+
+  .profile-hero{ display:flex; align-items:center; gap:14px; margin-bottom:20px; }
+  .avatar-lg{ width:58px; height:58px; border-radius:50%; background:var(--navy); color:#fff;
+    display:flex; align-items:center; justify-content:center; font-weight:800; font-size:22px; flex-shrink:0; }
+  .profile-hero .pname{ font-size:19px; font-weight:800; color:var(--ink); }
+  .profile-hero .psub{ font-size:13px; color:var(--sub); margin-top:2px; }
+
+  .info-card{ background:#fff; border:1px solid var(--line); border-radius:16px; padding:16px; margin-bottom:14px; }
+  .info-grid{ display:grid; grid-template-columns:1fr 1fr; gap:14px 10px; }
+  .info-grid .lb{ font-size:12px; color:var(--sub); margin-bottom:4px; }
+  .info-grid .val{ font-size:15px; font-weight:700; color:var(--ink); }
+
+  .bmi-row{ display:flex; align-items:center; justify-content:space-between; margin-top:14px; padding-top:14px; border-top:1px solid #F1EEE7; }
+  .bmi-row .lb{ font-size:12px; color:var(--sub); }
+  .bmi-row .val{ font-size:22px; font-weight:800; color:var(--ink); }
+  .badge{ font-size:12px; font-weight:700; padding:5px 10px; border-radius:999px; }
+  .badge.good{ background:#E7F8EE; color:var(--good); }
+  .badge.warn{ background:#FEF3E2; color:var(--warn); }
+
+  .section-label{ font-size:13px; font-weight:800; color:var(--ink); margin:20px 0 10px 0; }
+  .tags{ display:flex; flex-wrap:wrap; gap:8px; }
+  .tag{ background:var(--accent-soft); color:var(--navy); font-size:13px; font-weight:600; padding:8px 12px; border-radius:999px; display:flex; align-items:center; gap:6px; }
+  .tag .x{ cursor:pointer; opacity:0.6; }
+  .tag-add{ background:#fff; border:1.5px dashed var(--line); color:var(--sub); font-size:13px; font-weight:700; padding:8px 14px; border-radius:999px; cursor:pointer; }
+
+  .report-cta{ display:flex; align-items:center; justify-content:space-between; background:#FFF1F3; border:1px solid #FBD3DA; border-radius:14px;
+    padding:15px 16px; margin:18px 0; cursor:pointer; }
+  .report-cta .lb{ font-size:15px; font-weight:800; color:#C23A56; display:flex; align-items:center; gap:8px; }
+  .report-cta .arrow{ color:#C23A56; font-size:16px; }
+
+  .toggle-item{ display:flex; align-items:center; justify-content:space-between; padding:13px 0; border-bottom:1px solid #F1EEE7; }
+  .toggle-item:last-child{ border-bottom:none; }
+  .toggle-item .lb{ font-size:14px; font-weight:700; color:var(--ink); }
+  .toggle-item .desc{ font-size:12px; color:var(--sub); margin-top:2px; }
+  .switch{ position:relative; width:44px; height:26px; flex-shrink:0; }
+  .switch input{ opacity:0; width:0; height:0; }
+  .slider{ position:absolute; inset:0; background:#DAD3C5; border-radius:999px; cursor:pointer; transition:0.2s; }
+  .slider::before{ content:""; position:absolute; width:20px; height:20px; left:3px; top:3px; background:#fff; border-radius:50%; transition:0.2s; }
+  .switch input:checked + .slider{ background:var(--blue); }
+  .switch input:checked + .slider::before{ transform:translateX(18px); }
+
+  .cl-item-row{ display:flex; align-items:center; gap:8px; padding:8px 0; border-bottom:1px solid #F1EEE7; }
+  .cl-item-row:last-child{ border-bottom:none; }
+  .cl-item-input{ flex:1; border:1px solid var(--line); border-radius:10px; padding:9px 11px; font-size:14px; outline:none; background:#FAF9F6; }
+  .cl-item-input:focus{ border-color:var(--blue); background:#fff; }
+  .cl-del{ background:#FFF1F1; color:#D9455A; border:none; width:30px; height:30px; border-radius:9px; font-size:14px; cursor:pointer; flex-shrink:0; }
+  .cl-add{ width:100%; margin-top:10px; background:var(--accent-soft); color:var(--navy); border:none; border-radius:12px; padding:11px; font-size:14px; font-weight:700; cursor:pointer; }
+  .cl-empty{ font-size:13px; color:var(--sub); text-align:center; padding:14px 0; }
+
+  .fb-row{ padding:10px 0; border-bottom:1px solid #F1EEE7; }
+  .fb-row:last-child{ border-bottom:none; }
+  .fb-meta{ font-size:11px; color:var(--sub); margin-bottom:3px; }
+  .fb-msg{ font-size:14px; color:var(--ink); line-height:1.5; }
+
+  .stat-card{ background:#fff; border:1px solid var(--line); border-radius:14px; padding:14px; }
+  .stat-card .label{ font-size:12px; color:var(--sub); margin-bottom:6px; }
+  .stat-card .value{ font-size:20px; font-weight:800; color:var(--ink); }
+  .stat-card .value.good{ color:var(--good); }
+  .stat-card .value.warn{ color:var(--warn); }
+
+  .crm-row{ display:flex; align-items:center; justify-content:space-between; margin-top:6px; }
+  .crm-id{ font-size:16px; font-weight:800; color:var(--ink); letter-spacing:0.5px; }
+  .crm-note{ font-size:11px; color:var(--sub); margin-bottom:8px; }
+  .copybtn{ background:#F1EEE7; border:none; color:var(--sub); font-size:12px; padding:6px 10px; border-radius:8px; cursor:pointer; }
+
+  /* ---------- REPORT ---------- */
+  .report-badge{ font-size:12px; font-weight:700; color:var(--blue); background:var(--accent-soft); padding:5px 10px; border-radius:999px; margin-left:auto; }
+  .tabs{ display:flex; background:#F1EEE7; border-radius:12px; padding:4px; margin-bottom:16px; }
+  .tab{ flex:1; text-align:center; padding:9px 0; font-size:14px; font-weight:700; color:var(--sub); border-radius:9px; cursor:pointer; }
+  .tab.active{ background:#fff; color:var(--navy); box-shadow:0 1px 4px rgba(16,24,40,0.08); }
+  .date-nav{ display:flex; align-items:center; justify-content:space-between; background:#fff; border:1px solid var(--line); border-radius:14px; padding:12px 16px; margin-bottom:16px; }
+  .date-nav button{ background:none; border:none; font-size:16px; color:var(--sub); cursor:pointer; }
+  .date-nav .dcenter{ text-align:center; }
+  .date-nav .ddate{ font-size:15px; font-weight:800; color:var(--ink); }
+  .date-nav .dday{ font-size:12px; color:var(--sub); }
+
+  .ring-card{ background:#fff; border:1px solid var(--line); border-radius:18px; padding:26px; text-align:center; margin-bottom:16px; }
+  .ring{ width:120px; height:120px; border-radius:50%; margin:0 auto 14px auto; display:flex; align-items:center; justify-content:center; }
+  .ring-inner{ width:96px; height:96px; border-radius:50%; background:#fff; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+  .ring-inner .num{ font-size:30px; font-weight:800; color:var(--ink); }
+  .ring-cap{ font-size:14px; font-weight:700; color:var(--sub); }
+
+  .metric-card{ background:#fff; border:1px solid var(--line); border-radius:16px; padding:16px; margin-bottom:12px; }
+  .metric-top{ display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
+  .metric-top .lb{ font-size:14px; font-weight:800; color:var(--ink); display:flex; align-items:center; gap:6px; }
+  .metric-top .score{ font-size:15px; font-weight:800; }
+  .bar-track{ height:8px; background:#F1EEE7; border-radius:99px; overflow:hidden; margin-bottom:8px; }
+  .bar-fill{ height:100%; border-radius:99px; }
+  .metric-sub{ font-size:12px; color:var(--sub); }
+
+  .source-note{ background:#fff; border:1px solid var(--line); border-radius:14px; padding:14px 16px; font-size:12px; color:var(--sub); line-height:1.6; margin-top:6px; }
+
+  /* ---------- STANDALONE(설치된 앱) 오버라이드 — 스타일시트 맨 끝에 둬야
+     캐스케이드에서 위의 기본 규칙들을 확실히 이깁니다 ---------- */
+  /* 홈 화면에 설치되어 standalone으로 실행될 때는 목업 카드가 아니라 실제
+     기기 화면을 꽉 채우는 진짜 앱처럼 보여야 합니다 (브라우저 탭에서 열람할
+     때의 "떠 있는 폰 목업" 프리뷰 느낌은 여기서만 예외적으로 없앰). */
+  @media (display-mode: standalone){
+    body{ padding:0; }
+    .app{
+      --app-radius:0px;
+      max-width:600px;
+      height:100vh;
+      height:100dvh;
+      min-height:100vh;
+      min-height:100dvh;
+      border:none;
+      box-shadow:none;
+    }
+    .header{ padding-top:calc(10px + env(safe-area-inset-top)); }
+    .inputbar{ padding-bottom:calc(14px + env(safe-area-inset-bottom)); }
+    #onboardingView{ padding-top:calc(28px + env(safe-area-inset-top)); padding-bottom:calc(28px + env(safe-area-inset-bottom)); }
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <div class="splash-screen" id="splashScreen">
+    <img class="splash-icon-img" src="/splash-icon.png" alt="" />
+    <img class="splash-word-img" src="/splash-wordmark.png" alt="Bomi — Interactive health care AI" />
+  </div>
+
+  <div class="auroraBorder" id="auroraBorder"></div>
+  <div class="cameraOverlay" id="cameraOverlay">
+    <button class="camera-close" id="closeCameraBtn" aria-label="닫기">✕</button>
+    <div class="camera-icon">📷</div>
+    <div class="camera-caption">카메라 기능은 곧 만나요<span>사진으로 식단·증상을 물어볼 수 있게 준비 중이에요</span></div>
+  </div>
+  <div class="toast" id="toast"></div>
+
+  <!-- ===== ONBOARDING ===== -->
+  <div class="screen active" id="onboardingView">
+    <div class="dots" id="obDots"></div>
+    <div id="obStepArea"></div>
+    <div class="ob-footer">
+      <button class="btn ghost" id="obPrev">이전</button>
+      <button class="btn primary" id="obNext" disabled>다음</button>
+    </div>
+  </div>
+
+  <!-- ===== CHAT ===== -->
+  <div class="screen" id="chatScreen">
+    <div class="header">
+      <button class="iconbtn" id="checklistBtn" aria-label="체크리스트 보기" style="display:none;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4.5 6.5l1.4 1.4L8.5 5.3M4.5 12.5l1.4 1.4 2.6-2.6M4.5 18.5l1.4 1.4 2.6-2.6"/>
+          <path d="M12 6.5h7.5M12 12.5h7.5M12 18.5h7.5"/>
+        </svg>
+        <span class="badge-dot" id="pinnedProg"></span>
+      </button>
+      <div class="brand">보미</div>
+      <button class="iconbtn" id="menuBtn" aria-label="설정">☰</button>
+    </div>
+    <div class="pinned-checklist" id="pinnedChecklist">
+      <div class="pinned-head">
+        <div class="lb">📋 오늘의 체크리스트</div>
+      </div>
+      <div class="pinned-body" id="pinnedBody"></div>
+    </div>
+    <div class="chat" id="chat"></div>
+    <div class="quickchips">
+      <div class="chip" data-msg="오늘 날씨 어때?">🔍 오늘 날씨 어때?</div>
+      <div class="chip" data-msg="근처 버스 시간표 알려줘">🗺️ 버스 시간표</div>
+      <div class="chip" data-msg="오늘 나 운세 좀 봐줘">🔮 오늘 운세</div>
+      <div class="chip" data-msg="요즘 경기 어때?">💰 요즘 경기</div>
+      <div class="chip" data-msg="그냥 심심해서 말 걸어봤어">💬 그냥 말벗</div>
+      <div class="chip" data-msg="요즘 부동산 정책 뭐가 바뀌었어?">🏠 부동산 정책</div>
+      <div class="chip" data-msg="요즘 정치 뉴스 뭐가 있어?">📰 정치 뉴스</div>
+    </div>
+    <div class="inputbar" id="inputBar">
+      <div class="dock" id="dockButtons">
+        <button class="dockbtn" id="cameraBtn" aria-label="사진으로 물어보기">
+          <span class="dockbtn-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 8.5C4 7.67 4.67 7 5.5 7h2l1-1.6c.18-.3.5-.5.86-.5h5.28c.35 0 .68.2.86.5L16.5 7h2c.83 0 1.5.67 1.5 1.5v9c0 .83-.67 1.5-1.5 1.5h-13C4.67 19 4 18.33 4 17.5v-9Z"/>
+              <circle cx="12" cy="13" r="3.2"/>
+            </svg>
+          </span>
+        </button>
+        <button class="dockbtn" id="keyboardBtn" aria-label="글자로 말하기">
+          <span class="dockbtn-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3.5" y="6.5" width="17" height="11" rx="2.2"/>
+              <path d="M7 10h.01M10.5 10h.01M14 10h.01M17 10h.01M7 13.5h10"/>
+            </svg>
+          </span>
+        </button>
+        <button class="dockbtn" id="voiceBtn" aria-label="음성으로 대화하기 (준비 중)">
+          <span class="dockbtn-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="9" y="3.5" width="6" height="10" rx="3"/>
+              <path d="M6 11a6 6 0 0 0 12 0M12 17v3.2M9 20.5h6"/>
+            </svg>
+          </span>
+        </button>
+      </div>
+      <div class="typebar" id="typeBar">
+        <button class="roundicon" id="collapseTypeBtn" aria-label="닫기">‹</button>
+        <input type="text" id="msgInput" placeholder="말씀해 주세요..." />
+        <button class="sendbtn" id="sendBtn">➤</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== PROFILE ===== -->
+  <div class="screen" id="profileScreen">
+    <div class="subheader">
+      <button class="backbtn" id="profileBack">←</button>
+      <div class="title">내 프로필</div>
+      <button class="editbtn" id="editNameBtn">✎</button>
+    </div>
+    <div class="scroll">
+      <div class="profile-hero">
+        <div class="avatar-lg" id="pfAvatar"></div>
+        <div>
+          <div class="pname" id="pfName"></div>
+          <div class="psub" id="pfSub"></div>
+        </div>
+      </div>
+
+      <div class="info-card">
+        <div class="info-grid">
+          <div><div class="lb">이름</div><div class="val" id="gName"></div></div>
+          <div><div class="lb">출생연도</div><div class="val" id="gYear"></div></div>
+          <div><div class="lb">성별</div><div class="val" id="gGender"></div></div>
+          <div><div class="lb">키 / 체중</div><div class="val" id="gHW"></div></div>
+        </div>
+        <div class="bmi-row">
+          <div><div class="lb">BMI 지수</div><div class="val" id="gBmi"></div></div>
+          <div class="badge" id="gBmiBadge"></div>
+        </div>
+      </div>
+
+      <div class="section-label">관심사</div>
+      <div class="tags" id="tagArea"></div>
+
+      <div class="report-cta" id="reportCta">
+        <div class="lb">💗 건강리포트 서비스</div>
+        <div class="arrow">›</div>
+      </div>
+      <div class="report-cta" id="familyCta" style="background:var(--accent-soft);border-color:#E3D2B4;">
+        <div class="lb" style="color:var(--navy);">👨‍👩‍👧 가족 리포트 미리보기</div>
+        <div class="arrow" style="color:var(--navy);">›</div>
+      </div>
+
+      <div class="section-label">체크리스트 관리</div>
+      <div class="info-card">
+        <div class="toggle-item">
+          <div><div class="lb">체크리스트 표시</div><div class="desc">대화창 상단에 고정해서 보여드려요</div></div>
+          <label class="switch"><input type="checkbox" id="toggleChecklist"><span class="slider"></span></label>
+        </div>
+      </div>
+      <div class="info-card" id="checklistItemsCard">
+        <div id="checklistItemRows"></div>
+        <button class="cl-add" id="addChecklistItem">+ 항목 추가</button>
+      </div>
+
+      <div class="section-label">알림 설정</div>
+      <div class="info-card">
+        <div class="toggle-item">
+          <div><div class="lb">건강리포트 알림</div><div class="desc">리포트 생성 시 알려드려요</div></div>
+          <label class="switch"><input type="checkbox" id="toggleReport"><span class="slider"></span></label>
+        </div>
+        <div class="toggle-item">
+          <div><div class="lb">프로액티브 체크 알림</div><div class="desc">보미가 건강을 물어볼 때 알려드려요</div></div>
+          <label class="switch"><input type="checkbox" id="toggleProactive"><span class="slider"></span></label>
+        </div>
+        <div class="toggle-item">
+          <div><div class="lb">심리 상태 체크 알림</div><div class="desc">기분 변화가 있을 때 알려드려요</div></div>
+          <label class="switch"><input type="checkbox" id="toggleMental"><span class="slider"></span></label>
+        </div>
+      </div>
+
+      <div class="section-label">CRM 고유번호</div>
+      <div class="info-card">
+        <div class="crm-note">이 번호는 CRM 연동 시 회원님을 식별하는 고유 식별자입니다.</div>
+        <div class="crm-row">
+          <div class="crm-id" id="crmId"></div>
+          <button class="copybtn" id="copyCrm">복사</button>
+        </div>
+      </div>
+      <div class="section-label">📮 접수된 피드백 <span style="font-weight:400;color:var(--sub);">(전체 테스터 공개)</span></div>
+      <div class="info-card">
+        <div class="crm-note">⚠️ 지금은 이 기기(브라우저)에 저장된 피드백만 보여요. 여러 사람이 각자의 폰으로 남긴 피드백을 한곳에서 모아 보려면, 진짜 데이터베이스(서버)를 연결해야 해요.</div>
+        <div id="feedbackList"></div>
+        <button class="cl-add" id="refreshFeedback">새로고침</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== REPORT ===== -->
+  <div class="screen" id="reportScreen">
+    <div class="subheader">
+      <button class="backbtn" id="reportBack">←</button>
+      <div class="title">건강리포트</div>
+      <div class="report-badge" id="recordDaysBadge"></div>
+    </div>
+    <div class="scroll">
+      <div class="tabs">
+        <div class="tab active" data-tab="daily">일간</div>
+        <div class="tab" data-tab="weekly">주간</div>
+        <div class="tab" data-tab="monthly">월간</div>
+      </div>
+      <div class="date-nav">
+        <button id="dPrev">‹</button>
+        <div class="dcenter">
+          <div class="ddate" id="rDate"></div>
+          <div class="dday" id="rDay"></div>
+        </div>
+        <button id="dNext">›</button>
+      </div>
+
+      <div class="ring-card">
+        <div class="ring" id="scoreRing">
+          <div class="ring-inner"><div class="num" id="scoreNum">--</div></div>
+        </div>
+        <div class="ring-cap" id="scoreCap">종합 건강 점수</div>
+      </div>
+
+      <div class="metric-card">
+        <div class="metric-top"><div class="lb">🌙 수면 상태</div><div class="score" style="color:var(--sleep)" id="sleepScore"></div></div>
+        <div class="bar-track"><div class="bar-fill" style="background:var(--sleep)" id="sleepBar"></div></div>
+        <div class="metric-sub" id="sleepSub"></div>
+      </div>
+
+      <div class="metric-card">
+        <div class="metric-top"><div class="lb">🍚 영양 상태</div><div class="score" style="color:var(--nutri)" id="nutriScore"></div></div>
+        <div class="bar-track"><div class="bar-fill" style="background:var(--nutri)" id="nutriBar"></div></div>
+        <div class="metric-sub" id="nutriSub"></div>
+      </div>
+
+      <div class="metric-card">
+        <div class="metric-top"><div class="lb">🚶 활동 상태</div><div class="score" style="color:var(--activity)" id="actScore"></div></div>
+        <div class="bar-track"><div class="bar-fill" style="background:var(--activity)" id="actBar"></div></div>
+        <div class="metric-sub" id="actSub"></div>
+      </div>
+
+      <div class="metric-card">
+        <div class="metric-top"><div class="lb">♥ 심리 상태</div><div class="score" style="color:var(--mental)" id="mentalScore"></div></div>
+        <div class="bar-track"><div class="bar-fill" style="background:var(--mental)" id="mentalBar"></div></div>
+        <div class="metric-sub" id="mentalSub"></div>
+      </div>
+
+      <div class="source-note" id="sourceNote"></div>
+    </div>
+  </div>
+
+  <!-- ===== FAMILY REPORT (PREVIEW) ===== -->
+  <div class="screen" id="familyScreen">
+    <div class="subheader">
+      <button class="backbtn" id="familyBack">←</button>
+      <div class="title">가족 리포트 미리보기</div>
+    </div>
+    <div class="scroll">
+      <div class="crm-note" style="margin-bottom:16px;">👀 실제 서비스에서는 보호자(자녀)가 별도 계정으로 접속해서 보는 화면이에요. 지금은 같은 기기에서 미리보기만 보여드려요.</div>
+
+      <div class="profile-hero">
+        <div class="avatar-lg" id="famAvatar"></div>
+        <div>
+          <div class="pname" id="famName"></div>
+          <div class="psub" id="famSub"></div>
+        </div>
+        <div class="badge" id="famStatusBadge" style="margin-left:auto;"></div>
+      </div>
+
+      <div class="stat-grid" id="famStatGrid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;"></div>
+
+      <div class="section-label">이번 주 소식</div>
+      <div class="report-note" style="background:#fff;border:1px solid var(--line);border-left:4px solid var(--blue);border-radius:12px;padding:14px 16px;font-size:14px;line-height:1.7;color:var(--ink);" id="famSummary"></div>
+
+      <div class="section-label">체크리스트 현황</div>
+      <div class="info-card" id="famChecklistCard"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+/* ============ CONSTANTS ============ */
+const DEFAULT_CHECKLIST_ITEMS = [
+  { id:'med_am', label:'오전 08:00 혈압약 복용' },
+  { id:'lunch',  label:'오후 01:00 점심 식사' },
+  { id:'walk',   label:'오후 04:00 산책 30분' },
+];
+const TOTAL_STEPS = 5;
+
+/* ============ STATE ============ */
+let profile = null;
+let notifSettings = { report:true, proactive:true, mental:true };
+let messages = [];
+let checklistState = {};       // today's done/not-done map, keyed by item id
+let checklistItems = [];       // configurable list of {id, label}
+let checklistEnabled = true;   // shown/hidden in chat
+let pinnedExpanded = false;
+let obStep = 1;
+let obData = { name:'', birthYear:'', gender:'', height:'', weight:'', interests:[] };
+
+/* ============ STORAGE HELPERS (real browser localStorage) ============ */
+function todayKey(prefix){ const d=new Date(); return `${prefix}:${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}`; }
+async function storeGet(key){ try{ const v = localStorage.getItem(key); return v ? JSON.parse(v) : null; }catch(e){ return null; } }
+async function storeSet(key, val){ try{ localStorage.setItem(key, JSON.stringify(val)); }catch(e){} }
+function localKeysWithPrefix(prefix){
+  const out = [];
+  for(let i=0;i<localStorage.length;i++){
+    const k = localStorage.key(i);
+    if(k && k.startsWith(prefix)) out.push(k);
+  }
+  return out;
+}
+
+/* ============ ONBOARDING ============ */
+function renderDots(){
+  const wrap = document.getElementById('obDots');
+  wrap.innerHTML = '';
+  for(let i=1;i<=TOTAL_STEPS;i++){
+    const d = document.createElement('div');
+    d.className = 'd' + (i<=obStep ? ' active' : '');
+    wrap.appendChild(d);
+  }
+}
+
+function renderObStep(){
+  renderDots();
+  const area = document.getElementById('obStepArea');
+  const nextBtn = document.getElementById('obNext');
+  document.getElementById('obPrev').style.visibility = obStep === 1 ? 'hidden' : 'visible';
+  nextBtn.textContent = obStep === TOTAL_STEPS ? '시작하기' : '다음';
+
+  if(obStep === 1){
+    area.innerHTML = `
+      <div class="ob-title">반가워요!<br>어떻게 불러 드릴까요?</div>
+      <div class="ob-sub">성함을 입력해 주세요</div>
+      <input class="ob-input" id="inName" placeholder="홍길동" value="${obData.name}" />
+    `;
+    const el = document.getElementById('inName');
+    el.addEventListener('input', ()=>{ obData.name = el.value.trim(); nextBtn.disabled = !obData.name; });
+    nextBtn.disabled = !obData.name;
+    setTimeout(()=>el.focus(), 50);
+  }
+  else if(obStep === 2){
+    area.innerHTML = `
+      <div class="ob-title">나이가 어떻게 되세요?</div>
+      <div class="ob-sub">태어난 연도를 선택해 주세요</div>
+      <input class="ob-input" id="inYear" type="number" placeholder="1955" value="${obData.birthYear}" />
+    `;
+    const el = document.getElementById('inYear');
+    el.addEventListener('input', ()=>{ obData.birthYear = el.value; nextBtn.disabled = !(obData.birthYear && obData.birthYear.length===4); });
+    nextBtn.disabled = !(obData.birthYear && obData.birthYear.length===4);
+    setTimeout(()=>el.focus(), 50);
+  }
+  else if(obStep === 3){
+    area.innerHTML = `
+      <div class="ob-title">성별을 알려주세요</div>
+      <div class="ob-sub">해당하는 성별을 골라주세요</div>
+      <div class="gender-row">
+        <div class="gender-card ${obData.gender==='남성'?'selected':''}" data-g="남성"><span class="sym">♂</span><span class="lb">남성</span></div>
+        <div class="gender-card ${obData.gender==='여성'?'selected':''}" data-g="여성"><span class="sym">♀</span><span class="lb">여성</span></div>
+      </div>
+    `;
+    area.querySelectorAll('.gender-card').forEach(c=>{
+      c.addEventListener('click', ()=>{
+        obData.gender = c.dataset.g;
+        area.querySelectorAll('.gender-card').forEach(x=>x.classList.remove('selected'));
+        c.classList.add('selected');
+        nextBtn.disabled = false;
+      });
+    });
+    nextBtn.disabled = !obData.gender;
+  }
+  else if(obStep === 4){
+    area.innerHTML = `
+      <div class="ob-title">키와 체중을 알려주세요</div>
+      <div class="ob-sub">건강 정보 확인을 위해 필요해요</div>
+      <div class="ob-field-label">키 (cm)</div>
+      <input class="ob-input" id="inH" type="number" placeholder="153" value="${obData.height}" />
+      <div class="ob-field-label">체중 (kg)</div>
+      <input class="ob-input" id="inW" type="number" placeholder="43" value="${obData.weight}" />
+    `;
+    const h = document.getElementById('inH'), w = document.getElementById('inW');
+    const check = ()=>{ obData.height=h.value; obData.weight=w.value; nextBtn.disabled = !(h.value && w.value); };
+    h.addEventListener('input', check); w.addEventListener('input', check);
+    check();
+  }
+  else if(obStep === 5){
+    area.innerHTML = `
+      <div class="ob-title">어떤 것에 관심이 있으세요?</div>
+      <div class="ob-sub">취미나 즐겨하는 활동을 자유롭게 적어주세요</div>
+      <textarea class="ob-textarea" id="inInterest" placeholder="예: 건강, 운동, 음악 감상, 여행, 독서, 손주와 놀기">${obData.interests.join(', ')}</textarea>
+      <div class="tip-box">💡 좋아하는 취미, 즐겨하는 활동, 평소 관심사를 쉼표로 구분해서 자유롭게 적어주세요. 보미가 회원님의 관심사에 맞춰 대화를 이끌어 갈게요!</div>
+    `;
+    const el = document.getElementById('inInterest');
+    el.addEventListener('input', ()=>{
+      obData.interests = el.value.split(/[,，]/).map(s=>s.trim()).filter(Boolean);
+      nextBtn.disabled = obData.interests.length === 0;
+    });
+    nextBtn.disabled = obData.interests.length === 0;
+  }
+}
+
+document.getElementById('obPrev').addEventListener('click', ()=>{ if(obStep>1){ obStep--; renderObStep(); } });
+document.getElementById('obNext').addEventListener('click', async ()=>{
+  if(obStep < TOTAL_STEPS){ obStep++; renderObStep(); return; }
+  profile = {
+    name: obData.name,
+    birthYear: parseInt(obData.birthYear),
+    gender: obData.gender,
+    height: parseFloat(obData.height),
+    weight: parseFloat(obData.weight),
+    interests: obData.interests,
+    crmId: makeCrmId(obData.name, obData.birthYear)
+  };
+  await storeSet('profile', profile);
+  await storeSet('notif-settings', notifSettings);
+  startApp(true);
+});
+
+function makeCrmId(name, year){
+  let h = 0;
+  const s = (name||'') + (year||'');
+  for(const c of s){ h = (h*31 + c.charCodeAt(0)) >>> 0; }
+  return 'M' + (100000 + (h % 900000));
+}
+
+/* ============ NAVIGATION ============ */
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+document.getElementById('menuBtn').addEventListener('click', ()=>{ renderProfile(); renderChecklistSettings(); renderFeedbackList(); showScreen('profileScreen'); });
+document.getElementById('profileBack').addEventListener('click', ()=> showScreen('chatScreen'));
+document.getElementById('reportCta').addEventListener('click', ()=>{ renderReport(); showScreen('reportScreen'); });
+document.getElementById('reportBack').addEventListener('click', ()=>{ renderProfile(); showScreen('profileScreen'); });
+document.getElementById('editNameBtn').addEventListener('click', async ()=>{
+  const newName = prompt('이름을 수정해 주세요', profile.name);
+  if(newName && newName.trim()){
+    profile.name = newName.trim();
+    await storeSet('profile', profile);
+    renderProfile();
+  }
+});
+document.querySelectorAll('.tab').forEach(t=>{
+  t.addEventListener('click', ()=>{
+    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+    t.classList.add('active');
+  });
+});
+
+/* ============ PROFILE SCREEN ============ */
+function bmiInfo(){
+  const h = profile.height/100;
+  const bmi = profile.weight / (h*h);
+  let cat, cls;
+  if(bmi < 18.5){ cat='저체중'; cls='warn'; }
+  else if(bmi < 23){ cat='정상'; cls='good'; }
+  else if(bmi < 25){ cat='과체중'; cls='warn'; }
+  else { cat='비만'; cls='warn'; }
+  return { bmi: bmi.toFixed(1), cat, cls };
+}
+
+function renderProfile(){
+  const age = new Date().getFullYear() - profile.birthYear;
+  document.getElementById('pfAvatar').textContent = profile.name.charAt(0);
+  document.getElementById('pfName').textContent = profile.name + '님';
+  document.getElementById('pfSub').textContent = `만 ${age}세 · ${profile.gender}`;
+  document.getElementById('gName').textContent = profile.name;
+  document.getElementById('gYear').textContent = profile.birthYear + '년';
+  document.getElementById('gGender').textContent = profile.gender;
+  document.getElementById('gHW').textContent = `${profile.height}cm / ${profile.weight}kg`;
+
+  const b = bmiInfo();
+  document.getElementById('gBmi').textContent = b.bmi;
+  const badge = document.getElementById('gBmiBadge');
+  badge.textContent = b.cat;
+  badge.className = 'badge ' + b.cls;
+
+  const tagArea = document.getElementById('tagArea');
+  tagArea.innerHTML = '';
+  profile.interests.forEach((t,i)=>{
+    const el = document.createElement('div');
+    el.className = 'tag';
+    el.innerHTML = `<span>${t}</span><span class="x" data-i="${i}">✕</span>`;
+    el.querySelector('.x').addEventListener('click', async ()=>{
+      profile.interests.splice(i,1);
+      await storeSet('profile', profile);
+      renderProfile();
+    });
+    tagArea.appendChild(el);
+  });
+  const addBtn = document.createElement('div');
+  addBtn.className = 'tag-add';
+  addBtn.textContent = '+ 추가';
+  addBtn.addEventListener('click', async ()=>{
+    const v = prompt('관심사를 입력해 주세요');
+    if(v && v.trim()){ profile.interests.push(v.trim()); await storeSet('profile', profile); renderProfile(); }
+  });
+  tagArea.appendChild(addBtn);
+
+  document.getElementById('crmId').textContent = profile.crmId;
+  document.getElementById('toggleReport').checked = notifSettings.report;
+  document.getElementById('toggleProactive').checked = notifSettings.proactive;
+  document.getElementById('toggleMental').checked = notifSettings.mental;
+}
+document.getElementById('toggleReport').addEventListener('change', async (e)=>{ notifSettings.report = e.target.checked; await storeSet('notif-settings', notifSettings); });
+document.getElementById('toggleProactive').addEventListener('change', async (e)=>{ notifSettings.proactive = e.target.checked; await storeSet('notif-settings', notifSettings); });
+document.getElementById('toggleMental').addEventListener('change', async (e)=>{ notifSettings.mental = e.target.checked; await storeSet('notif-settings', notifSettings); });
+document.getElementById('copyCrm').addEventListener('click', ()=>{
+  const id = document.getElementById('crmId').textContent;
+  if(navigator.clipboard) navigator.clipboard.writeText(id);
+  const btn = document.getElementById('copyCrm');
+  const old = btn.textContent; btn.textContent = '복사됨'; setTimeout(()=>btn.textContent=old, 1200);
+});
+
+/* ============ REPORT SCREEN ============ */
+function seededRandom(seed){ const x = Math.sin(seed) * 10000; return x - Math.floor(x); }
+function dayHash(){ const d = new Date(); return d.getFullYear()*372 + d.getMonth()*31 + d.getDate(); }
+
+function computeScores(){
+  const seed = dayHash();
+  const sleep = Math.min(100, Math.round(70 + seededRandom(seed+1)*25));
+  const mental = Math.min(100, Math.round(65 + seededRandom(seed+2)*25));
+  const nutri = Math.min(100, Math.round(58 + (checklistState['lunch']?20:0) + seededRandom(seed+3)*15));
+  const act = Math.min(100, Math.round(50 + (checklistState['walk']?25:0) + seededRandom(seed+4)*15));
+  const overall = Math.round((sleep+mental+nutri+act)/4);
+  return { seed, sleep, mental, nutri, act, overall };
+}
+
+async function renderReport(){
+  const now = new Date();
+  document.getElementById('rDate').textContent = `${now.getFullYear()}.${String(now.getMonth()+1).padStart(2,'0')}.${String(now.getDate()).padStart(2,'0')}`;
+  document.getElementById('rDay').textContent = ['일','월','화','수','목','금','토'][now.getDay()] + '요일';
+
+  let recordDays = 1;
+  try{
+    recordDays = Math.max(1, localKeysWithPrefix('messages:').length);
+  }catch(e){}
+  document.getElementById('recordDaysBadge').textContent = `${recordDays}일 기록됨`;
+
+  const { seed, sleep, mental, nutri, act, overall } = computeScores();
+
+  document.getElementById('scoreNum').textContent = overall;
+  const ring = document.getElementById('scoreRing');
+  ring.style.background = `conic-gradient(var(--navy) ${overall}%, #EFEBE3 ${overall}%)`;
+  document.getElementById('scoreCap').textContent = overall>=80 ? '컨디션이 아주 좋아요' : overall>=60 ? '무난한 상태예요' : '조금 더 챙겨볼까요';
+
+  setMetric('sleep', sleep, `수면시간 ${Math.round(sleep/100*8)}h · 수면질 ${sleep>=75?'숙면':'보통'}`);
+  setMetric('nutri', nutri, `${checklistState['lunch']?'3회 식사':'2회 식사'} · 물 ${Math.round(4+seededRandom(seed+5)*4)}잔`);
+  setMetric('act', act, `${checklistState['walk']?'5,200보':'2,100보'} · ${checklistState['walk']?'30분 운동':'10분 운동'}`);
+  setMetric('mental', mental, `기분 ${mental>=75?'긍정적':'보통'} · 스트레스 ${mental>=75?'낮음':'보통'}`);
+
+  const age = new Date().getFullYear() - profile.birthYear;
+  const b = bmiInfo();
+  document.getElementById('sourceNote').innerHTML =
+    `<b style="color:var(--ink)">데이터 출처</b><br>보미와의 대화·체크리스트 활동을 바탕으로 산출된 <b>프로토타입 추정치</b>입니다. 만 ${age}세 · ${profile.gender} 기준 · BMI ${b.bmi} (${b.cat}). 실제 서비스에서는 웨어러블·문진 데이터 연동이 필요해요.`;
+}
+function setMetric(key, score, sub){
+  document.getElementById(key+'Score').textContent = score + '/100';
+  document.getElementById(key+'Bar').style.width = score + '%';
+  document.getElementById(key+'Sub').textContent = sub;
+}
+document.getElementById('dPrev').addEventListener('click', ()=>{});
+document.getElementById('dNext').addEventListener('click', ()=>{});
+
+/* ============ FAMILY REPORT (PREVIEW) ============ */
+function familySummary(scores){
+  const parts = [];
+  parts.push(scores.sleep>=75 ? '수면은 안정적이에요.' : '수면 점수가 평소보다 낮아서 조금 더 지켜봐야 해요.');
+  parts.push(scores.nutri>=75 ? '식사도 잘 챙기고 계세요.' : '식사 횟수가 다소 불규칙했어요.');
+  parts.push(scores.act>=70 ? '활동량도 늘었어요.' : '오늘은 활동량이 적은 편이었어요, 가볍게 산책을 권해드렸어요.');
+  parts.push(scores.mental>=75 ? '기분도 좋아 보이세요 😊' : '요즘 기분 상태는 보통이에요, 안부 전화 한 통 드려보는 건 어떨까요?');
+  return parts.join(' ');
+}
+
+async function renderFamily(){
+  const age = new Date().getFullYear() - profile.birthYear;
+  document.getElementById('famAvatar').textContent = profile.name.charAt(0);
+  document.getElementById('famName').textContent = profile.name + '님';
+  document.getElementById('famSub').textContent = `만 ${age}세 · ${profile.gender}`;
+
+  const scores = computeScores();
+  const badge = document.getElementById('famStatusBadge');
+  if(scores.overall >= 60){ badge.textContent = '정상'; badge.className = 'badge good'; }
+  else { badge.textContent = '주의 필요'; badge.className = 'badge warn'; }
+
+  const grid = document.getElementById('famStatGrid');
+  grid.innerHTML = `
+    <div class="stat-card"><div class="label">수면</div><div class="value ${scores.sleep>=75?'good':'warn'}">${scores.sleep}/100</div></div>
+    <div class="stat-card"><div class="label">영양</div><div class="value ${scores.nutri>=75?'good':'warn'}">${scores.nutri}/100</div></div>
+    <div class="stat-card"><div class="label">활동</div><div class="value ${scores.act>=70?'good':'warn'}">${scores.act}/100</div></div>
+    <div class="stat-card"><div class="label">심리</div><div class="value ${scores.mental>=75?'good':'warn'}">${scores.mental}/100</div></div>
+  `;
+
+  document.getElementById('famSummary').innerHTML = `<b style="color:var(--blue)">[${profile.name}님 소식]</b><br>${familySummary(scores)}`;
+
+  const clCard = document.getElementById('famChecklistCard');
+  clCard.innerHTML = '';
+  if(checklistItems.length === 0){
+    clCard.innerHTML = '<div class="cl-empty">등록된 체크리스트가 없어요</div>';
+  } else {
+    checklistItems.forEach(item=>{
+      const done = !!checklistState[item.id];
+      const row = document.createElement('div');
+      row.className = 'toggle-item';
+      row.innerHTML = `<div class="lb">${item.label}</div><div class="badge ${done?'good':'warn'}">${done?'완료':'대기'}</div>`;
+      clCard.appendChild(row);
+    });
+  }
+}
+document.getElementById('familyCta').addEventListener('click', ()=>{ renderFamily(); showScreen('familyScreen'); });
+document.getElementById('familyBack').addEventListener('click', ()=>{ renderProfile(); showScreen('profileScreen'); });
+
+/* ============ PINNED CHECKLIST (chat header bar) ============ */
+function renderPinnedChecklist(){
+  const wrap = document.getElementById('pinnedChecklist');
+  const btn = document.getElementById('checklistBtn');
+  if(!checklistEnabled || checklistItems.length === 0){
+    btn.style.display = 'none';
+    wrap.classList.remove('open');
+    return;
+  }
+  btn.style.display = 'flex';
+  const done = checklistItems.filter(it=>checklistState[it.id]).length;
+  document.getElementById('pinnedProg').textContent = `${done}/${checklistItems.length}`;
+  wrap.classList.toggle('open', pinnedExpanded);
+
+  const body = document.getElementById('pinnedBody');
+  body.innerHTML = '';
+  checklistItems.forEach(item=>{
+    const isDone = !!checklistState[item.id];
+    const row = document.createElement('div');
+    row.className = 'check-item' + (isDone?' done':'');
+    row.innerHTML = `<input type="checkbox" ${isDone?'checked':''}/><span class="label">${item.label}</span>`;
+    row.querySelector('input').addEventListener('change', async (e)=>{
+      checklistState[item.id] = e.target.checked;
+      await storeSet(todayKey('checklist'), checklistState);
+      renderPinnedChecklist();
+    });
+    body.appendChild(row);
+  });
+}
+document.getElementById('checklistBtn').addEventListener('click', ()=>{
+  pinnedExpanded = !pinnedExpanded;
+  renderPinnedChecklist();
+});
+
+/* ============ CHECKLIST SETTINGS (profile screen) ============ */
+function renderChecklistSettings(){
+  document.getElementById('toggleChecklist').checked = checklistEnabled;
+  const rows = document.getElementById('checklistItemRows');
+  rows.innerHTML = '';
+  if(checklistItems.length === 0){
+    rows.innerHTML = `<div class="cl-empty">등록된 체크리스트 항목이 없어요</div>`;
+    return;
+  }
+  checklistItems.forEach((item, idx)=>{
+    const row = document.createElement('div');
+    row.className = 'cl-item-row';
+    row.innerHTML = `<input class="cl-item-input" value="${item.label}" /><button class="cl-del">✕</button>`;
+    const input = row.querySelector('.cl-item-input');
+    input.addEventListener('change', async ()=>{
+      item.label = input.value.trim() || item.label;
+      await storeSet('checklist-items', checklistItems);
+      renderPinnedChecklist();
+    });
+    row.querySelector('.cl-del').addEventListener('click', async ()=>{
+      checklistItems.splice(idx,1);
+      await storeSet('checklist-items', checklistItems);
+      renderChecklistSettings();
+      renderPinnedChecklist();
+    });
+    rows.appendChild(row);
+  });
+}
+document.getElementById('toggleChecklist').addEventListener('change', async (e)=>{
+  checklistEnabled = e.target.checked;
+  await storeSet('checklist-enabled', checklistEnabled);
+  renderPinnedChecklist();
+});
+document.getElementById('addChecklistItem').addEventListener('click', async ()=>{
+  const label = prompt('체크리스트 항목을 입력해 주세요 (예: 오후 08:00 저녁약 복용)');
+  if(label && label.trim()){
+    checklistItems.push({ id:'item_'+Date.now(), label:label.trim() });
+    await storeSet('checklist-items', checklistItems);
+    renderChecklistSettings();
+    renderPinnedChecklist();
+  }
+});
+
+/* ============ CHAT LOGIC ============ */
+
+const FB_ICONS = {
+  up: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7 11v9H4v-9h3Zm3 9h7.5a2 2 0 0 0 1.94-1.51l1.36-5.4A2 2 0 0 0 18.86 10H14l.7-4.2a1.6 1.6 0 0 0-2.86-1.24L8 9.5"/></svg>',
+  down: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7 13V4H4v9h3Zm3-9H17.5a2 2 0 0 1 1.94 1.51l1.36 5.4A2 2 0 0 1 18.86 14H14l.7 4.2a1.6 1.6 0 0 1-2.86 1.24L8 14.5"/></svg>',
+  retry: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 0 1 13.66-5.66M20 12a8 8 0 0 1-13.66 5.66"/><path d="M17.5 3.5v3.3h-3.3M6.5 20.5v-3.3h3.3"/></svg>',
+  share: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V4M8 8l4-4 4 4"/><path d="M5 14v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"/></svg>',
+};
+const AI_DISCLAIMER = 'AI가 생성한 응답은 정확하지 않을 수 있어요. 중요한 내용은 확인해 주세요.';
+
+function addBubble(role, text){
+  if(role !== 'user'){ addAssistantBlock(text, null); return; }
+  const chat = document.getElementById('chat');
+  const row = document.createElement('div');
+  row.className = 'row user';
+  const b = document.createElement('div');
+  b.className = 'bubble user';
+  b.textContent = text;
+  row.appendChild(b);
+  chat.appendChild(row);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+// userText: the question this answer responds to (used by the retry button
+// to regenerate). Pass null for messages with no clear preceding question
+// (e.g. the onboarding intro) — the retry button hides itself in that case.
+// 피드백 아이콘 줄은 매 답변마다 보여주면 번잡해서, "어려운 작업"(길고 실질적인
+// 답변)일 때만 보여줍니다 — 짧은 잡담성 답변에는 안 보이게 하는 단순한 기준으로
+// 글자 수를 씀 (정교한 신호가 없어서 택한 실용적 근사치).
+const FEEDBACK_MIN_LENGTH = 80;
+
+// animate: true일 때 텍스트를 타자기처럼 한 글자씩 보여줌 (실시간 새 답변용).
+// 과거 대화 replay나 인트로 메시지는 animate 없이 즉시 표시.
+function addAssistantBlock(text, userText, animate){
+  const chat = document.getElementById('chat');
+  const showFeedback = text.length >= FEEDBACK_MIN_LENGTH;
+  const wrap = document.createElement('div');
+  wrap.className = 'ai-block';
+  wrap.innerHTML = `
+    <div class="ai-content">
+      <div class="ai-text"></div>
+      <div class="ai-disclaimer" style="display:none;">${AI_DISCLAIMER}</div>
+      ${showFeedback ? `<div class="ai-feedback" style="display:none;">
+        <button class="fb-icon" type="button" data-fb="up" aria-label="좋아요">${FB_ICONS.up}</button>
+        <button class="fb-icon" type="button" data-fb="down" aria-label="별로예요">${FB_ICONS.down}</button>
+        <button class="fb-icon" type="button" data-fb="retry" aria-label="다시 생성">${FB_ICONS.retry}</button>
+        <button class="fb-icon" type="button" data-fb="share" aria-label="공유">${FB_ICONS.share}</button>
+      </div>` : ''}
+    </div>`;
+  const textEl = wrap.querySelector('.ai-text');
+  const disclaimerEl = wrap.querySelector('.ai-disclaimer');
+  if(showFeedback){
+    const upBtn = wrap.querySelector('[data-fb="up"]');
+    const downBtn = wrap.querySelector('[data-fb="down"]');
+    const retryBtn = wrap.querySelector('[data-fb="retry"]');
+    const shareBtn = wrap.querySelector('[data-fb="share"]');
+    upBtn.addEventListener('click', ()=> handleFeedbackVote(upBtn, downBtn, 'up', text));
+    downBtn.addEventListener('click', ()=> handleFeedbackVote(upBtn, downBtn, 'down', text));
+    if(userText){ retryBtn.addEventListener('click', ()=> regenerateReply(userText)); }
+    else { retryBtn.style.display = 'none'; }
+    shareBtn.addEventListener('click', ()=> shareText(text));
+  }
+  chat.appendChild(wrap);
+  chat.scrollTop = chat.scrollHeight;
+
+  const revealTrailer = ()=>{
+    disclaimerEl.style.display = '';
+    if(showFeedback) wrap.querySelector('.ai-feedback').style.display = '';
+    chat.scrollTop = chat.scrollHeight;
+  };
+  if(animate){
+    typewriterReveal(chat, textEl, text).then(revealTrailer);
+  } else {
+    textEl.textContent = text;
+    revealTrailer();
+  }
+}
+
+// 텍스트를 한 글자씩(성능을 위해 몇 글자씩 묶어서) 채워 넣는 타자기 효과.
+// 실제 API 스트리밍이 아니라, 이미 다 받은 응답을 화면에서만 흉내 내는 것.
+function typewriterReveal(chat, el, text, msPerTick){
+  msPerTick = msPerTick || 26;
+  const charsPerTick = 2;
+  return new Promise(resolve=>{
+    let i = 0;
+    const timer = setInterval(()=>{
+      i = Math.min(text.length, i + charsPerTick);
+      el.textContent = text.slice(0, i);
+      chat.scrollTop = chat.scrollHeight;
+      if(i >= text.length){ clearInterval(timer); resolve(); }
+    }, msPerTick);
+  });
+}
+
+async function handleFeedbackVote(upBtn, downBtn, kind, messageText){
+  upBtn.classList.toggle('active', kind === 'up');
+  downBtn.classList.toggle('active', kind === 'down');
+  await saveFeedback(`[${kind === 'up' ? '👍' : '👎'}] ${messageText}`);
+}
+
+async function shareText(text){
+  if(navigator.share){
+    try{ await navigator.share({ text }); return; }catch(e){ /* user cancelled or unsupported, fall through */ }
+  }
+  if(navigator.clipboard){
+    try{ await navigator.clipboard.writeText(text); showToast('복사했어요'); return; }catch(e){}
+  }
+  showToast('공유 기능을 사용할 수 없어요');
+}
+
+async function regenerateReply(userText){
+  addTyping();
+  try{
+    const raw = await callBomi(userText);
+    const { text: reply, options } = parseBomiReply(raw);
+    removeTyping();
+    addAssistantBlock(reply, userText, true);
+    messages.push({role:'assistant', content:reply});
+    await storeSet(todayKey('messages'), messages.slice(-30));
+    if(options.length) addSuggestedOptions(options);
+  }catch(e){
+    removeTyping();
+    addAssistantBlock('지금 연결이 원활하지 않아요. 잠시 후 다시 말씀해 주세요 🙏', userText, true);
+  }
+}
+
+function addTyping(){
+  const chat = document.getElementById('chat');
+  const wrap = document.createElement('div');
+  wrap.className = 'ai-block'; wrap.id = 'typingRow';
+  wrap.innerHTML = `<div class="ai-thinking">생각 중</div><div class="thinking-aurora"></div>`;
+  chat.appendChild(wrap);
+  chat.scrollTop = chat.scrollHeight;
+}
+function removeTyping(){ const t = document.getElementById('typingRow'); if(t) t.remove(); }
+
+// Splits the trailing "[[선택지: A | B | C]]" marker (see systemPrompt()) off
+// the model's reply so it renders as tappable suggestion links instead of literal text.
+function parseBomiReply(raw){
+  const match = raw.match(/\n?\[\[\s*선택지\s*:\s*([^\]]+)\]\]\s*$/);
+  if(!match) return { text: raw.trim(), options: [] };
+  const text = raw.slice(0, match.index).trim();
+  const options = match[1].split('|').map(s=>s.trim()).filter(Boolean).slice(0,3);
+  return { text, options: options.length ? options : [] };
+}
+
+function addSuggestedOptions(options){
+  const chat = document.getElementById('chat');
+  const wrap = document.createElement('div');
+  wrap.className = 'reply-options';
+  options.forEach(opt=>{
+    const link = document.createElement('button');
+    link.type = 'button';
+    link.className = 'option-link';
+    link.textContent = opt;
+    link.addEventListener('click', ()=> sendMessage(opt));
+    wrap.appendChild(link);
+  });
+  chat.appendChild(wrap);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+function systemPrompt(){
+  const age = new Date().getFullYear() - profile.birthYear;
+  const checklistLines = (checklistItems && checklistItems.length)
+    ? checklistItems.map(it => `- ${it.label}: ${checklistState[it.id] ? '완료' : '아직 안 함'}`).join('\n')
+    : '(등록된 체크리스트 없음)';
+  return `당신은 '보미'라는 이름의 다정한 AI 건강케어 비서입니다.
+대화 상대: ${profile.name}님, 만 ${age}세, ${profile.gender}, 키 ${profile.height}cm, 체중 ${profile.weight}kg, 관심사: ${profile.interests.join(', ')}.
+말투: 항상 존댓말, 짧고 쉬운 문장, 따뜻하고 친근하게. 호칭은 "${profile.name}님"으로.
+역할: 수면, 식사, 통증, 복약, 정서 상태를 먼저 챙기고, 관심사(${profile.interests.join(', ')})를 활용해 친밀하게 대화하세요.
+오늘의 체크리스트 현황(어르신이 복약/식사/일정을 기억 못 하실 때 이 정보로 정확히 답해주세요):
+${checklistLines}
+규칙:
+- 답변은 단답으로 끝내지 말고, 자연스러운 대화체로 보통 3~5문장 정도 편하게 이야기하듯 답하세요. 짧은 게 목표가 아니라, 대화가 계속 이어지는 느낌이 목표입니다.
+- 의학적 진단/처방은 하지 말고, 이상 증상엔 병원 방문이나 가벼운 스트레칭을 권유하세요.
+- 이모지는 가끔 1개 정도만.
+- 매일 아침 인사나 안부 질문은 최대한 다양하게 표현하고, 최근에 나눈 대화 내용을 반영해 형식적으로 반복되지 않도록 하세요.
+
+주제별 답변 형식 (해당하는 주제면 이 방향을 따르되, 위 규칙대로 단답으로 끝내지 마세요):
+- 검색/일반 지식: 결론을 먼저 한두 문장으로 말한 뒤, 어르신이 궁금해하실 배경이나 이유를 자연스럽게 덧붙이세요.
+- 지도/길찾기/교통: 실시간 위치·시간표 정보는 아직 연결되어 있지 않으니 구체적인 경로나 시간을 절대 지어내지 말고, "정확한 정보는 아직 준비 중이에요"라고 안내한 뒤 도움이 될 만한 일반적인 방법을 편하게 풀어서 안내하세요.
+- 사주/운세: 재미로 보는 것임을 짧게 밝히고, 오늘 하루에 도움이 될 만한 이야기로 조금 풀어서 답하세요. "반드시 ~된다" 같은 단정적 예언 표현은 쓰지 마세요.
+- 경제/주가/투자: 특정 종목의 매수·매도를 추천하지 말고, 실시간 시세는 확인할 수 없다고 안내한 뒤 일반적인 경제 개념을 이해하기 쉽게 풀어서 설명하세요.
+- 부동산 정책/정치 뉴스: 사실 위주로 중립적으로 요약하고, 특정 정당·정책에 대한 찬반 의견이나 지지 표현은 절대 하지 마세요.
+- 말벗/정서적 대화: 충분히 공감하며 이야기를 들어준 뒤, 답변 끝에 질문 하나를 되돌려줘서 어르신이 계속 이야기를 이어가시게 하세요.
+
+답변을 마친 다음 줄에, 어르신이 이어서 하실 법한 짧은 말 2~3개를 아래 형식으로 반드시 덧붙이세요 (형식을 벗어나지 마세요, 이 줄은 화면에 그대로 안 보이고 선택 버튼으로 바뀝니다):
+[[선택지: 옵션1 | 옵션2 | 옵션3]]
+각 옵션은 5어절 이내로, 어르신이 그대로 눌러서 보낼 수 있는 자연스러운 말투로 쓰세요.`;
+}
+
+async function callBomi(userText){
+  const history = messages.slice(-10).map(m=>({role:m.role, content:m.content}));
+  history.push({role:'user', content:userText});
+  const response = await fetch("/api/chat", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      system: systemPrompt(),
+      messages: history
+    })
+  });
+  const data = await response.json();
+  if(!response.ok){
+    console.error('chat api error:', data.error);
+    return `죄송해요 ${profile.name}님, 지금 대답이 어려워요. 다시 말씀해 주시겠어요?`;
+  }
+  return data.reply || `죄송해요 ${profile.name}님, 지금 대답이 어려워요. 다시 말씀해 주시겠어요?`;
+}
+
+async function saveFeedback(text){
+  try{
+    const key = `feedback:${profile.crmId}:${Date.now()}`;
+    await storeSet(key, {
+      name: profile.name, crmId: profile.crmId, message: text, ts: new Date().toISOString()
+    });
+  }catch(e){}
+}
+
+async function renderFeedbackList(){
+  const container = document.getElementById('feedbackList');
+  container.innerHTML = '불러오는 중...';
+  try{
+    const keys = localKeysWithPrefix('feedback:').slice(-20).reverse();
+    if(keys.length === 0){
+      container.innerHTML = '<div class="cl-empty">아직 접수된 피드백이 없어요</div>';
+      return;
+    }
+    const items = [];
+    for(const k of keys){
+      const v = await storeGet(k);
+      if(v) items.push(v);
+    }
+    container.innerHTML = '';
+    if(items.length === 0){ container.innerHTML = '<div class="cl-empty">아직 접수된 피드백이 없어요</div>'; return; }
+    items.forEach(fb=>{
+      const d = new Date(fb.ts);
+      const row = document.createElement('div');
+      row.className = 'fb-row';
+      row.innerHTML = `<div class="fb-meta">${fb.name}님 · ${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}</div><div class="fb-msg">${fb.message}</div>`;
+      container.appendChild(row);
+    });
+  }catch(e){
+    container.innerHTML = '<div class="cl-empty">불러오지 못했어요</div>';
+  }
+}
+document.getElementById('refreshFeedback').addEventListener('click', renderFeedbackList);
+
+async function sendMessage(text){
+  if(!text || !text.trim()) return;
+  document.getElementById('sendBtn').disabled = true;
+  addBubble('user', text);
+  messages.push({role:'user', content:text});
+  await storeSet(todayKey('messages'), messages.slice(-30));
+
+  addTyping();
+  try{
+    const raw = await callBomi(text);
+    const { text: reply, options } = parseBomiReply(raw);
+    removeTyping();
+    addAssistantBlock(reply, text, true);
+    messages.push({role:'assistant', content:reply});
+    await storeSet(todayKey('messages'), messages.slice(-30));
+    if(options.length) addSuggestedOptions(options);
+  }catch(e){
+    removeTyping();
+    addAssistantBlock('지금 연결이 원활하지 않아요. 잠시 후 다시 말씀해 주세요 🙏', text, true);
+  }
+  document.getElementById('sendBtn').disabled = false;
+}
+document.getElementById('sendBtn').addEventListener('click', ()=>{
+  const input = document.getElementById('msgInput');
+  const text = input.value; input.value = '';
+  sendMessage(text);
+});
+document.getElementById('msgInput').addEventListener('keydown', (e)=>{
+  if(e.key==='Enter'){ const text = e.target.value; e.target.value=''; sendMessage(text); }
+});
+document.querySelectorAll('.chip').forEach(chip=>{
+  chip.addEventListener('click', ()=> sendMessage(chip.dataset.msg));
+});
+
+/* ============ INPUT DOCK: camera / keyboard / voice ============ */
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(showToast._timer);
+  showToast._timer = setTimeout(()=> t.classList.remove('show'), 2200);
+}
+
+function openTypeBar(){
+  document.getElementById('inputBar').classList.add('mode-type');
+  setTimeout(()=> document.getElementById('msgInput').focus(), 260);
+}
+function closeTypeBar(){
+  document.getElementById('inputBar').classList.remove('mode-type');
+}
+document.getElementById('keyboardBtn').addEventListener('click', openTypeBar);
+document.getElementById('collapseTypeBtn').addEventListener('click', closeTypeBar);
+
+function openCamera(originEl){
+  const appRect = document.querySelector('.app').getBoundingClientRect();
+  const btnRect = originEl.getBoundingClientRect();
+  const ox = ((btnRect.left + btnRect.width/2) - appRect.left) / appRect.width * 100;
+  const oy = ((btnRect.top + btnRect.height/2) - appRect.top) / appRect.height * 100;
+  const overlay = document.getElementById('cameraOverlay');
+  overlay.style.setProperty('--ox', ox + '%');
+  overlay.style.setProperty('--oy', oy + '%');
+  overlay.classList.add('active');
+}
+function closeCamera(){
+  document.getElementById('cameraOverlay').classList.remove('active');
+}
+document.getElementById('cameraBtn').addEventListener('click', (e)=> openCamera(e.currentTarget));
+document.getElementById('closeCameraBtn').addEventListener('click', closeCamera);
+
+let auroraTimer = null;
+document.getElementById('voiceBtn').addEventListener('click', ()=>{
+  document.getElementById('auroraBorder').classList.add('active');
+  showToast('음성 대화 기능은 준비 중이에요 🎙️');
+  clearTimeout(auroraTimer);
+  auroraTimer = setTimeout(()=> document.getElementById('auroraBorder').classList.remove('active'), 2800);
+});
+
+/* ============ APP START ============ */
+async function startApp(isNew){
+  checklistState = await storeGet(todayKey('checklist')) || {};
+  checklistItems = await storeGet('checklist-items');
+  if(!checklistItems){ checklistItems = DEFAULT_CHECKLIST_ITEMS.slice(); await storeSet('checklist-items', checklistItems); }
+  const enabledStored = await storeGet('checklist-enabled');
+  checklistEnabled = enabledStored === null ? true : enabledStored;
+  messages = await storeGet(todayKey('messages')) || [];
+  showScreen('chatScreen');
+
+  if(messages.length === 0){
+    const intro = `${profile.name}님, 반가워요! 보미가 매일 이런 걸 여쭤볼게요:
+
+• 오늘 컨디션은 어떠신지
+• 어젯밤은 푹 주무셨는지
+• 식사는 잘 챙겨 드셨는지
+• 요즘 마음 상태는 어떤지
+• ${profile.interests[0]||'관심사'} 활동은 즐기고 계신지
+
+이렇게 매일 대화를 나누면서 ${profile.name}님만의 건강리포트를 만들어 드릴게요! 궁금한 게 있으면 언제든 물어보세요 😊`;
+    addBubble('assistant', intro);
+    messages.push({role:'assistant', content:intro});
+    await storeSet(todayKey('messages'), messages);
+  } else {
+    let lastUserText = null;
+    messages.forEach(m=>{
+      if(m.role === 'user'){ addBubble('user', m.content); lastUserText = m.content; }
+      else { addAssistantBlock(m.content, lastUserText); }
+    });
+  }
+  renderPinnedChecklist();
+}
+
+function hideSplash(){
+  const splash = document.getElementById('splashScreen');
+  if(!splash) return;
+  setTimeout(()=>{
+    splash.classList.add('fade-out');
+    setTimeout(()=> splash.remove(), 500);
+  }, 1100);
+}
+
+(async function init(){
+  profile = await storeGet('profile');
+  notifSettings = (await storeGet('notif-settings')) || notifSettings;
+  if(profile){
+    startApp(false);
+  } else {
+    renderObStep();
+  }
+  hideSplash();
+})();if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{ navigator.serviceWorker.register('/sw.js').catch(()=>{}); });
+}
+</script>
+</body>
+</html>
