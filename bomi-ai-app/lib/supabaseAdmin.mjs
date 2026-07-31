@@ -77,3 +77,33 @@ export async function upsertHealthSummary(memberId, summary) {
     body: { member_id: memberId, ...summary },
   });
 }
+
+export async function getCheckinSettings(code) {
+  const rows = await restRequest(
+    `bomi_checkin_settings?bomi_link_code=eq.${encodeURIComponent(code)}&limit=1`
+  );
+  return rows && rows[0] ? rows[0] : null;
+}
+
+export async function upsertCheckinSettings(code, settings) {
+  return restRequest('bomi_checkin_settings?on_conflict=bomi_link_code', {
+    method: 'POST',
+    headers: { Prefer: 'resolution=merge-duplicates' },
+    body: { bomi_link_code: code, ...settings, updated_at: new Date().toISOString() },
+  });
+}
+
+// 알림을 처음 켤 때(=푸시 구독 등록 시점) 기본 시간표로 한 행을 미리 만들어둡니다.
+// 이미 설정이 있으면(회원이 시간을 직접 조정해둔 경우) 절대 덮어쓰지 않도록
+// merge-duplicates가 아니라 ignore-duplicates를 씁니다.
+export async function ensureDefaultCheckinSettings(code) {
+  return restRequest('bomi_checkin_settings?on_conflict=bomi_link_code', {
+    method: 'POST',
+    headers: { Prefer: 'resolution=ignore-duplicates' },
+    body: { bomi_link_code: code },
+  });
+}
+
+export async function listEnabledCheckinSettings() {
+  return restRequest('bomi_checkin_settings?enabled=eq.true');
+}

@@ -569,6 +569,14 @@
         <button class="cl-add" id="addChecklistItem">+ 항목 추가</button>
       </div>
 
+      <div class="section-label">권한 설정</div>
+      <div class="info-card">
+        <div class="toggle-item">
+          <div><div class="lb">위치 정보 제공</div><div class="desc">날씨·교통 정보를 알려드릴 때 사용해요</div></div>
+          <label class="switch"><input type="checkbox" id="toggleLocation"><span class="slider"></span></label>
+        </div>
+      </div>
+
       <div class="section-label">알림 설정</div>
       <div class="info-card">
         <div class="toggle-item">
@@ -581,8 +589,23 @@
           <label class="switch"><input type="checkbox" id="toggleReport"><span class="slider"></span></label>
         </div>
         <div class="toggle-item">
-          <div><div class="lb">프로액티브 체크 알림</div><div class="desc">보미가 건강을 물어볼 때 알려드려요</div></div>
+          <div><div class="lb">건강 안부 문자</div><div class="desc">정해진 시간에 보미가 먼저 안부를 물어봐요</div></div>
           <label class="switch"><input type="checkbox" id="toggleProactive"><span class="slider"></span></label>
+        </div>
+        <div style="padding:0 0 12px 0;border-bottom:1px solid #F1EEE7;">
+          <button type="button" id="checkinTimesToggleBtn" style="background:none;border:none;color:var(--blue);font-size:12px;font-weight:700;cursor:pointer;padding:0;">시간 설정 ▾</button>
+          <div id="checkinTimesPanel" style="display:none;margin-top:12px;">
+            <div class="ob-field-label" style="margin-top:0;">수면 안부</div>
+            <input class="ob-input" type="time" id="checkinSleepTime" style="padding:10px;font-size:15px;">
+            <div class="ob-field-label">식사 안부</div>
+            <input class="ob-input" type="time" id="checkinMealTime" style="padding:10px;font-size:15px;">
+            <div class="ob-field-label">활동 안부</div>
+            <input class="ob-input" type="time" id="checkinActivityTime" style="padding:10px;font-size:15px;">
+            <div class="ob-field-label">기분·컨디션 안부</div>
+            <input class="ob-input" type="time" id="checkinMoodTime" style="padding:10px;font-size:15px;">
+            <button class="cl-add" id="saveCheckinTimesBtn" style="margin-top:10px;">저장</button>
+            <div id="checkinTimesSaveStatus" style="font-size:11px;color:var(--sub);margin-top:6px;"></div>
+          </div>
         </div>
         <div class="toggle-item">
           <div><div class="lb">심리 상태 체크 알림</div><div class="desc">기분 변화가 있을 때 알려드려요</div></div>
@@ -597,12 +620,6 @@
           <div class="crm-id" id="crmId"></div>
           <button class="copybtn" id="copyCrm">복사</button>
         </div>
-      </div>
-      <div class="section-label">📮 접수된 피드백 <span style="font-weight:400;color:var(--sub);">(전체 테스터 공개)</span></div>
-      <div class="info-card">
-        <div class="crm-note">⚠️ 지금은 이 기기(브라우저)에 저장된 피드백만 보여요. 여러 사람이 각자의 폰으로 남긴 피드백을 한곳에서 모아 보려면, 진짜 데이터베이스(서버)를 연결해야 해요.</div>
-        <div id="feedbackList"></div>
-        <button class="cl-add" id="refreshFeedback">새로고침</button>
       </div>
     </div>
   </div>
@@ -716,7 +733,7 @@ const DEFAULT_CHECKLIST_ITEMS = [
   { id:'lunch',  label:'오후 01:00 점심 식사' },
   { id:'walk',   label:'오후 04:00 산책 30분' },
 ];
-const TOTAL_STEPS = 5;
+const TOTAL_STEPS = 6;
 // 이 값은 공개되는 게 정상입니다(그래서 이름이 public) — 서버 쪽 VAPID_PRIVATE_KEY와
 // 반드시 한 쌍으로 발급된 값을 써야 합니다.
 const VAPID_PUBLIC_KEY = 'BEHe-CLJT7Y5q8Vk3aGKf1fqq-rkXGeKyN1Xbe-zG5QIhQalylfW7g8rRm3pm4QJBVqCPK8CUCvAxE8T5Fl4G8U';
@@ -730,7 +747,7 @@ let checklistItems = [];       // configurable list of {id, label}
 let checklistEnabled = true;   // shown/hidden in chat
 let pinnedExpanded = false;
 let obStep = 1;
-let obData = { name:'', birthYear:'', gender:'', height:'', weight:'', interests:[] };
+let obData = { name:'', birthYear:'', gender:'', height:'', weight:'', interests:[], locationConsent:null };
 
 /* ============ STORAGE HELPERS (real browser localStorage) ============ */
 function todayKey(prefix){ const d=new Date(); return `${prefix}:${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}`; }
@@ -832,6 +849,30 @@ function renderObStep(){
     });
     nextBtn.disabled = obData.interests.length === 0;
   }
+  else if(obStep === 6){
+    area.innerHTML = `
+      <div class="ob-title">위치 정보를 확인해도 될까요?</div>
+      <div class="ob-sub">오늘 날씨나 교통 정보를 알려드릴 때 필요해요. 나중에 설정에서 언제든 바꾸실 수 있어요.</div>
+      <div class="gender-row">
+        <div class="gender-card ${obData.locationConsent===true?'selected':''}" data-loc="allow"><span class="sym">📍</span><span class="lb">허용</span></div>
+        <div class="gender-card ${obData.locationConsent===false?'selected':''}" data-loc="deny"><span class="sym">✕</span><span class="lb">허용 안 함</span></div>
+      </div>
+      <div class="tip-box">💡 정확한 주소는 저장하지 않고, 날씨·교통 안내에만 사용해요.</div>
+    `;
+    area.querySelectorAll('.gender-card').forEach(c=>{
+      c.addEventListener('click', ()=>{
+        const allow = c.dataset.loc === 'allow';
+        obData.locationConsent = allow;
+        area.querySelectorAll('.gender-card').forEach(x=>x.classList.remove('selected'));
+        c.classList.add('selected');
+        nextBtn.disabled = false;
+        if(allow && navigator.geolocation){
+          navigator.geolocation.getCurrentPosition(()=>{}, ()=>{}, { timeout:8000 });
+        }
+      });
+    });
+    nextBtn.disabled = obData.locationConsent === null;
+  }
 }
 
 document.getElementById('obPrev').addEventListener('click', ()=>{ if(obStep>1){ obStep--; renderObStep(); } });
@@ -844,6 +885,7 @@ document.getElementById('obNext').addEventListener('click', async ()=>{
     height: parseFloat(obData.height),
     weight: parseFloat(obData.weight),
     interests: obData.interests,
+    locationConsent: !!obData.locationConsent,
     crmId: makeLinkCode()
   };
   await storeSet('profile', profile);
@@ -868,7 +910,7 @@ function showScreen(id){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
 }
-document.getElementById('menuBtn').addEventListener('click', ()=>{ renderProfile(); renderChecklistSettings(); renderFeedbackList(); showScreen('profileScreen'); });
+document.getElementById('menuBtn').addEventListener('click', ()=>{ renderProfile(); renderChecklistSettings(); showScreen('profileScreen'); });
 document.getElementById('profileBack').addEventListener('click', ()=> showScreen('chatScreen'));
 document.getElementById('reportCta').addEventListener('click', ()=>{ renderReport(); showScreen('reportScreen'); });
 document.getElementById('reportBack').addEventListener('click', ()=>{ renderProfile(); showScreen('profileScreen'); });
@@ -938,14 +980,85 @@ function renderProfile(){
   tagArea.appendChild(addBtn);
 
   document.getElementById('crmId').textContent = profile.crmId;
+  document.getElementById('toggleLocation').checked = !!profile.locationConsent;
   document.getElementById('togglePush').checked = !!notifSettings.push;
   document.getElementById('toggleReport').checked = notifSettings.report;
-  document.getElementById('toggleProactive').checked = notifSettings.proactive;
   document.getElementById('toggleMental').checked = notifSettings.mental;
+  loadCheckinSettingsUI();
 }
 document.getElementById('toggleReport').addEventListener('change', async (e)=>{ notifSettings.report = e.target.checked; await storeSet('notif-settings', notifSettings); });
-document.getElementById('toggleProactive').addEventListener('change', async (e)=>{ notifSettings.proactive = e.target.checked; await storeSet('notif-settings', notifSettings); });
 document.getElementById('toggleMental').addEventListener('change', async (e)=>{ notifSettings.mental = e.target.checked; await storeSet('notif-settings', notifSettings); });
+
+/* ============ 건강 안부 문자 (시간 설정 가능) ============ */
+// 실제 발송 여부/시간은 서버(bomi_checkin_settings, api/send-checkins.js 크론)가
+// 갖고 있으므로 여기선 항상 서버 값을 불러와서 화면에 반영합니다.
+let checkinSettingsCache = null;
+
+async function loadCheckinSettingsUI(){
+  if(!profile) return;
+  try{
+    const res = await fetch('/api/checkin-settings?code=' + encodeURIComponent(profile.crmId));
+    const s = await res.json();
+    checkinSettingsCache = s;
+    document.getElementById('toggleProactive').checked = !!s.enabled;
+    document.getElementById('checkinSleepTime').value = s.sleep_time || '10:00';
+    document.getElementById('checkinMealTime').value = s.meal_time || '19:00';
+    document.getElementById('checkinActivityTime').value = s.activity_time || '17:00';
+    document.getElementById('checkinMoodTime').value = s.mood_time || '20:00';
+  }catch(e){ /* 서버 연결 안 되면 화면 기본값 그대로 둠 */ }
+}
+
+document.getElementById('checkinTimesToggleBtn').addEventListener('click', ()=>{
+  const panel = document.getElementById('checkinTimesPanel');
+  const willShow = panel.style.display === 'none';
+  panel.style.display = willShow ? 'block' : 'none';
+});
+
+document.getElementById('toggleProactive').addEventListener('change', async (e)=>{
+  const enabled = e.target.checked;
+  if(enabled && !notifSettings.push){
+    const result = await enablePush();
+    if(result.ok){ notifSettings.push = true; await storeSet('notif-settings', notifSettings); document.getElementById('togglePush').checked = true; }
+  }
+  try{
+    await fetch('/api/checkin-settings', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        bomiLinkCode: profile.crmId, enabled,
+        sleepTime: (checkinSettingsCache && checkinSettingsCache.sleep_time) || '10:00',
+        mealTime: (checkinSettingsCache && checkinSettingsCache.meal_time) || '19:00',
+        activityTime: (checkinSettingsCache && checkinSettingsCache.activity_time) || '17:00',
+        moodTime: (checkinSettingsCache && checkinSettingsCache.mood_time) || '20:00',
+      }),
+    });
+  }catch(err){ /* 다음에 설정 화면 열 때 다시 시도하게 됨 */ }
+});
+
+document.getElementById('saveCheckinTimesBtn').addEventListener('click', async ()=>{
+  const status = document.getElementById('checkinTimesSaveStatus');
+  const payload = {
+    bomiLinkCode: profile.crmId,
+    enabled: document.getElementById('toggleProactive').checked,
+    sleepTime: document.getElementById('checkinSleepTime').value || '10:00',
+    mealTime: document.getElementById('checkinMealTime').value || '19:00',
+    activityTime: document.getElementById('checkinActivityTime').value || '17:00',
+    moodTime: document.getElementById('checkinMoodTime').value || '20:00',
+  };
+  try{
+    await fetch('/api/checkin-settings', {
+      method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload),
+    });
+    checkinSettingsCache = {
+      enabled: payload.enabled, sleep_time: payload.sleepTime, meal_time: payload.mealTime,
+      activity_time: payload.activityTime, mood_time: payload.moodTime,
+    };
+    status.textContent = '저장했어요.';
+    status.style.color = 'var(--blue)';
+  }catch(e){
+    status.textContent = '저장에 실패했어요. 다시 시도해주세요.';
+    status.style.color = 'var(--warn)';
+  }
+});
 
 /* ============ 실시간 알림(웹 푸시) ============ */
 // 회원 폰이 지원하면(대부분의 갤럭시/크롬은 지원) 구독 정보를 서버에 등록해서
@@ -988,6 +1101,32 @@ function renderPushStatusNote(text, isError){
   if(!note) return;
   note.textContent = text;
   note.style.color = isError ? 'var(--warn)' : 'var(--sub)';
+}
+
+/* ============ 위치 정보 동의 ============ */
+document.getElementById('toggleLocation').addEventListener('change', async (e)=>{
+  profile.locationConsent = e.target.checked;
+  await storeSet('profile', profile);
+  if(e.target.checked && navigator.geolocation){
+    navigator.geolocation.getCurrentPosition(()=>{}, ()=>{}, { timeout:8000 });
+  }
+});
+
+let cachedLocation = null;
+// 날씨·교통 질문에 실시간 검색이 더 정확히 답하도록 현재 위치를 함께 넘겨줍니다.
+// 동의 안 했으면 아예 시도하지 않고, 세션 중엔 위치를 한 번만 물어보고 재사용합니다.
+async function getLocationIfConsented(){
+  if(!profile || !profile.locationConsent || !navigator.geolocation) return null;
+  if(cachedLocation) return cachedLocation;
+  try{
+    const pos = await new Promise((resolve, reject)=>
+      navigator.geolocation.getCurrentPosition(resolve, reject, { timeout:5000 })
+    );
+    cachedLocation = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+    return cachedLocation;
+  }catch(e){
+    return null;
+  }
 }
 
 document.getElementById('togglePush').addEventListener('change', async (e)=>{
@@ -1306,7 +1445,7 @@ function addAssistantBlock(text, userText, animate){
 // 텍스트를 한 글자씩(성능을 위해 몇 글자씩 묶어서) 채워 넣는 타자기 효과.
 // 실제 API 스트리밍이 아니라, 이미 다 받은 응답을 화면에서만 흉내 내는 것.
 function typewriterReveal(chat, el, text, msPerTick){
-  msPerTick = msPerTick || 26;
+  msPerTick = msPerTick || 42;
   const charsPerTick = 2;
   return new Promise(resolve=>{
     let i = 0;
@@ -1420,11 +1559,15 @@ ${checklistLines}
 async function callBomi(userText){
   const history = messages.slice(-10).map(m=>({role:m.role, content:m.content}));
   history.push({role:'user', content:userText});
+  const loc = await getLocationIfConsented();
+  const sys = systemPrompt() + (loc
+    ? `\n\n사용자의 현재 위치(위도/경도): ${loc.lat.toFixed(4)}, ${loc.lng.toFixed(4)} — 날씨나 교통 관련 질문에는 이 위치를 기준으로 답하세요.`
+    : '');
   const response = await fetch("/api/chat", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      system: systemPrompt(),
+      system: sys,
       messages: history
     })
   });
@@ -1444,35 +1587,6 @@ async function saveFeedback(text){
     });
   }catch(e){}
 }
-
-async function renderFeedbackList(){
-  const container = document.getElementById('feedbackList');
-  container.innerHTML = '불러오는 중...';
-  try{
-    const keys = localKeysWithPrefix('feedback:').slice(-20).reverse();
-    if(keys.length === 0){
-      container.innerHTML = '<div class="cl-empty">아직 접수된 피드백이 없어요</div>';
-      return;
-    }
-    const items = [];
-    for(const k of keys){
-      const v = await storeGet(k);
-      if(v) items.push(v);
-    }
-    container.innerHTML = '';
-    if(items.length === 0){ container.innerHTML = '<div class="cl-empty">아직 접수된 피드백이 없어요</div>'; return; }
-    items.forEach(fb=>{
-      const d = new Date(fb.ts);
-      const row = document.createElement('div');
-      row.className = 'fb-row';
-      row.innerHTML = `<div class="fb-meta">${fb.name}님 · ${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}</div><div class="fb-msg">${fb.message}</div>`;
-      container.appendChild(row);
-    });
-  }catch(e){
-    container.innerHTML = '<div class="cl-empty">불러오지 못했어요</div>';
-  }
-}
-document.getElementById('refreshFeedback').addEventListener('click', renderFeedbackList);
 
 async function sendMessage(text){
   if(!text || !text.trim()) return;
