@@ -543,6 +543,9 @@
           <div><div class="lb">BMI 지수</div><div class="val" id="gBmi"></div></div>
           <div class="badge" id="gBmiBadge"></div>
         </div>
+        <div class="bmi-row" id="sajuDetailRow" style="display:none;">
+          <div><div class="lb">생일(음/양력) · 태어난 시간</div><div class="val" id="gBirthDetail" style="font-size:14px;"></div></div>
+        </div>
       </div>
 
       <div class="section-label">관심사</div>
@@ -956,6 +959,19 @@ function renderProfile(){
   const badge = document.getElementById('gBmiBadge');
   badge.textContent = b.cat;
   badge.className = 'badge ' + b.cls;
+
+  // 사주 기능을 한 번이라도 쓰면(생일 월/일·시간을 알려주면) 개인정보 카드에
+  // 표시 — 온보딩엔 넣지 않음(가입 화면부터 사주앱처럼 보이지 않도록).
+  const sajuRow = document.getElementById('sajuDetailRow');
+  if(profile.birthMonthDay){
+    sajuRow.style.display = 'flex';
+    const calLabel = profile.birthCalendarType === 'lunar' ? '음력' : '양력';
+    const [m, d] = profile.birthMonthDay.split('-');
+    const timeLabel = (profile.birthTimePeriod && profile.birthTimePeriod !== '모르겠어요') ? profile.birthTimePeriod : '시간 모름';
+    document.getElementById('gBirthDetail').textContent = `${calLabel} ${parseInt(m,10)}월 ${parseInt(d,10)}일 · ${timeLabel}`;
+  } else {
+    sajuRow.style.display = 'none';
+  }
 
   const tagArea = document.getElementById('tagArea');
   tagArea.innerHTML = '';
@@ -1535,11 +1551,28 @@ function addSuggestedOptions(options){
   addChoiceButtons(options);
 }
 
-/* ============ 사주 업그레이드: 생일(월/일)·태어난 시간대 수집 + 운 선택 메뉴 ============ */
+/* ============ 사주 업그레이드: 음/양력·생일(월/일)·태어난 시간(12시진) 수집 + 운 선택 메뉴 ============ */
 // 프로필엔 출생연도(profile.birthYear)만 있어서(온보딩이 연도만 물어봄), 정확한
-// 사주(사주팔자는 년/월/일/시 네 기둥)를 보려면 월/일과 태어난 시간대가 더 필요함.
-// 매번 물어보면 번거로우니 한 번만 물어보고 profile에 저장해서 재사용합니다.
-const SAJU_BIRTH_TIME_PERIODS = ['새벽 (23시~05시)', '오전 (05시~11시)', '낮 (11시~17시)', '저녁 (17시~23시)', '모르겠어요'];
+// 사주(사주팔자는 년/월/일/시 네 기둥)를 보려면 음/양력 구분·월/일·태어난 시간이
+// 더 필요함. 매번 물어보면 번거로우니 한 번만 물어보고 profile에 저장해서 재사용.
+// 시간은 정확한 시각 대신 전통 12시진(2시간 단위)으로 물어봅니다 — 사주 시주
+// 계산에 필요한 단위이면서, 어르신들이 실제로 기억하는 방식("새벽에 낳았다" 등)과도
+// 더 잘 맞습니다. 각 항목의 숫자는 그 시진의 대표 시각(서버의 시주 계산용)입니다.
+const SAJU_HOUR_BLOCKS = [
+  { label: '자시 (23시~01시)', hour: 0 },
+  { label: '축시 (01시~03시)', hour: 2 },
+  { label: '인시 (03시~05시)', hour: 4 },
+  { label: '묘시 (05시~07시)', hour: 6 },
+  { label: '진시 (07시~09시)', hour: 8 },
+  { label: '사시 (09시~11시)', hour: 10 },
+  { label: '오시 (11시~13시)', hour: 12 },
+  { label: '미시 (13시~15시)', hour: 14 },
+  { label: '신시 (15시~17시)', hour: 16 },
+  { label: '유시 (17시~19시)', hour: 18 },
+  { label: '술시 (19시~21시)', hour: 20 },
+  { label: '해시 (21시~23시)', hour: 22 },
+  { label: '모르겠어요', hour: null },
+];
 const SAJU_TOPICS = ['오늘의 총운', '재물운', '애정운', '건강운', '하시는 일 운'];
 
 // 실제 AI 호출 없이 클라이언트가 미리 준비한 안내 문구를 보미가 말하는 것처럼
@@ -1562,10 +1595,11 @@ function addLocalBubble(text){
 
 function addInlineBirthDateCard(onConfirm){
   const chat = document.getElementById('chat');
+  const isLunar = profile.birthCalendarType === 'lunar';
   const wrap = document.createElement('div');
   wrap.className = 'checklist-card';
   wrap.innerHTML = `
-    <div class="checklist-title">생일(월/일)을 알려주세요</div>
+    <div class="checklist-title">${isLunar ? '음력 기준 생일(월/일)을 알려주세요' : '생일(월/일)을 알려주세요'}</div>
     <input type="date" id="sajuBirthDateInput" style="width:100%;border:1px solid var(--line);border-radius:10px;padding:10px;font-size:15px;margin-bottom:10px;background:#FAF9F6;color:var(--ink);">
     <button type="button" id="sajuBirthDateConfirm" style="width:100%;padding:11px;border-radius:10px;border:none;background:var(--navy);color:#fff;font-weight:700;font-size:14px;cursor:pointer;">확인</button>
   `;
@@ -1582,23 +1616,37 @@ function addInlineBirthDateCard(onConfirm){
 }
 
 function startSajuFlow(){
-  if(!profile.birthMonthDay){
-    addLocalBubble('사주를 더 정확히 봐드리려면 생일(월/일)이 필요해요. 알려주시겠어요?');
-    addInlineBirthDateCard(async (monthDay)=>{
-      profile.birthMonthDay = monthDay;
+  if(!profile.birthCalendarType){
+    addLocalBubble('사주를 더 정확히 봐드리려면 몇 가지가 더 필요해요. 생신은 음력이세요, 양력이세요?');
+    addChoiceButtons(['양력', '음력'], async (choice)=>{
+      profile.birthCalendarType = choice === '음력' ? 'lunar' : 'solar';
       await storeSet('profile', profile);
-      askSajuBirthTimePeriod();
+      askSajuBirthMonthDay();
     });
   } else {
-    askSajuBirthTimePeriod();
+    askSajuBirthMonthDay();
   }
 }
 
-function askSajuBirthTimePeriod(){
-  if(!profile.birthTimePeriod){
-    addLocalBubble('태어나신 시간대도 알려주시겠어요? 정확히 모르셔도 괜찮아요.');
-    addChoiceButtons(SAJU_BIRTH_TIME_PERIODS, async (choice)=>{
-      profile.birthTimePeriod = choice;
+function askSajuBirthMonthDay(){
+  if(!profile.birthMonthDay){
+    addInlineBirthDateCard(async (monthDay)=>{
+      profile.birthMonthDay = monthDay;
+      await storeSet('profile', profile);
+      askSajuBirthTime();
+    });
+  } else {
+    askSajuBirthTime();
+  }
+}
+
+function askSajuBirthTime(){
+  if(profile.birthHour === undefined){
+    addLocalBubble('태어나신 시간도 알려주시겠어요? 정확히 모르셔도 괜찮아요.');
+    addChoiceButtons(SAJU_HOUR_BLOCKS.map(b=>b.label), async (label)=>{
+      const block = SAJU_HOUR_BLOCKS.find(b=>b.label === label);
+      profile.birthTimePeriod = label;
+      profile.birthHour = block ? block.hour : null;
       await storeSet('profile', profile);
       showSajuTopicMenu();
     });
@@ -1653,12 +1701,21 @@ async function callBomi(userText){
   const sys = systemPrompt() + (loc
     ? `\n\n사용자의 현재 위치(위도/경도): ${loc.lat.toFixed(4)}, ${loc.lng.toFixed(4)} — 날씨나 교통 관련 질문에는 이 위치를 기준으로 답하세요.`
     : '');
+  // 사주 정보가 있으면 함께 보내서, 서버가 정밀 사주팔자(만세력)를 계산해
+  // system 프롬프트에 실제 값으로 반영합니다(양력만 정밀 계산 가능 — api/chat.js 참고).
+  const sajuBirth = profile.birthMonthDay ? {
+    year: profile.birthYear,
+    monthDay: profile.birthMonthDay,
+    hour: profile.birthHour === undefined ? null : profile.birthHour,
+    calendarType: profile.birthCalendarType || 'solar',
+  } : null;
   const response = await fetch("/api/chat", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       system: sys,
-      messages: history
+      messages: history,
+      sajuBirth
     })
   });
   const data = await response.json();
