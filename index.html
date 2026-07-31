@@ -965,10 +965,12 @@ function renderProfile(){
   const sajuRow = document.getElementById('sajuDetailRow');
   if(profile.birthMonthDay){
     sajuRow.style.display = 'flex';
-    const calLabel = profile.birthCalendarType === 'lunar' ? '음력' : '양력';
+    const isLunar = profile.birthCalendarType === 'lunar';
+    const calLabel = isLunar ? '음력' : '양력';
+    const leapLabel = (isLunar && profile.birthIsLeapMonth) ? '(윤달)' : '';
     const [m, d] = profile.birthMonthDay.split('-');
     const timeLabel = (profile.birthTimePeriod && profile.birthTimePeriod !== '모르겠어요') ? profile.birthTimePeriod : '시간 모름';
-    document.getElementById('gBirthDetail').textContent = `${calLabel} ${parseInt(m,10)}월 ${parseInt(d,10)}일 · ${timeLabel}`;
+    document.getElementById('gBirthDetail').textContent = `${calLabel} ${parseInt(m,10)}월${leapLabel} ${parseInt(d,10)}일 · ${timeLabel}`;
   } else {
     sajuRow.style.display = 'none';
   }
@@ -1633,11 +1635,26 @@ function askSajuBirthMonthDay(){
     addInlineBirthDateCard(async (monthDay)=>{
       profile.birthMonthDay = monthDay;
       await storeSet('profile', profile);
-      askSajuBirthTime();
+      askSajuLeapMonth();
     });
   } else {
-    askSajuBirthTime();
+    askSajuLeapMonth();
   }
+}
+
+// 음력 생일은 윤달(2~3년에 한 번, 한 해에 같은 달이 두 번 있음) 여부에 따라
+// 실제 양력 날짜가 달라져서 정밀 계산에 꼭 필요함 — 양력이면 아예 건너뜀.
+function askSajuLeapMonth(){
+  if(profile.birthCalendarType !== 'lunar' || profile.birthIsLeapMonth !== undefined){
+    askSajuBirthTime();
+    return;
+  }
+  addLocalBubble('혹시 윤달에 태어나셨나요? 잘 모르시면 "아니요"를 골라주세요.');
+  addChoiceButtons(['네, 윤달이에요', '아니요'], async (choice)=>{
+    profile.birthIsLeapMonth = choice.startsWith('네');
+    await storeSet('profile', profile);
+    askSajuBirthTime();
+  });
 }
 
 function askSajuBirthTime(){
@@ -1702,12 +1719,14 @@ async function callBomi(userText){
     ? `\n\n사용자의 현재 위치(위도/경도): ${loc.lat.toFixed(4)}, ${loc.lng.toFixed(4)} — 날씨나 교통 관련 질문에는 이 위치를 기준으로 답하세요.`
     : '');
   // 사주 정보가 있으면 함께 보내서, 서버가 정밀 사주팔자(만세력)를 계산해
-  // system 프롬프트에 실제 값으로 반영합니다(양력만 정밀 계산 가능 — api/chat.js 참고).
+  // system 프롬프트에 실제 값으로 반영합니다 (api/chat.js가 음력이면 KASI API로
+  // 먼저 양력 변환을 시도).
   const sajuBirth = profile.birthMonthDay ? {
     year: profile.birthYear,
     monthDay: profile.birthMonthDay,
     hour: profile.birthHour === undefined ? null : profile.birthHour,
     calendarType: profile.birthCalendarType || 'solar',
+    isLeapMonth: !!profile.birthIsLeapMonth,
   } : null;
   const response = await fetch("/api/chat", {
     method: "POST",
