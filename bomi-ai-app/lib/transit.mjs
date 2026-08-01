@@ -46,7 +46,7 @@ export async function resolvePlace(place) {
 
 export async function searchTransitRoutes({ startLat, startLng, endLat, endLng }) {
   const key = process.env.ODSAY_API_KEY;
-  if (!key) return { paths: null, debug: 'no ODSAY_API_KEY set' };
+  if (!key) return null;
   try {
     const params = new URLSearchParams({
       apiKey: key,
@@ -54,13 +54,12 @@ export async function searchTransitRoutes({ startLat, startLng, endLat, endLng }
       EX: String(endLng), EY: String(endLat),
     });
     const response = await fetch(`https://api.odsay.com/v1/api/searchPubTransPathT?${params.toString()}`);
-    const data = await response.json().catch(() => null);
-    if (!response.ok) return { paths: null, debug: `http ${response.status}: ${JSON.stringify(data)}` };
+    if (!response.ok) return null;
+    const data = await response.json();
     const paths = data?.result?.path;
-    if (!Array.isArray(paths) || !paths.length) return { paths: null, debug: JSON.stringify(data) };
-    return { paths, debug: null };
+    return Array.isArray(paths) && paths.length ? paths : null;
   } catch (e) {
-    return { paths: null, debug: `exception: ${e.message}` };
+    return null;
   }
 }
 
