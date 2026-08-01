@@ -1582,7 +1582,7 @@ async function regenerateReply(userText){
     if(options.length) addSuggestedOptions(options);
   }catch(e){
     removeTyping();
-    addAssistantBlock('지금 연결이 원활하지 않아요. 잠시 후 다시 말씀해 주세요 🙏', userText, true);
+    addAssistantBlock('지금 연결이 원활하지 않아요. 잠시 후 다시 말씀해 주세요.', userText, true);
   }
 }
 
@@ -1985,7 +1985,7 @@ function systemPrompt(){
     : '';
   return `당신은 '보미'라는 이름의 다정한 AI 건강케어 비서입니다.
 대화 상대: ${profile.name}님, 만 ${age}세, ${profile.gender}, 키 ${profile.height}cm, 체중 ${profile.weight}kg, 관심사: ${profile.interests.join(', ')}.${sajuInfoLine}
-말투: 항상 존댓말, 짧고 쉬운 문장, 따뜻하고 친근하게. 호칭은 "${profile.name}님"으로.
+말투: 항상 존댓말, 짧고 쉬운 문장, 따뜻하고 친근하게. 답변 중간이나 끝에 이름을 부르거나 "님" 같은 호칭을 붙이지 말고, 바로 본론으로 깔끔하게 답하세요.
 역할: 수면, 식사, 통증, 복약, 정서 상태를 먼저 챙기고, 관심사(${profile.interests.join(', ')})를 활용해 친밀하게 대화하세요.
 오늘의 체크리스트 현황(어르신이 복약/식사/일정을 기억 못 하실 때 이 정보로 정확히 답해주세요):
 ${checklistLines}
@@ -1996,12 +1996,14 @@ ${checklistLines}
 - 매일 아침 인사나 안부 질문은 최대한 다양하게 표현하고, 최근에 나눈 대화 내용을 반영해 형식적으로 반복되지 않도록 하세요.
 
 주제별 답변 형식 (해당하는 주제면 이 방향을 따르되, 위 규칙대로 단답으로 끝내지 마세요):
-- 오늘 날씨: 이 주제는 예외적으로 풀어서 설명하지 마세요. 이름을 부르거나 "~님, 알려드릴게요" 같은 인사말·서두 없이 곧바로 아래 4줄부터 시작하세요(각 줄 줄바꿈, 군더더기 문장 없이):
+- 오늘 날씨: 이 주제는 예외적으로 풀어서 설명하지 마세요. 인사말·서두 없이 곧바로 아래 5줄부터 시작하세요(각 줄 줄바꿈, 군더더기 문장 없이):
   현재 위치(구/동 단위)
   기온 — 반드시 숫자(예: "18도")로, 체감온도가 확인되면 함께. "맑음"·"흐림" 같은 날씨 상태 단어만 쓰고 숫자를 빼지 마세요.
   강수확률과 강수량 — 반드시 숫자(예: "강수확률 30%, 강수량 0mm")로.
+  미세먼지 — 농도 등급(예: "미세먼지 보통", "미세먼지 나쁨")으로, 확인되면 수치도 함께.
   마지막 줄에 선크림·우산·겉옷 등 그날 날씨에 맞는 준비물을 한 문장으로 챙겨주는 멘트
   위치 정보가 없으면 위치를 먼저 여쭤보고, 검색해도 구체적인 숫자를 못 찾으면 추측해서 채우지 말고 "확인이 어렵다"고 솔직히 말하세요.
+  날씨 답변 뒤에 붙는 선택지 중 하나는 반드시 "내일 날씨도 궁금하신가요?"로 하세요.
 - 검색/일반 지식: 결론을 먼저 한두 문장으로 말한 뒤, 어르신이 궁금해하실 배경이나 이유를 자연스럽게 덧붙이세요.
 - 지도/길찾기/교통: 구체적인 출발지·도착지 경로 안내는 화면 아래 "대중교통 이용" 버튼을 누르면 정확한 경로를 카드로 보여준다고 안내하세요(직접 경로·시간을 지어내지 마세요). 그 외 일반적인 교통 질문은 도움이 될 만한 일반적인 방법을 편하게 풀어서 안내하세요.
 - 사주/운세: 재미로 보는 것임을 짧게 밝히고, 생일·태어난 시간대 정보가 있으면 그걸 반영해 그 사람만을 위한 이야기처럼 구체적으로 풀어서 답하세요(정보가 없으면 연 단위로만 가볍게). 사용자가 재물운/애정운/건강운/직장운/총운 중 무엇을 물었는지에 맞춰 그 주제 중심으로 답하세요. "반드시 ~된다" 같은 단정적 예언 표현은 쓰지 마세요.
@@ -2042,9 +2044,9 @@ async function callBomi(userText){
   const data = await response.json();
   if(!response.ok){
     console.error('chat api error:', data.error);
-    return `죄송해요 ${profile.name}님, 지금 대답이 어려워요. 다시 말씀해 주시겠어요?`;
+    return `죄송해요, 지금 대답이 어려워요. 다시 말씀해 주시겠어요?`;
   }
-  return data.reply || `죄송해요 ${profile.name}님, 지금 대답이 어려워요. 다시 말씀해 주시겠어요?`;
+  return data.reply || `죄송해요, 지금 대답이 어려워요. 다시 말씀해 주시겠어요?`;
 }
 
 async function saveFeedback(text){
@@ -2074,7 +2076,7 @@ async function sendMessage(text){
     if(options.length) addSuggestedOptions(options);
   }catch(e){
     removeTyping();
-    addAssistantBlock('지금 연결이 원활하지 않아요. 잠시 후 다시 말씀해 주세요 🙏', text, true);
+    addAssistantBlock('지금 연결이 원활하지 않아요. 잠시 후 다시 말씀해 주세요.', text, true);
   }
   document.getElementById('sendBtn').disabled = false;
 }
@@ -2144,7 +2146,7 @@ async function startApp(isNew){
   showScreen('chatScreen');
 
   if(messages.length === 0){
-    const intro = `${profile.name}님, 반가워요! 보미가 매일 이런 걸 여쭤볼게요:
+    const intro = `반가워요! 보미가 매일 이런 걸 여쭤볼게요:
 
 • 오늘 컨디션은 어떠신지
 • 어젯밤은 푹 주무셨는지
@@ -2152,7 +2154,7 @@ async function startApp(isNew){
 • 요즘 마음 상태는 어떤지
 • ${profile.interests[0]||'관심사'} 활동은 즐기고 계신지
 
-이렇게 매일 대화를 나누면서 ${profile.name}님만의 건강리포트를 만들어 드릴게요! 궁금한 게 있으면 언제든 물어보세요 😊`;
+이렇게 매일 대화를 나누면서 건강리포트를 만들어 드릴게요! 궁금한 게 있으면 언제든 물어보세요.`;
     addBubble('assistant', intro);
     messages.push({role:'assistant', content:intro});
     await storeSet(todayKey('messages'), messages);
