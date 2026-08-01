@@ -28,12 +28,13 @@ export default async function handler(req, res) {
       return;
     }
 
-    const paths = await searchTransitRoutes({
+    const routeResult = await searchTransitRoutes({
       startLat: originPlace.lat, startLng: originPlace.lng,
       endLat: destPlace.lat, endLng: destPlace.lng,
     });
+    const paths = routeResult.paths;
     if (!paths) {
-      res.status(200).json({ ok: false, message: '대중교통 경로를 찾지 못했어요.' });
+      res.status(200).json({ ok: false, message: '대중교통 경로를 찾지 못했어요.', _debug: routeResult.debug });
       return;
     }
 
