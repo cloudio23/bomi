@@ -2492,22 +2492,26 @@ async function startApp(isNew){
   syncHealthSummaryIfConsented();
 }
 
-// 앱을 열 때마다 하루 1회, 동의된 회원의 건강리포트 요약만 서버로 보냅니다.
-// 원본 대화가 아니라 이미 계산된 요약 점수/소견만 보내고, 동의 여부는 서버
-// (api/sync-health-summary.js)가 bomi_links.status로 다시 한 번 확인합니다 —
-// 클라이언트가 동의 안 된 상태에서 호출해도 서버가 조용히 무시하므로 안전합니다.
+// 앱을 열 때마다 하루 1회, 동의된 회원의 "실제로 있는" 데이터만 서버로
+// 보냅니다 — 체크리스트 완료 개수(사용자가 직접 체크한 것)와 걸음수(네이티브
+// 앱의 Health Connect에서 받은 실측값, 없으면 null)만 보내고, 예전처럼
+// AI가 지어낸 수면/기분/영양/활동 "점수"는 절대 만들지도 보내지도 않습니다 —
+// 트레이너가 이걸 실제 건강 데이터로 오해하면 안 되기 때문입니다(2026-08-02
+// QA 감사에서 발견: 지어낸 점수가 CRM에 실제 데이터처럼 동기화되던 문제 수정).
+// 동의 여부는 서버(api/sync-health-summary.js)가 bomi_links.status로 다시
+// 한 번 확인합니다 — 클라이언트가 동의 안 된 상태에서 호출해도 서버가 조용히
+// 무시하므로 안전합니다.
 async function syncHealthSummaryIfConsented(){
   if(!profile || !profile.crmId) return;
   try{
-    const { sleep, mental, nutri, act, overall } = computeScores();
     const dateStr = new Date().toISOString().slice(0,10);
-    const summaryText = overall>=80 ? '컨디션이 아주 좋아요' : overall>=60 ? '무난한 상태예요' : '조금 더 챙겨볼까요';
+    const checklistCompleted = checklistItems.filter(it=>checklistState[it.id]).length;
     await fetch('/api/sync-health-summary', {
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({
         bomiLinkCode: profile.crmId, date: dateStr,
-        sleepScore: sleep, nutritionScore: nutri, activityScore: act, mentalScore: mental, overallScore: overall,
-        summaryText,
+        checklistCompleted, checklistTotal: checklistItems.length,
+        steps: todaySteps, stepGoal: todaySteps !== null ? stepGoal : null,
       }),
     });
   }catch(e){ /* 네트워크 문제면 조용히 넘어감 — 다음에 앱을 열 때 다시 시도됨 */ }
