@@ -8,12 +8,17 @@
 import { listEnabledCheckinSettings, getPushSubscription } from '../lib/supabaseAdmin.mjs';
 import { sendPush } from '../lib/push.mjs';
 
-const CHECKIN_FIELDS = {
-  sleep_time: '간밤에 잘 주무셨어요? 오늘 컨디션이 궁금해요.',
-  meal_time: '오늘 식사는 잘 챙기셨나요? 어떠셨는지 들려주세요.',
-  activity_time: '오늘은 어떤 운동이나 활동을 하셨을까요?',
-  mood_time: '평안한 하루 보내고 계신가요? 지금 기분이나 컨디션은 어떠세요?',
-};
+// 각 항목은 자기만의 enabled 플래그(enabledField)를 가져서, 안부 문자 전체를
+// 꺼도 건강리포트 알림만 따로 켜둘 수 있습니다(반대도 가능). 건강리포트는
+// type이 달라서(health_report_ready) sw.js가 알림을 탭했을 때 채팅이 아니라
+// 리포트 화면(광고/구독 게이트)으로 바로 이동시킵니다.
+const NOTIF_FIELDS = [
+  { timeField: 'sleep_time', enabledField: 'enabled', type: 'checkin', title: '보미가 안부를 물어요', body: '간밤에 잘 주무셨어요? 오늘 컨디션이 궁금해요.' },
+  { timeField: 'meal_time', enabledField: 'enabled', type: 'checkin', title: '보미가 안부를 물어요', body: '오늘 식사는 잘 챙기셨나요? 어떠셨는지 들려주세요.' },
+  { timeField: 'activity_time', enabledField: 'enabled', type: 'checkin', title: '보미가 안부를 물어요', body: '오늘은 어떤 운동이나 활동을 하셨을까요?' },
+  { timeField: 'mood_time', enabledField: 'enabled', type: 'checkin', title: '보미가 안부를 물어요', body: '평안한 하루 보내고 계신가요? 지금 기분이나 컨디션은 어떠세요?' },
+  { timeField: 'report_time', enabledField: 'report_enabled', type: 'health_report_ready', title: '오늘의 건강리포트가 나왔어요', body: '광고를 보거나 구독하면 바로 확인하실 수 있어요.' },
+];
 
 function currentKstHour() {
   const kst = new Date(Date.now() + 9 * 60 * 60 * 1000); // UTC → KST
@@ -34,17 +39,18 @@ export default async function handler(req, res) {
     let matched = 0;
 
     for (const s of settingsList || []) {
-      for (const field of Object.keys(CHECKIN_FIELDS)) {
-        const configuredHour = parseInt((s[field] || '').split(':')[0], 10);
+      for (const field of NOTIF_FIELDS) {
+        if (!s[field.enabledField]) continue;
+        const configuredHour = parseInt((s[field.timeField] || '').split(':')[0], 10);
         if (configuredHour !== hour) continue;
         matched += 1;
         const sub = await getPushSubscription(s.bomi_link_code);
         if (!sub) continue;
         try {
           await sendPush(sub.subscription, {
-            type: 'checkin',
-            title: '보미가 안부를 물어요',
-            body: CHECKIN_FIELDS[field],
+            type: field.type,
+            title: field.title,
+            body: field.body,
           });
           sent += 1;
         } catch (e) {

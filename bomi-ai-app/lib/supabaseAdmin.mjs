@@ -104,6 +104,9 @@ export async function ensureDefaultCheckinSettings(code) {
   });
 }
 
+// 안부 문자(enabled)와 건강리포트 알림(report_enabled)은 서로 독립적으로 켜고 끌
+// 수 있어서, 둘 중 하나라도 켜진 행을 가져온 다음 send-checkins.js가 항목별로
+// 각자의 enabled 플래그를 다시 확인합니다.
 export async function listEnabledCheckinSettings() {
-  return restRequest('bomi_checkin_settings?enabled=eq.true');
+  return restRequest('bomi_checkin_settings?or=(enabled.eq.true,report_enabled.eq.true)');
 }

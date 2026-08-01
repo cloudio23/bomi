@@ -24,8 +24,10 @@ self.addEventListener('push', (e) => {
 // 쿼리 파라미터를 붙여서 index.html이 로드 직후 바로 확인할 수 있게 합니다.
 self.addEventListener('notificationclick', (e) => {
   e.notification.close();
-  const isLinkRequest = e.notification.data && e.notification.data.type === 'link_request';
-  const targetUrl = isLinkRequest ? '/?consent=1' : '/';
+  const notifType = e.notification.data && e.notification.data.type;
+  const targetUrl = notifType === 'link_request' ? '/?consent=1'
+    : notifType === 'health_report_ready' ? '/?report=1'
+    : '/';
   e.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
       for (const client of clientList) {
