@@ -197,8 +197,25 @@
   .autocomplete-item{ padding:11px 13px; cursor:pointer; border-bottom:1px solid #F1EEE7; }
   .autocomplete-item:last-child{ border-bottom:none; }
   .autocomplete-item:hover{ background:#FAF9F6; }
-  .autocomplete-item .place-name{ font-size:15px; font-weight:700; color:var(--ink); }
-  .autocomplete-item .place-addr{ font-size:12px; color:var(--sub); margin-top:2px; }
+  .autocomplete-item .place-name{ font-size:calc(15px * var(--app-font-scale)); font-weight:700; color:var(--ink); }
+  .autocomplete-item .place-addr{ font-size:calc(12px * var(--app-font-scale)); color:var(--sub); margin-top:2px; }
+
+  /* ---------- 대중교통 결과 카드(AI 서술 없이 구조화된 카드로 표시) ---------- */
+  .transit-result-card{ background:#fff; border:1px solid var(--line); border-radius:16px; padding:15px; max-width:86%; }
+  .transit-route-head{ font-size:calc(13px * var(--app-font-scale)); font-weight:700; color:var(--sub); margin-bottom:11px; }
+  .transit-route-head b{ color:var(--ink); }
+  .transit-step{ display:flex; align-items:center; gap:11px; padding:9px 0; border-bottom:1px solid #F1EEE7; }
+  .transit-step:last-of-type{ border-bottom:none; }
+  .transit-step-icon{ width:34px; height:34px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:calc(16px * var(--app-font-scale)); flex-shrink:0; background:#F1EEE7; }
+  .transit-step-icon.walk{ background:#EFEFEF; }
+  .transit-step-icon.subway{ background:#E3EEFB; }
+  .transit-step-icon.bus{ background:#E7F5EA; }
+  .transit-step-body{ flex:1; min-width:0; }
+  .transit-step-label{ font-size:calc(15px * var(--app-font-scale)); font-weight:700; color:var(--ink); }
+  .transit-step-eta{ font-size:calc(12px * var(--app-font-scale)); color:var(--sub); margin-top:2px; }
+  .transit-card-total{ display:flex; justify-content:space-between; align-items:baseline; margin-top:11px; padding-top:11px; border-top:1.5px solid var(--line); }
+  .transit-card-total .lb{ font-size:calc(13px * var(--app-font-scale)); color:var(--sub); font-weight:600; }
+  .transit-card-total .val{ font-size:calc(16px * var(--app-font-scale)); color:var(--navy); font-weight:800; }
 
   .quickchips{ display:flex; gap:12px; padding:10px 16px 14px 16px; overflow-x:auto; flex-shrink:0; background:#F6F3EE; }
   .chip{ flex-shrink:0; background:#fff; border:1px solid var(--line); color:var(--ink); font-size:calc(15px * var(--app-font-scale)); font-weight:600;
@@ -1654,6 +1671,7 @@ function addLocalBubble(text){
   wrap.appendChild(content);
   chat.appendChild(wrap);
   chat.scrollTop = chat.scrollHeight;
+  return wrap;
 }
 
 // 사주 흐름의 addInlineBirthDateCard와 같은 패턴이지만 자유 텍스트 입력용
@@ -1679,10 +1697,10 @@ function addInlineTextCard(title, placeholder, onConfirm){
   setTimeout(()=>input.focus(), 50);
 }
 
-/* ============ 대중교통 길찾기 (카카오 로컬 API + ODsay API, api/chat.js 참고) ============ */
-// 다음에 보낼 메시지 하나에만 붙는 일회성 컨텍스트 — callBomi()가 참조 후 바로
-// 비웁니다. 출발지/목적지 텍스트 자체는 여기서 좌표로 바꾸지 않고(그건 서버가 함).
-let pendingTransitQuery = null;
+/* ============ 대중교통 길찾기 (카카오 로컬 API + ODsay API, api/transit-route.js 참고) ============ */
+// AI를 거치지 않고 /api/transit-route를 직접 호출해서 구조화된 JSON을 받아
+// 카드로 그립니다 — 버스/지하철 선호를 더는 물어보지 않고, 가장 빠른 경로
+// 하나만 도보/지하철/버스 구간별로 보여줍니다.
 
 function escapeHtml(s){
   const d = document.createElement('div');
@@ -1746,12 +1764,12 @@ function addInlineRouteCard(onConfirm){
     <div class="checklist-title">어디서 어디로 가시나요?</div>
     <div class="ob-field-label" style="margin-top:0;">출발지</div>
     <div class="autocomplete-wrap">
-      <input type="text" id="transitOriginInput" placeholder="비워두면 현재 위치로 안내해요" style="width:100%;border:1px solid var(--line);border-radius:10px;padding:10px;font-size:15px;background:#FAF9F6;color:var(--ink);">
+      <input type="text" id="transitOriginInput" placeholder="비워두면 현재 위치로 안내해요" style="width:100%;border:1px solid var(--line);border-radius:10px;padding:10px;font-size:calc(15px * var(--app-font-scale));background:#FAF9F6;color:var(--ink);">
       <div class="autocomplete-list" id="transitOriginList"></div>
     </div>
     <div class="ob-field-label">도착지</div>
     <div class="autocomplete-wrap">
-      <input type="text" id="transitDestInput" placeholder="예: 강남역, 서울대학교병원" style="width:100%;border:1px solid var(--line);border-radius:10px;padding:10px;font-size:15px;background:#FAF9F6;color:var(--ink);">
+      <input type="text" id="transitDestInput" placeholder="예: 강남역, 서울대학교병원" style="width:100%;border:1px solid var(--line);border-radius:10px;padding:10px;font-size:calc(15px * var(--app-font-scale));background:#FAF9F6;color:var(--ink);">
       <div class="autocomplete-list" id="transitDestList"></div>
     </div>
     <button type="button" id="transitRouteConfirm" style="width:100%;padding:11px;border-radius:10px;border:none;background:var(--navy);color:#fff;font-weight:700;font-size:14px;cursor:pointer;margin-top:4px;">확인</button>
@@ -1782,19 +1800,58 @@ function addInlineRouteCard(onConfirm){
 
 function startTransitFlow(){
   addInlineRouteCard(({ origin, destination, originResolved, destResolved })=>{
-    askTransitPreference(origin, destination, originResolved, destResolved);
+    runTransitSearch(origin, destination, originResolved, destResolved);
   });
 }
 
-function askTransitPreference(origin, destination, originResolved, destResolved){
-  addLocalBubble('버스와 지하철 중 어느 쪽을 더 선호하세요?');
-  addChoiceButtons(['버스 선호', '지하철 선호', '상관없음'], (choice)=>{
-    const preference = choice === '버스 선호' ? 'bus' : choice === '지하철 선호' ? 'subway' : 'any';
-    finalizeTransitQuery(origin, destination, preference, originResolved, destResolved);
-  });
+// 지금부터 N분 뒤 시각을 "오후 3시 32분" 형식으로 돌려줍니다 — 지하철/버스
+// 구간에만 붙여서 도착 예정 시각을 감 잡을 수 있게 하고, 도보 구간은 굳이
+// 시각까지 안 보여줘도 되는 정보라 소요시간만 표시합니다.
+function formatKoreanClock(minutesFromNow){
+  const d = new Date(Date.now() + minutesFromNow * 60000);
+  let h = d.getHours();
+  const m = d.getMinutes();
+  const period = h < 12 ? '오전' : '오후';
+  h = h % 12; if(h === 0) h = 12;
+  return `${period} ${h}시 ${String(m).padStart(2,'0')}분`;
 }
 
-async function finalizeTransitQuery(origin, destination, preference, originResolved, destResolved){
+const TRANSIT_STEP_ICON = { walk:'🚶', subway:'🚇', bus:'🚌' };
+
+// 서버가 이미 계산해 준 구간(segments)을 그대로 순서대로 보여주는 카드 —
+// AI 문장으로 풀어 쓰지 않아서 "글로 나열하는" 느낌이 없습니다. 지하철/버스
+// 구간에만 누적 소요시간 기준 예상 도착 시각을 계산해 붙입니다.
+function addTransitResultCard(data){
+  const chat = document.getElementById('chat');
+  const wrap = document.createElement('div');
+  wrap.className = 'transit-result-card';
+  let elapsed = 0;
+  const stepsHtml = data.segments.map(seg=>{
+    elapsed += seg.minutes || 0;
+    const etaHtml = seg.type === 'walk' ? '' : `<div class="transit-step-eta">${formatKoreanClock(elapsed)} 도착 예정</div>`;
+    return `
+      <div class="transit-step">
+        <div class="transit-step-icon ${seg.type}">${TRANSIT_STEP_ICON[seg.type] || ''}</div>
+        <div class="transit-step-body">
+          <div class="transit-step-label">${escapeHtml(seg.label)}</div>
+          ${etaHtml}
+        </div>
+      </div>
+    `;
+  }).join('');
+  wrap.innerHTML = `
+    <div class="transit-route-head"><b>${escapeHtml(data.origin.placeName)}</b>에서 <b>${escapeHtml(data.destination.placeName)}</b>까지</div>
+    ${stepsHtml}
+    <div class="transit-card-total">
+      <span class="lb">총 소요시간</span>
+      <span class="val">${data.totalMinutes}분 · ${formatKoreanClock(data.totalMinutes)} 도착</span>
+    </div>
+  `;
+  chat.appendChild(wrap);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+async function runTransitSearch(origin, destination, originResolved, destResolved){
   // 자동완성으로 고른 좌표가 있으면 그걸 그대로 쓰고(가장 정확), 없으면 텍스트만
   // 넘겨서 서버가 지오코딩하게 합니다(자동완성 없이 직접 타이핑한 경우 대비).
   let originPayload = originResolved
@@ -1813,8 +1870,25 @@ async function finalizeTransitQuery(origin, destination, preference, originResol
   const destPayload = destResolved
     ? { text: destination, lat: destResolved.lat, lng: destResolved.lng, placeName: destResolved.placeName }
     : { text: destination };
-  pendingTransitQuery = { destination: destPayload, origin: originPayload, preference };
-  sendMessage(`${origin ? origin+'에서 ' : ''}${destination}까지 가는 방법 알려줘`);
+
+  const loadingBubble = addLocalBubble('경로를 확인하고 있어요...');
+  try{
+    const response = await fetch('/api/transit-route', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ origin: originPayload, destination: destPayload })
+    });
+    const data = await response.json();
+    loadingBubble.remove();
+    if(!data.ok){
+      addLocalBubble(data.message || '경로를 찾지 못했어요.');
+      return;
+    }
+    addTransitResultCard(data);
+  }catch(e){
+    loadingBubble.remove();
+    addLocalBubble('경로를 확인하는 중 문제가 생겼어요. 잠시 후 다시 시도해주시겠어요?');
+  }
 }
 document.getElementById('transitChip').addEventListener('click', startTransitFlow);
 
@@ -1923,7 +1997,7 @@ ${checklistLines}
 
 주제별 답변 형식 (해당하는 주제면 이 방향을 따르되, 위 규칙대로 단답으로 끝내지 마세요):
 - 검색/일반 지식: 결론을 먼저 한두 문장으로 말한 뒤, 어르신이 궁금해하실 배경이나 이유를 자연스럽게 덧붙이세요.
-- 지도/길찾기/교통: [교통 참고 정보]가 함께 왔으면 그건 실제로 조회된 경로이니 그 내용을 바탕으로 친절하게 설명하세요(직접 계산하거나 지어내지 마세요). [교통 참고 정보]가 없는 일반적인 교통 질문(목적지 없이 "버스 언제 와?" 등)은 아직 그 경로까지는 못 찾는다고 안내한 뒤 도움이 될 만한 일반적인 방법을 편하게 풀어서 안내하세요.
+- 지도/길찾기/교통: 구체적인 출발지·도착지 경로 안내는 화면 아래 "대중교통 이용" 버튼을 누르면 정확한 경로를 카드로 보여준다고 안내하세요(직접 경로·시간을 지어내지 마세요). 그 외 일반적인 교통 질문은 도움이 될 만한 일반적인 방법을 편하게 풀어서 안내하세요.
 - 사주/운세: 재미로 보는 것임을 짧게 밝히고, 생일·태어난 시간대 정보가 있으면 그걸 반영해 그 사람만을 위한 이야기처럼 구체적으로 풀어서 답하세요(정보가 없으면 연 단위로만 가볍게). 사용자가 재물운/애정운/건강운/직장운/총운 중 무엇을 물었는지에 맞춰 그 주제 중심으로 답하세요. "반드시 ~된다" 같은 단정적 예언 표현은 쓰지 마세요.
 - 경제/주가/투자: 특정 종목의 매수·매도를 추천하지 말고, 실시간 시세는 확인할 수 없다고 안내한 뒤 일반적인 경제 개념을 이해하기 쉽게 풀어서 설명하세요.
 - 부동산 정책/정치 뉴스: 사실 위주로 중립적으로 요약하고, 특정 정당·정책에 대한 찬반 의견이나 지지 표현은 절대 하지 마세요.
@@ -1951,19 +2025,13 @@ async function callBomi(userText){
     calendarType: profile.birthCalendarType || 'solar',
     isLeapMonth: !!profile.birthIsLeapMonth,
   } : null;
-  // 길찾기 흐름(startTransitFlow)에서 만든 목적지+현재위치는 다음 메시지 하나에만
-  // 붙이고 바로 비웁니다 — 그 뒤 대화에서 계속 재사용하면 엉뚱한 질문에도
-  // 이전 목적지 경로 정보가 딸려가서 혼란을 줄 수 있음.
-  const transitQuery = pendingTransitQuery;
-  pendingTransitQuery = null;
   const response = await fetch("/api/chat", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       system: sys,
       messages: history,
-      sajuBirth,
-      transitQuery
+      sajuBirth
     })
   });
   const data = await response.json();
