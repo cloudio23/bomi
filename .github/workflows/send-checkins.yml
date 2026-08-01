@@ -13,5 +13,5 @@ jobs:
   ping:
     runs-on: ubuntu-latest
     steps:
-      - name: Call /api/send-checkins
-        run: curl -sf https://bomi-7sbu.vercel.app/api/send-checkins
+      - name: Call /api/notifications?action=checkins
+        run: curl -sf "https://bomi-7sbu.vercel.app/api/notifications?action=checkins"

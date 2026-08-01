@@ -1262,8 +1262,9 @@ document.querySelectorAll('#textSizeRow .gender-card').forEach(card=>{
 });
 
 /* ============ 건강 안부 문자 (시간 설정 가능) ============ */
-// 실제 발송 여부/시간은 서버(bomi_checkin_settings, api/send-checkins.js 크론)가
-// 갖고 있으므로 여기선 항상 서버 값을 불러와서 화면에 반영합니다.
+// 실제 발송 여부/시간은 서버(bomi_checkin_settings, api/notifications.js의
+// ?action=checkins 크론)가 갖고 있으므로 여기선 항상 서버 값을 불러와서
+// 화면에 반영합니다.
 let checkinSettingsCache = null;
 
 async function loadCheckinSettingsUI(){
@@ -1367,7 +1368,7 @@ async function enablePush(){
     });
   }
   try{
-    await fetch('/api/push-subscribe', {
+    await fetch('/api/notifications?action=subscribe', {
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ bomiLinkCode: profile.crmId, subscription: sub.toJSON() }),
     });
@@ -1445,7 +1446,7 @@ document.getElementById('copyCrm').addEventListener('click', ()=>{
 async function maybeShowConsentScreen(){
   if(!profile) return;
   try{
-    const res = await fetch('/api/check-link-status?code=' + encodeURIComponent(profile.crmId));
+    const res = await fetch('/api/link?action=status&code=' + encodeURIComponent(profile.crmId));
     const data = await res.json();
     if(data.status === 'pending'){
       showScreen('consentScreen');
@@ -1468,7 +1469,7 @@ function maybeShowReportFromNotification(){
 
 async function respondToConsent(decision){
   try{
-    await fetch('/api/consent-respond', {
+    await fetch('/api/link?action=consent', {
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ bomiLinkCode: profile.crmId, decision }),
     });
@@ -1896,8 +1897,8 @@ function addInlineTextCard(title, placeholder, onConfirm){
   setTimeout(()=>input.focus(), 50);
 }
 
-/* ============ 대중교통 길찾기 (카카오 로컬 API + ODsay API, api/transit-route.js 참고) ============ */
-// AI를 거치지 않고 /api/transit-route를 직접 호출해서 구조화된 JSON을 받아
+/* ============ 대중교통 길찾기 (카카오 로컬 API + ODsay API, api/location.js 참고) ============ */
+// AI를 거치지 않고 /api/location?action=route를 직접 호출해서 구조화된 JSON을 받아
 // 카드로 그립니다 — 버스/지하철 선호를 더는 물어보지 않고, 가장 빠른 경로
 // 하나만 도보/지하철/버스 구간별로 보여줍니다.
 
@@ -1940,7 +1941,7 @@ function setupAutocomplete(inputEl, listEl, onSelect){
     if(query.length < 2){ hide(); return; }
     debounceTimer = setTimeout(async ()=>{
       try{
-        const res = await fetch('/api/geocode-search?query=' + encodeURIComponent(query));
+        const res = await fetch('/api/location?action=search&query=' + encodeURIComponent(query));
         const data = await res.json();
         results = data.results || [];
         render();
@@ -2072,7 +2073,7 @@ async function runTransitSearch(origin, destination, originResolved, destResolve
 
   const loadingBubble = addLocalBubble('경로를 확인하고 있어요...');
   try{
-    const response = await fetch('/api/transit-route', {
+    const response = await fetch('/api/location?action=route', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ origin: originPayload, destination: destPayload })

@@ -5,7 +5,7 @@ self.addEventListener('fetch', (e) => {
   // 오프라인 캐싱이 필요해지면 여기에 로직을 추가하면 됩니다.
 });
 
-// 서버(api/notify-link-request.js, api/daily-greeting.js)가 보낸 푸시를 받아서
+// 서버(api/link.js의 ?action=notify, api/notifications.js의 ?action=greeting)가 보낸 푸시를 받아서
 // 배너로 띄웁니다. 앱이 닫혀있어도(카톡처럼) 동작하는 게 이 부분의 핵심입니다.
 self.addEventListener('push', (e) => {
   let data = { title: '보미', body: '', type: '' };
