@@ -4,10 +4,18 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>보미 프리미엄</title>
+<!--
+  사진 출처(전부 Unsplash License — 상업적 이용 무료, 출처 표기 의무 없음):
+  - 히어로/음성인식: Vitaly Gariev
+  - 길안내: Biki Z
+  - 말동무: Vitaly Gariev
+  - 카메라 인식: Jakub Kapusnak
+-->
 <style>
   :root{
     --blue:#9C7A54;
     --navy:#6F5636;
+    --navy-dark:#4E3C26;
     --accent-soft:#F0E7D8;
     --ink:#23201B;
     --sub:#7A6F5F;
@@ -19,80 +27,118 @@
   body{
     margin:0; font-family:"Pretendard","Apple SD Gothic Neo","Malgun Gothic",-apple-system,sans-serif;
     background:var(--bg); color:var(--ink); min-height:100vh;
+    -webkit-font-smoothing:antialiased;
   }
+  img{ max-width:100%; display:block; }
   .wrap{ max-width:480px; margin:0 auto; min-height:100vh; background:var(--bg); display:flex; flex-direction:column; }
-  .header{ display:flex; align-items:center; gap:12px; padding:14px 18px; background:#FAF8F5; border-bottom:1px solid var(--line); }
-  .back{ width:44px; height:44px; border-radius:12px; border:none; background:none; color:var(--ink); font-size:24px; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+
+  .header{ display:flex; align-items:center; gap:10px; padding:14px 14px; background:#FAF8F5; border-bottom:1px solid var(--line); position:sticky; top:0; z-index:10; }
+  .back{ width:44px; height:44px; border-radius:12px; border:none; background:none; color:var(--ink); cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
   .back:hover{ background:#F1EEE7; }
-  .header .title{ font-size:16px; font-weight:800; }
+  .header .title{ font-size:15px; font-weight:800; }
 
-  .hero{ padding:36px 24px 24px; text-align:center; }
-  .badge{ display:inline-block; background:var(--accent-soft); color:var(--navy); font-weight:800; font-size:13px; padding:7px 16px; border-radius:999px; margin-bottom:16px; }
-  .hero h1{ font-size:24px; font-weight:800; line-height:1.4; margin:0 0 10px 0; }
-  .hero p{ font-size:15px; color:var(--sub); line-height:1.6; margin:0; }
+  /* ---------- HERO: 실사 사진 + 그라디언트 오버레이 ---------- */
+  .hero{ position:relative; aspect-ratio:4/5; overflow:hidden; background:#2b2620; }
+  .hero img{ width:100%; height:100%; object-fit:cover; object-position:center 20%; }
+  .hero-overlay{ position:absolute; inset:0; background:linear-gradient(180deg, rgba(35,32,27,0) 35%, rgba(35,32,27,0.55) 70%, rgba(35,32,27,0.88) 100%); }
+  .hero-content{ position:absolute; left:0; right:0; bottom:0; padding:24px 24px 26px; color:#fff; }
+  .badge{ display:inline-flex; align-items:center; background:rgba(255,255,255,0.16); backdrop-filter:blur(6px); border:1px solid rgba(255,255,255,0.3); color:#fff; font-weight:700; font-size:12.5px; padding:6px 14px; border-radius:999px; margin-bottom:14px; }
+  .hero h1{ font-size:25px; font-weight:800; line-height:1.35; margin:0 0 8px 0; letter-spacing:-0.3px; }
+  .hero p{ font-size:14px; line-height:1.55; margin:0; opacity:0.88; max-width:34ch; }
 
-  .features{ padding:8px 20px 20px; display:flex; flex-direction:column; gap:12px; }
-  .feature-card{ background:var(--card); border:1px solid var(--line); border-radius:16px; padding:18px; display:flex; gap:14px; align-items:flex-start; }
-  .feature-icon{ font-size:28px; flex-shrink:0; width:44px; height:44px; border-radius:12px; background:var(--accent-soft); display:flex; align-items:center; justify-content:center; }
-  .feature-body .ft-title{ font-size:15px; font-weight:800; color:var(--ink); margin-bottom:4px; }
-  .feature-body .ft-desc{ font-size:13.5px; color:var(--sub); line-height:1.5; }
+  /* ---------- FEATURES: 사진 + 텍스트가 붙은 카드 ---------- */
+  .section-head{ padding:28px 22px 4px; }
+  .section-head .eyebrow{ font-size:12px; font-weight:700; color:var(--blue); letter-spacing:0.3px; margin-bottom:6px; }
+  .section-head h2{ font-size:19px; font-weight:800; margin:0; line-height:1.4; }
 
-  .price-card{ margin:8px 20px 20px; background:var(--navy); color:#fff; border-radius:18px; padding:24px; text-align:center; }
-  .price-card .p-trial{ font-size:13px; font-weight:700; opacity:.85; margin-bottom:6px; }
-  .price-card .p-amount{ font-size:30px; font-weight:800; }
-  .price-card .p-amount span{ font-size:15px; font-weight:600; opacity:.85; }
-  .price-card .p-note{ font-size:12.5px; opacity:.75; margin-top:8px; line-height:1.5; }
+  .features{ padding:14px 20px 8px; display:flex; flex-direction:column; gap:14px; }
+  .feature-card{ background:var(--card); border:1px solid var(--line); border-radius:18px; overflow:hidden; }
+  .feature-photo{ width:100%; aspect-ratio:16/10; overflow:hidden; background:#EFEAE0; }
+  .feature-photo img{ width:100%; height:100%; object-fit:cover; }
+  .feature-body{ padding:16px 18px 18px; }
+  .feature-body .ft-title{ font-size:16px; font-weight:800; color:var(--ink); margin-bottom:5px; }
+  .feature-body .ft-desc{ font-size:13.5px; color:var(--sub); line-height:1.55; }
 
-  .bottom-cta{ margin-top:auto; padding:16px 20px 28px; background:#FAF8F5; border-top:1px solid var(--line); }
-  .cta-btn{ width:100%; padding:16px; border-radius:14px; border:none; background:var(--navy); color:#fff; font-size:16px; font-weight:800; cursor:pointer; }
+  /* ---------- PRICE ---------- */
+  .price-card{ margin:22px 20px 8px; background:linear-gradient(155deg, var(--navy) 0%, var(--navy-dark) 100%); color:#fff; border-radius:20px; padding:26px 24px; text-align:center; }
+  .price-card .p-trial{ font-size:12.5px; font-weight:700; opacity:.8; letter-spacing:0.3px; margin-bottom:8px; text-transform:uppercase; }
+  .price-card .p-amount{ font-size:32px; font-weight:800; letter-spacing:-0.5px; }
+  .price-card .p-amount span{ font-size:14px; font-weight:600; opacity:.8; }
+  .price-card .p-note{ font-size:12.5px; opacity:.7; margin-top:10px; line-height:1.6; }
+
+  /* ---------- BOTTOM CTA ---------- */
+  .bottom-cta{ margin-top:auto; padding:18px 20px 30px; background:#FAF8F5; border-top:1px solid var(--line); }
+  .cta-btn{ width:100%; padding:17px; border-radius:14px; border:none; background:var(--navy); color:#fff; font-size:16px; font-weight:800; cursor:pointer; }
   .cta-btn:active{ opacity:.9; }
-  .cta-sub{ text-align:center; margin-top:12px; }
+  .cta-sub{ text-align:center; margin-top:13px; }
   .cta-sub a{ font-size:13px; color:var(--sub); text-decoration:underline; cursor:pointer; }
 
-  .toast{ position:fixed; left:50%; bottom:110px; transform:translate(-50%,20px); background:#23201B; color:#fff; padding:12px 20px; border-radius:12px; font-size:14px; font-weight:600; opacity:0; pointer-events:none; transition:all .25s ease; max-width:85%; text-align:center; }
+  .toast{ position:fixed; left:50%; bottom:110px; transform:translate(-50%,20px); background:#23201B; color:#fff; padding:12px 20px; border-radius:12px; font-size:14px; font-weight:600; opacity:0; pointer-events:none; transition:all .25s ease; max-width:85%; text-align:center; z-index:20; }
   .toast.show{ opacity:1; transform:translate(-50%,0); }
 </style>
 </head>
 <body>
 <div class="wrap">
   <div class="header">
-    <button class="back" onclick="location.href='/'" aria-label="보미로 돌아가기">←</button>
+    <button class="back" onclick="location.href='/'" aria-label="보미로 돌아가기">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+    </button>
     <div class="title">프리미엄 이용권</div>
   </div>
 
   <div class="hero">
-    <div class="badge">3일 무료체험</div>
-    <h1>보미 프리미엄으로<br>더 똑똑하고 세심하게</h1>
-    <p>무료 모델보다 더 자세하고 빠른 답변, 그리고 아래 기능들을 이용하실 수 있어요.</p>
+    <img src="https://images.unsplash.com/photo-1758691030826-86a149b6278b?w=900&q=75&fm=jpg&fit=crop&auto=format" alt="스마트폰으로 보미 AI와 대화하는 어르신" loading="eager">
+    <div class="hero-overlay"></div>
+    <div class="hero-content">
+      <div class="badge">3일 무료체험</div>
+      <h1>보미 프리미엄으로<br>더 똑똑하고 세심하게</h1>
+      <p>무료 모델보다 더 자세하고 빠른 답변, 그리고 아래 기능들을 이용하실 수 있어요.</p>
+    </div>
+  </div>
+
+  <div class="section-head">
+    <div class="eyebrow">PREMIUM</div>
+    <h2>프리미엄에서만 가능한 것들</h2>
   </div>
 
   <div class="features">
     <div class="feature-card">
-      <div class="feature-icon">🗺️</div>
+      <div class="feature-photo">
+        <img src="https://images.unsplash.com/photo-1762741036893-04592ece4967?w=800&q=75&fm=jpg&fit=crop&auto=format" alt="공원에서 지팡이를 짚고 통화하는 어르신" loading="lazy">
+      </div>
       <div class="feature-body">
         <div class="ft-title">더 정밀한 길 안내</div>
-        <div class="ft-desc">복잡한 환승 경로도 더 자세하고 정확하게 안내해드려요.</div>
+        <div class="ft-desc">복잡한 환승 경로도 더 자세하고 정확하게, 한 걸음 한 걸음 짚어드리듯 안내해드려요.</div>
       </div>
     </div>
+
     <div class="feature-card">
-      <div class="feature-icon">💬</div>
+      <div class="feature-photo">
+        <img src="https://images.unsplash.com/photo-1758686254023-09e191043c88?w=800&q=75&fm=jpg&fit=crop&auto=format" alt="영상통화하며 반갑게 인사하는 노부부" loading="lazy">
+      </div>
       <div class="feature-body">
         <div class="ft-title">더 깊이 있는 말동무</div>
-        <div class="ft-desc">더 길고 자연스러운 대화로, 진짜 대화하는 것처럼 이야기 나눌 수 있어요.</div>
+        <div class="ft-desc">더 길고 자연스러운 대화로, 오래 알고 지낸 사람과 이야기하듯 편하게 나눌 수 있어요.</div>
       </div>
     </div>
+
     <div class="feature-card">
-      <div class="feature-icon">🎙️</div>
+      <div class="feature-photo">
+        <img src="https://images.unsplash.com/photo-1758691031979-6128d4029604?w=800&q=75&fm=jpg&fit=crop&auto=format" alt="스마트폰에 대고 편하게 말씀하시는 어르신" loading="lazy">
+      </div>
       <div class="feature-body">
         <div class="ft-title">정확한 음성인식</div>
-        <div class="ft-desc">발음이 불명확하거나 말씀이 조금 느리셔도 정확하게 알아들어요.</div>
+        <div class="ft-desc">발음이 불명확하거나 말씀이 조금 느리셔도, 하시려던 말씀을 정확하게 알아들어요.</div>
       </div>
     </div>
+
     <div class="feature-card">
-      <div class="feature-icon">📷</div>
+      <div class="feature-photo">
+        <img src="https://images.unsplash.com/photo-1498654896293-37aacf113fd9?w=800&q=75&fm=jpg&fit=crop&auto=format" alt="비빔밥과 밑반찬이 차려진 한 상" loading="lazy">
+      </div>
       <div class="feature-body">
         <div class="ft-title">카메라로 알아보기</div>
-        <div class="ft-desc">사진을 찍으면 번역, 지금 상황, 음식의 영양정보까지 알려드려요.</div>
+        <div class="ft-desc">사진 한 장이면 충분해요. 번역, 지금 상황, 눈앞에 있는 음식의 영양정보까지 알려드려요.</div>
       </div>
     </div>
   </div>
