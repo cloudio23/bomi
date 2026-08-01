@@ -7,6 +7,7 @@
 import { callAI } from '../lib/aiProviders.mjs';
 import { calculateBaziPillars, describeBaziPillarsKorean } from '../lib/bazi.mjs';
 import { convertLunarToSolar } from '../lib/lunarConvert.mjs';
+import { reverseGeocode } from '../lib/transit.mjs';
 
 // 클라이언트가 사주 정보(생년월일시)를 보내면, LLM이 사주팔자를 직접(부정확하게)
 // "지어내게" 하는 대신 검증된 만세력 조회 테이블로 정밀 계산해서 그 결과를
@@ -40,6 +41,19 @@ async function buildSajuContext(sajuBirth) {
 // AI 없이 직접 JSON으로 응답하고, 클라이언트가 카드로 바로 렌더링합니다
 // (index.html의 runTransitSearch 참고).
 
+// 날씨(그리고 일반 교통 질문)는 여전히 이 엔드포인트를 거치는데, 위도/경도를
+// 그대로 검색어로 넘기면 Gemini의 google_search 그라운딩이 기온·강수량 같은
+// 구체적인 수치를 못 찾아왔음(좌표는 검색어로 약함). 카카오 리버스 지오코딩으로
+// "OO구 OO동" 같은 실제 지명으로 바꿔서 넘겨줍니다 — 실패하면 좌표로 대체.
+async function buildLocationContext(location) {
+  if (!location || location.lat === undefined || location.lng === undefined) return '';
+  const address = await reverseGeocode(location.lat, location.lng);
+  if (address) {
+    return `\n\n사용자의 현재 위치: ${address} — 날씨나 교통 관련 질문에는 이 위치를 기준으로("${address} 날씨"처럼 실제 지명으로 검색해서) 답하세요.`;
+  }
+  return `\n\n사용자의 현재 위치(위도/경도): ${location.lat.toFixed(4)}, ${location.lng.toFixed(4)} — 날씨나 교통 관련 질문에는 이 위치를 기준으로 답하세요.`;
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     res.status(405).json({ error: 'POST 요청만 가능해요.' });
@@ -47,13 +61,13 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { system, messages, sajuBirth } = req.body || {};
+    const { system, messages, sajuBirth, location } = req.body || {};
     if (!messages || !Array.isArray(messages)) {
       res.status(400).json({ error: 'messages 배열이 필요해요.' });
       return;
     }
 
-    const fullSystem = (system || '') + await buildSajuContext(sajuBirth);
+    const fullSystem = (system || '') + await buildSajuContext(sajuBirth) + await buildLocationContext(location);
     const reply = await callAI(fullSystem, messages, { maxTokens: 500 });
     res.status(200).json({ reply });
   } catch (e) {

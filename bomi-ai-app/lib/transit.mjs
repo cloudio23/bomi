@@ -32,6 +32,26 @@ export async function geocodePlace(query) {
   }
 }
 
+// 좌표 → 사람이 읽는 주소(구/동 단위). 날씨 질문에 위도/경도를 그대로 검색어로
+// 넘기면 Google 검색이 좋은 결과를 못 찾아서(좌표 자체는 검색어로 약함) 기온·
+// 강수량이 안 나오는 문제가 있었음 — 실제 지명으로 바꿔서 넘기면 "OO구 날씨"처럼
+// 검색이 잘 먹힘.
+export async function reverseGeocode(lat, lng) {
+  const key = process.env.KAKAO_REST_API_KEY;
+  if (!key) return null;
+  try {
+    const url = `https://dapi.kakao.com/v2/local/geo/coord2address.json?x=${lng}&y=${lat}`;
+    const response = await fetch(url, { headers: { Authorization: `KakaoAK ${key}` } });
+    if (!response.ok) return null;
+    const data = await response.json();
+    const addr = data?.documents?.[0]?.address;
+    if (!addr) return null;
+    return [addr.region_1depth_name, addr.region_2depth_name, addr.region_3depth_name].filter(Boolean).join(' ');
+  } catch (e) {
+    return null;
+  }
+}
+
 // place는 세 가지 형태로 옵니다:
 // - {lat, lng, placeName, text} — 자동완성 목록에서 직접 골라 좌표가 이미 확정된 경우(가장 정확)
 // - {lat, lng} — GPS로 확보한 현재 위치(자동완성 없이 출발지를 비워둔 경우)
