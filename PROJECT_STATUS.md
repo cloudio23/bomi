@@ -3,7 +3,7 @@
 이 문서는 `bomi-team-lead` 에이전트가 진행 상황 검토·계획 제안 전에 항상 먼저 읽고,
 매 라운드 작업 후 갱신하는 상태 기록입니다.
 
-_최종 갱신: 2026-07-30_
+_최종 갱신: 2026-08-02_
 
 ## 운영 참고 (중요)
 
@@ -48,6 +48,47 @@ _최종 갱신: 2026-07-30_
 7. **미해결** — 스플래시 화면 자체가 없음 (로딩을 가릴 필요는 없지만 브랜드 모먼트로 제안됨).
 
 ## 완료됨
+
+- **인스타그램 건강 카드뉴스 자동화 파이프라인 신규 구축** (창업자 요청: 매일
+  최신 건강/의료 주제로 카드뉴스를 만들어 검토 후 자동 업로드). 아키텍처/설정은
+  `INSTAGRAM_SETUP.md`, 디자인·톤·SEO 규칙은 `STYLE_GUIDE.md`가 정본.
+  - **파이프라인**: `api/cardnews.js`(하나의 파일에 render/cron/webhook 3액션 —
+    notifications.js와 같은 이유로 Vercel Hobby 서버리스 함수 12개 한도 때문에
+    합침, 지금 총 8개/12개 사용 중). 매일 08:00 KST에 Vercel Cron이 호출 →
+    `lib/healthNewsFeed.mjs`(코메디닷컴 1차, 메디컬투데이 키워드 필터 보조 —
+    RSS 주소는 2026-08-01 직접 curl로 검증, health.chosun.com/hidoc.co.kr/
+    yakup.com/kdca.go.kr 등은 RSS 자체가 404라 제외)에서 건강 뉴스 후보 수집 →
+    최근 14일 중복 제외(Supabase `bomi_cardnews_drafts` 조회) → `callAI`(기존
+    aiProviders.mjs 그대로 재사용)로 주제 선정+카드뉴스 대본 JSON 생성 →
+    `lib/aiImageGen.mjs`(OpenAI `gpt-image-1`, 창업자 요청: "사진은 챗지피티
+    그림생성으로 자동화")로 표지 사진 1장 생성(실패 시 타이포그래피 전용 표지로
+    자동 폴백, 비용/실패 지점을 줄이려 표지 1장만 생성하고 본문 슬라이드는
+    사진 없이 유지) → `lib/cardnewsRender.mjs`(Puppeteer 없이 satori+@resvg/resvg-js
+    조합으로 1080×1350 PNG 렌더, Pretendard 폰트를 `lib/fonts/`에 실제로 받아서
+    사용 — 앱이 선언만 해두고 못 쓰고 있던 그 폰트를 카드뉴스에서 먼저 실제로
+    로드하게 됨) → Supabase에 초안 저장 → `lib/telegram.mjs`로 텔레그램 봇에
+    미리보기 이미지+승인/거절 인라인 버튼 전송(창업자 선택: 텔레그램 검토).
+    승인 누르면 웹훅(`api/cardnews.js?action=webhook`)이 `lib/instagramApi.mjs`로
+    Instagram Graph API 카루셀 발행(개별 컨테이너 생성→부모 카루셀 컨테이너→
+    media_publish, 2026-08-01 Meta 공식 문서로 절차 확인).
+  - **보안**: `render` 액션만 공개(Telegram/Instagram이 이미지를 직접 fetch해야
+    해서 의도적으로 무인증), `cron`은 `CRON_SECRET`, `webhook`은
+    `TELEGRAM_WEBHOOK_SECRET` 없으면 항상 401 — 둘 다 미설정 시 막히도록
+    일부러 "안전 쪽으로 fail" 시킴(아무나 호출하면 OpenAI 비용이 나가거나
+    실제 게시물이 올라갈 수 있어서).
+  - **로컬 미리보기**: `scripts/render-to-output.mjs` — Supabase/배포 없이도
+    `node scripts/render-to-output.mjs`로 데모 주제를 바로 렌더링해서
+    `output/날짜/`에 PNG로 저장 가능(레포에는 커밋 안 함, `.gitignore` 추가).
+    `--latest` 인자로 실제 생성된 최근 초안도 로컬로 내려받아 확인 가능.
+  - **DB**: `supabase/cardnews_schema.sql` 신규(다른 보미 테이블과 같은 Supabase
+    프로젝트에 실행) — `bomi_cardnews_drafts` 테이블 하나로 초안/검토/발행 이력 전체 관리.
+  - **실제로 검증 안 됨(창업자가 아직 Instagram 비즈니스 전환/Meta 앱/텔레그램
+    봇 설정 전)**: 전체 파이프라인이 코드 레벨 스모크테스트(렌더링 결과물 육안
+    확인 포함)까지만 확인됐고, 실제 Instagram 계정 연동·텔레그램 웹훅·OpenAI
+    이미지 생성 호출은 아직 한 번도 실행 안 해봄. `INSTAGRAM_SETUP.md` 1~6단계를
+    따라가야 실제로 동작 시작함.
+  - **알려진 갭**: `IG_ACCESS_TOKEN`(장기 토큰)이 약 60일마다 만료되는데 자동
+    갱신 로직은 이번 범위에 없음(수동 재발급 절차만 문서화) — 다음 후보 작업 표 참고.
 
 - **① 설치된 PWA edge-to-edge 수정** (index.html): `@media (display-mode: standalone)`
   블록을 스타일시트 맨 끝에 추가 — `.app`의 둥근 모서리/그림자/테두리를 0으로, 높이를
@@ -217,6 +258,8 @@ _최종 갱신: 2026-07-30_
 | O. "대화 교류감/후속 질문 여부" 전용 QA 기준 추가 | ✅ 지금 가능 | 창업자가 "QA가 소통 부분을 안 본다"고 지적, `warmth_persona`와 별도로 만들지 결정 필요 |
 | P. `--blue`/`--navy` 변수를 `--accent`/`--accent-strong`으로 이름까지 정리 | ✅ 지금 가능, 작음 | 지금은 값만 베이지로 바뀌고 이름은 그대로라 혼동 소지 |
 | Q. 카나나 리디자인 실제 화면 확인 | ⚠️ 브라우저 도구 없음 | 색상 대비/링 아이콘/피드백 아이콘 배치 검증 필요 |
+| R. 인스타그램 파이프라인 실제 계정으로 첫 실행 확인 | ⚠️ 창업자 설정 필요 | `INSTAGRAM_SETUP.md` 1~6단계(IG 비즈니스 전환/Meta 앱/텔레그램 봇/Supabase 테이블/환경변수) 선행 필요 |
+| S. `IG_ACCESS_TOKEN` 자동 갱신(현재 60일마다 수동 재발급) | ⚠️ 손이 감 | 장기 토큰 만료 전 자동으로 갱신해서 Vercel 환경변수를 다시 쓰는 로직 — Vercel API 연동 필요, 이번 라운드 범위 밖으로 의도적으로 제외 |
 
 ## 추후 로드맵 (사업계획서 근거, 지금 단계 아님)
 

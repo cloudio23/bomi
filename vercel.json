@@ -1,1 +1,6 @@
-{}
+{
+  "crons": [
+    { "path": "/api/cardnews?action=cron", "schedule": "0 23 * * *" }
+  ]
+}
+
