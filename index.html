@@ -82,7 +82,7 @@
     padding:16px; font-size:18px; outline:none; background:#FAF9F6; color:var(--ink);
   }
   .ob-input:focus{ border-color:var(--navy); background:#fff; }
-  .ob-field-label{ font-size:13px; color:var(--sub); margin:16px 0 6px 0; }
+  .ob-field-label{ font-size:calc(13px * var(--app-font-scale)); color:var(--sub); margin:16px 0 6px 0; }
   .gender-row{ display:flex; gap:12px; margin-top:4px; }
   .gender-card{
     flex:1; border:1.5px solid var(--line); border-radius:14px; padding:22px 0;
@@ -126,6 +126,10 @@
     border-radius:14px; font-size:26px; cursor:pointer;
     display:flex; align-items:center; justify-content:center;
   }
+  /* 체크리스트 아이콘이 조건부로 숨겨지면(display:none) .header 안에 남는 flex
+     자식이 menuBtn 하나뿐이라, justify-content:space-between이 그걸 왼쪽 끝으로
+     보내버림 — margin-left:auto로 항상 오른쪽에 고정. */
+  #menuBtn{ margin-left:auto; }
   .iconbtn:hover{ background:#F1EEE7; }
   .iconbtn svg{ width:32px; height:32px; display:block; }
   .iconbtn .badge-dot{
@@ -157,7 +161,7 @@
   .fb-icon.active{ border-color:var(--blue); color:var(--blue); background:var(--accent-soft); }
 
   /* ---------- 예상 답변 선택지 (카나나 스타일 — 점선 밑줄 텍스트 링크) ---------- */
-  .reply-options{ display:flex; flex-direction:column; align-items:stretch; gap:18px; max-width:94%; }
+  .reply-options{ display:flex; flex-direction:column; align-items:stretch; gap:12px; max-width:94%; }
   .option-link{
     background:none; border:none; padding:10px 4px; cursor:pointer; min-height:44px;
     font-size:calc(15px * var(--app-font-scale)); font-weight:600; color:var(--ink); text-decoration:underline dotted;
@@ -179,11 +183,23 @@
   }
 
   .checklist-card{ background:#fff; border:1px solid var(--line); border-radius:16px; padding:15px; max-width:86%; }
-  .checklist-title{ font-size:13px; font-weight:800; color:var(--blue); margin-bottom:9px; }
-  .check-item{ display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid #F1EEE7; font-size:15px; color:var(--ink); cursor:pointer; }
+  .checklist-title{ font-size:calc(13px * var(--app-font-scale)); font-weight:800; color:var(--blue); margin-bottom:9px; }
+  .check-item{ display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid #F1EEE7; font-size:calc(15px * var(--app-font-scale)); color:var(--ink); cursor:pointer; }
   .check-item:last-child{ border-bottom:none; }
   .check-item input{ width:19px; height:19px; accent-color:var(--blue); cursor:pointer; flex-shrink:0; }
   .check-item.done span.label{ text-decoration:line-through; color:var(--sub); }
+
+  /* ---------- 만보기(체크리스트 상단 걸음수 표시) ---------- */
+  .steps-row{ display:flex; align-items:center; gap:10px; padding:9px 0; border-bottom:1px solid #F1EEE7; }
+  .steps-row .steps-icon{ font-size:calc(18px * var(--app-font-scale)); flex-shrink:0; }
+  .steps-row .steps-body{ flex:1; min-width:0; }
+  .steps-row .steps-num{ font-size:calc(15px * var(--app-font-scale)); font-weight:700; color:var(--ink); }
+  .steps-row .steps-bar{ height:6px; border-radius:999px; background:#F1EEE7; margin-top:5px; overflow:hidden; }
+  .steps-row .steps-bar-fill{ height:100%; background:var(--blue); border-radius:999px; }
+  .steps-row .steps-badge{ font-size:calc(12px * var(--app-font-scale)); font-weight:700; color:var(--sub); flex-shrink:0; }
+  .goal-steps-row{ display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 0; }
+  .goal-steps-row .lb{ font-size:calc(14px * var(--app-font-scale)); font-weight:700; color:var(--ink); }
+  .goal-steps-row input{ width:90px; border:1px solid var(--line); border-radius:10px; padding:8px 10px; font-size:calc(14px * var(--app-font-scale)); text-align:right; background:#FAF9F6; color:var(--ink); }
 
   /* ---------- 대중교통 출발지/도착지 자동완성 ---------- */
   .autocomplete-wrap{ position:relative; margin-bottom:10px; }
@@ -222,7 +238,7 @@
     padding:13px 20px; min-height:44px; border-radius:999px; cursor:pointer; white-space:nowrap; }
   .chip:hover{ background:#F5F1EA; }
 
-  .inputbar{ position:relative; min-height:82px; padding:8px 16px 12px 16px; background:#F6F3EE; flex-shrink:0; }
+  .inputbar{ position:relative; min-height:96px; padding:8px 16px 22px 16px; background:#F6F3EE; flex-shrink:0; }
   .roundicon{ width:36px; height:36px; border-radius:50%; border:none; background:none; color:var(--sub); font-size:16px; cursor:pointer; flex-shrink:0; }
   .inputbar input{ flex:1; border:none; background:transparent; padding:12px 6px; font-size:15px; outline:none; min-width:0; color:var(--ink); }
   .sendbtn{ background:var(--blue); border:none; color:#fff; width:38px; height:38px; border-radius:50%; font-size:16px; cursor:pointer; flex-shrink:0; box-shadow:0 2px 8px rgba(156,122,84,0.35); }
@@ -231,7 +247,7 @@
   /* ---------- INPUT DOCK (camera / keyboard / voice) — 카나나처럼 대화창
      배경에 녹아든 채로 버튼/입력창만 그림자로 떠 있는 느낌 ---------- */
   .dock, .typebar{
-    position:absolute; left:16px; right:16px; top:8px; bottom:22px;
+    position:absolute; left:16px; right:16px; top:8px; bottom:34px;
     display:flex; align-items:center;
     transition: opacity .28s ease, transform .32s cubic-bezier(.22,1,.36,1);
   }
@@ -253,6 +269,7 @@
   .dockbtn:hover, .dockbtn:active{ box-shadow:0 6px 18px rgba(35,32,27,0.15); }
   .dockbtn .dockbtn-icon{ display:flex; }
   .dockbtn .dockbtn-icon svg{ width:24px; height:24px; display:block; }
+  .dockbtn.recording{ background:#C23A56; color:#fff; }
 
   /* ---------- VOICE AURORA (screen-edge glow, slide 12 음성대화 preview) ---------- */
   @property --angle{ syntax:'<angle>'; inherits:false; initial-value:0deg; }
@@ -334,13 +351,15 @@
   .pinned-head{ display:flex; align-items:center; padding:12px 16px; }
   .pinned-head .lb{ font-size:13px; font-weight:800; color:var(--blue); display:flex; align-items:center; gap:6px; }
   .pinned-body{ padding:0 16px 12px 16px; }
-  .pinned-body .check-item{ font-size:14px; padding:7px 0; }
+  .pinned-body .check-item{ font-size:calc(14px * var(--app-font-scale)); padding:7px 0; }
 
   /* ---------- PROFILE ---------- */
-  .subheader{ display:flex; align-items:center; gap:12px; padding:16px 18px; border-bottom:1px solid var(--line); flex-shrink:0; }
-  .backbtn{ background:none; border:none; font-size:32px; cursor:pointer; color:var(--ink); padding:14px; min-width:52px; min-height:52px; }
+  .subheader{ display:flex; align-items:center; gap:12px; padding:10px 18px; border-bottom:1px solid var(--line); flex-shrink:0; }
+  .backbtn{ background:none; border:none; font-size:28px; cursor:pointer; color:var(--ink); width:56px; height:56px; border-radius:14px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .backbtn:hover{ background:#F1EEE7; }
   .subheader .title{ font-size:calc(16px * var(--app-font-scale)); font-weight:800; color:var(--ink); flex:1; }
-  .editbtn{ background:none; border:none; font-size:30px; cursor:pointer; color:var(--sub); padding:14px; min-width:52px; min-height:52px; }
+  .editbtn{ background:none; border:none; font-size:26px; cursor:pointer; color:var(--sub); width:56px; height:56px; border-radius:14px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .editbtn:hover{ background:#F1EEE7; }
 
   .scroll{ flex:1; overflow-y:auto; padding:20px 18px; background:#F8F6F2; touch-action:pan-y; overscroll-behavior:contain; }
 
@@ -372,6 +391,23 @@
     padding:15px 16px; margin:18px 0; cursor:pointer; }
   .report-cta .lb{ font-size:calc(15px * var(--app-font-scale)); font-weight:800; color:#C23A56; display:flex; align-items:center; gap:8px; }
   .report-cta .arrow{ color:#C23A56; font-size:16px; }
+
+  .nav-card{ display:flex; align-items:center; justify-content:space-between; background:#fff; border:1px solid var(--line); border-radius:16px;
+    padding:16px; margin-bottom:14px; cursor:pointer; }
+  .nav-card:active{ background:#FAF9F6; }
+  .nav-card .lb{ font-size:calc(14px * var(--app-font-scale)); font-weight:700; color:var(--ink); }
+  .nav-card .desc{ font-size:calc(12px * var(--app-font-scale)); color:var(--sub); margin-top:2px; }
+  .nav-card .arrow{ color:var(--sub); font-size:20px; flex-shrink:0; margin-left:10px; }
+
+  /* ---------- 글씨 크기 선택(5단계) — 가로 카드 대신 세로 목록으로,
+     각 단계가 실제로 얼마나 커지는지 미리보기 글자로 바로 보여줌 ---------- */
+  .tsize-row{ display:flex; flex-direction:column; gap:8px; margin-top:4px; }
+  .tsize-option{ display:flex; align-items:center; gap:14px; border:1.5px solid var(--line); border-radius:14px;
+    padding:12px 16px; cursor:pointer; background:#FAF9F6; }
+  .tsize-option .tsize-preview{ width:30px; flex-shrink:0; text-align:center; font-weight:800; color:#C7BEB0; }
+  .tsize-option .lb{ font-size:15px; font-weight:700; color:var(--sub); }
+  .tsize-option.selected{ border-color:var(--navy); background:var(--accent-soft); }
+  .tsize-option.selected .tsize-preview, .tsize-option.selected .lb{ color:var(--navy); }
 
   .toggle-item{ display:flex; align-items:center; justify-content:space-between; padding:13px 0; border-bottom:1px solid #F1EEE7; }
   .toggle-item:last-child{ border-bottom:none; }
@@ -405,6 +441,21 @@
 
   /* ---------- REPORT ---------- */
   .report-badge{ font-size:12px; font-weight:700; color:var(--blue); background:var(--accent-soft); padding:5px 10px; border-radius:999px; margin-left:auto; }
+  /* 리포트를 보려면 광고를 보거나 구독해야 하는 게이트 화면 — 실제 광고
+     네트워크/결제가 아직 연동되지 않아서, 지금은 자리만 표시하는 정직한
+     플레이스홀더입니다(실제로 돈이 오간 것처럼 속이지 않음). */
+  .report-gate{ display:none; flex-direction:column; align-items:center; text-align:center; padding:60px 28px; gap:8px; }
+  .report-gate.show{ display:flex; }
+  .report-gate-icon{ font-size:40px; margin-bottom:6px; }
+  .report-gate-title{ font-size:18px; font-weight:800; color:var(--ink); }
+  .report-gate-desc{ font-size:14px; color:var(--sub); margin-bottom:18px; }
+  .report-gate-btn{ width:100%; max-width:320px; padding:14px; border-radius:12px; border:1.5px solid var(--line); background:#fff; color:var(--ink); font-weight:700; font-size:15px; cursor:pointer; margin-bottom:10px; }
+  .report-gate-btn.primary{ background:var(--navy); border-color:var(--navy); color:#fff; }
+  .report-ad-mock{ display:none; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:80px 28px; gap:10px; background:#20242E; color:#fff; min-height:320px; }
+  .report-ad-mock.show{ display:flex; }
+  .ad-mock-label{ font-size:12px; font-weight:700; letter-spacing:1px; opacity:.6; text-transform:uppercase; }
+  .ad-mock-timer{ font-size:40px; font-weight:800; }
+  .ad-mock-desc{ font-size:14px; opacity:.8; }
   .tabs{ display:flex; background:#F1EEE7; border-radius:12px; padding:4px; margin-bottom:16px; }
   .tab{ flex:1; text-align:center; padding:9px 0; font-size:14px; font-weight:700; color:var(--sub); border-radius:9px; cursor:pointer; }
   .tab.active{ background:#fff; color:var(--navy); box-shadow:0 1px 4px rgba(16,24,40,0.08); }
@@ -448,7 +499,7 @@
       box-shadow:none;
     }
     .header{ padding-top:calc(10px + env(safe-area-inset-top)); }
-    .inputbar{ padding-bottom:calc(14px + env(safe-area-inset-bottom)); }
+    .inputbar{ padding-bottom:calc(22px + env(safe-area-inset-bottom)); }
     #onboardingView{ padding-top:calc(28px + env(safe-area-inset-top)); padding-bottom:calc(28px + env(safe-area-inset-bottom)); }
   }
 </style>
@@ -483,7 +534,7 @@
   <!-- ===== CHAT ===== -->
   <div class="screen" id="chatScreen">
     <div class="header">
-      <button class="iconbtn" id="checklistBtn" aria-label="체크리스트 보기" style="display:none;">
+      <button class="iconbtn" id="checklistBtn" aria-label="체크리스트 보기">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
           <path d="M4.5 6.5l1.4 1.4L8.5 5.3M4.5 12.5l1.4 1.4 2.6-2.6M4.5 18.5l1.4 1.4 2.6-2.6"/>
           <path d="M12 6.5h7.5M12 12.5h7.5M12 18.5h7.5"/>
@@ -527,7 +578,7 @@
             </svg>
           </span>
         </button>
-        <button class="dockbtn" id="voiceBtn" aria-label="음성으로 대화하기 (준비 중)">
+        <button class="dockbtn" id="voiceBtn" aria-label="음성으로 대화하기">
           <span class="dockbtn-icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
               <rect x="9" y="3.5" width="6" height="10" rx="3"/>
@@ -589,24 +640,24 @@
       </div>
 
       <div class="section-label">체크리스트 관리</div>
-      <div class="info-card">
-        <div class="toggle-item">
-          <div><div class="lb">체크리스트 표시</div><div class="desc">대화창 상단에 고정해서 보여드려요</div></div>
-          <label class="switch"><input type="checkbox" id="toggleChecklist"><span class="slider"></span></label>
-        </div>
+      <div class="nav-card" id="openChecklistSettingsBtn">
+        <div><div class="lb">체크리스트 관리</div><div class="desc">오늘의 체크리스트 항목을 추가·수정해요</div></div>
+        <div class="arrow">›</div>
       </div>
-      <div class="info-card" id="checklistItemsCard">
-        <div id="checklistItemRows"></div>
-        <button class="cl-add" id="addChecklistItem">+ 항목 추가</button>
+      <div class="nav-card" id="openStepGoalBtn">
+        <div><div class="lb">목표 걸음수</div><div class="desc">걸음수 표시를 켜고 목표를 정해요</div></div>
+        <div class="arrow">›</div>
       </div>
 
       <div class="section-label">화면 설정</div>
       <div class="info-card">
         <div class="lb" style="font-size:14px;font-weight:700;color:var(--ink);margin-bottom:10px;">글씨 크기</div>
-        <div class="gender-row" id="textSizeRow">
-          <div class="gender-card" data-size="1"><span class="lb">보통</span></div>
-          <div class="gender-card" data-size="1.3"><span class="lb">크게</span></div>
-          <div class="gender-card" data-size="1.6"><span class="lb">아주 크게</span></div>
+        <div class="tsize-row" id="textSizeRow">
+          <div class="tsize-option" data-size="1"><span class="tsize-preview" style="font-size:16px;">가</span><span class="lb">보통</span></div>
+          <div class="tsize-option" data-size="1.15"><span class="tsize-preview" style="font-size:18.4px;">가</span><span class="lb">크게</span></div>
+          <div class="tsize-option" data-size="1.3"><span class="tsize-preview" style="font-size:20.8px;">가</span><span class="lb">아주 크게</span></div>
+          <div class="tsize-option" data-size="1.45"><span class="tsize-preview" style="font-size:23.2px;">가</span><span class="lb">매우 크게</span></div>
+          <div class="tsize-option" data-size="1.6"><span class="tsize-preview" style="font-size:25.6px;">가</span><span class="lb">최대로 크게</span></div>
         </div>
       </div>
 
@@ -636,7 +687,9 @@
         <div style="padding:0 0 12px 0;border-bottom:1px solid #F1EEE7;">
           <button type="button" id="checkinTimesToggleBtn" style="background:none;border:none;color:var(--blue);font-size:12px;font-weight:700;cursor:pointer;padding:0;">시간 설정 ▾</button>
           <div id="checkinTimesPanel" style="display:none;margin-top:12px;">
-            <div class="ob-field-label" style="margin-top:0;">수면 안부</div>
+            <div class="ob-field-label" style="margin-top:0;">건강리포트 알림</div>
+            <input class="ob-input" type="time" id="checkinReportTime" style="padding:10px;font-size:15px;">
+            <div class="ob-field-label">수면 안부</div>
             <input class="ob-input" type="time" id="checkinSleepTime" style="padding:10px;font-size:15px;">
             <div class="ob-field-label">식사 안부</div>
             <input class="ob-input" type="time" id="checkinMealTime" style="padding:10px;font-size:15px;">
@@ -647,10 +700,6 @@
             <button class="cl-add" id="saveCheckinTimesBtn" style="margin-top:10px;">저장</button>
             <div id="checkinTimesSaveStatus" style="font-size:11px;color:var(--sub);margin-top:6px;"></div>
           </div>
-        </div>
-        <div class="toggle-item">
-          <div><div class="lb">심리 상태 체크 알림</div><div class="desc">기분 변화가 있을 때 알려드려요</div></div>
-          <label class="switch"><input type="checkbox" id="toggleMental"><span class="slider"></span></label>
         </div>
       </div>
 
@@ -665,6 +714,48 @@
     </div>
   </div>
 
+  <!-- ===== 체크리스트 관리 (프로필에서 버튼으로 진입, 이 화면만 표시) ===== -->
+  <div class="screen" id="checklistSettingsScreen">
+    <div class="subheader">
+      <button class="backbtn" id="checklistSettingsBack">←</button>
+      <div class="title">체크리스트 관리</div>
+    </div>
+    <div class="scroll">
+      <div class="info-card">
+        <div class="toggle-item">
+          <div><div class="lb">체크리스트 표시</div><div class="desc">대화창 상단에 고정해서 보여드려요</div></div>
+          <label class="switch"><input type="checkbox" id="toggleChecklist"><span class="slider"></span></label>
+        </div>
+      </div>
+      <div class="info-card" id="checklistItemsCard">
+        <div id="checklistItemRows"></div>
+        <button class="cl-add" id="addChecklistItem">+ 항목 추가</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 목표 걸음수 (프로필에서 버튼으로 진입, 이 화면만 표시) ===== -->
+  <div class="screen" id="stepGoalScreen">
+    <div class="subheader">
+      <button class="backbtn" id="stepGoalBack">←</button>
+      <div class="title">목표 걸음수</div>
+    </div>
+    <div class="scroll">
+      <div class="info-card">
+        <div class="toggle-item">
+          <div><div class="lb">걸음수 표시</div><div class="desc">대화창 체크리스트에 오늘 걸음수를 보여드려요</div></div>
+          <label class="switch"><input type="checkbox" id="toggleStepsEnabled"><span class="slider"></span></label>
+        </div>
+      </div>
+      <div class="info-card">
+        <div class="goal-steps-row">
+          <div class="lb">목표 걸음수</div>
+          <input type="number" id="stepGoalInput" min="1000" step="500" inputmode="numeric">
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- ===== REPORT ===== -->
   <div class="screen" id="reportScreen">
     <div class="subheader">
@@ -672,7 +763,19 @@
       <div class="title">건강리포트</div>
       <div class="report-badge" id="recordDaysBadge"></div>
     </div>
-    <div class="scroll">
+    <div class="report-gate" id="reportGate">
+      <div class="report-gate-icon">💗</div>
+      <div class="report-gate-title">오늘의 건강리포트가 준비됐어요</div>
+      <div class="report-gate-desc">광고를 보시거나 구독하시면 바로 확인하실 수 있어요.</div>
+      <button type="button" class="report-gate-btn primary" id="watchAdBtn">광고 보고 확인하기</button>
+      <button type="button" class="report-gate-btn" id="goSubscribeBtn">구독하고 광고 없이 보기</button>
+    </div>
+    <div class="report-ad-mock" id="reportAdMock">
+      <div class="ad-mock-label">광고</div>
+      <div class="ad-mock-timer" id="adMockTimer">5</div>
+      <div class="ad-mock-desc">잠시 후 리포트를 보여드릴게요</div>
+    </div>
+    <div class="scroll" id="reportScrollArea">
       <div class="tabs">
         <div class="tab active" data-tab="daily">일간</div>
         <div class="tab" data-tab="weekly">주간</div>
@@ -753,11 +856,17 @@ const VAPID_PUBLIC_KEY = 'BEHe-CLJT7Y5q8Vk3aGKf1fqq-rkXGeKyN1Xbe-zG5QIhQalylfW7g
 
 /* ============ STATE ============ */
 let profile = null;
-let notifSettings = { report:true, proactive:true, mental:true, push:false };
+let notifSettings = { report:true, proactive:true, push:false };
 let messages = [];
 let checklistState = {};       // today's done/not-done map, keyed by item id
 let checklistItems = [];       // configurable list of {id, label}
 let checklistEnabled = true;   // shown/hidden in chat
+let todaySteps = null;         // 오늘 걸음수 — 네이티브 앱(Flutter WebView 껍데기)의
+                                // Health Connect 브릿지에서만 실제 값이 옴. 웹 브라우저로
+                                // 열었을 때는 폰의 만보기 데이터를 읽을 방법이 없어서
+                                // null로 두고, 지어내지 않고 그냥 표시를 안 함.
+let stepGoal = 6000;            // 설정에서 입력하는 목표 걸음수
+let stepsEnabled = true;        // 목표 걸음수 화면에서 켜고 끄는 걸음수 표시 여부
 let pinnedExpanded = false;
 let obStep = 1;
 let obData = { name:'', birthYear:'', gender:'', height:'', weight:'', interests:[], locationConsent:null };
@@ -923,9 +1032,61 @@ function showScreen(id){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
 }
-document.getElementById('menuBtn').addEventListener('click', ()=>{ renderProfile(); renderChecklistSettings(); showScreen('profileScreen'); });
+document.getElementById('menuBtn').addEventListener('click', ()=>{ renderProfile(); showScreen('profileScreen'); });
 document.getElementById('profileBack').addEventListener('click', ()=> showScreen('chatScreen'));
-document.getElementById('reportCta').addEventListener('click', ()=>{ renderReport(); showScreen('reportScreen'); });
+// 리포트는 광고를 보거나 구독해야 볼 수 있게 게이트를 둡니다 — 광고/구독 모두
+// 아직 실제 네트워크·결제 연동 전이라(사용자 확인), 정직한 자리표시자로만
+// 동작합니다: 광고를 "봤다"고 거짓으로 과금/전송하지 않고, 구독 버튼도 실제
+// 결제 없이는 잠금을 풀지 않습니다.
+async function isPremiumActive(){
+  const isPremium = await storeGet('is-premium');
+  if(!isPremium) return false;
+  const trialEnd = await storeGet('premium-trial-end');
+  if(trialEnd && new Date(trialEnd) < new Date()){
+    await storeSet('is-premium', false); // 체험 기간이 끝났으면 자동으로 잠금 상태로 복귀
+    return false;
+  }
+  return true;
+}
+async function renderReportOrGate(){
+  const unlockedToday = await storeGet(todayKey('report-unlocked'));
+  const isPremium = await isPremiumActive();
+  const gate = document.getElementById('reportGate');
+  const scrollArea = document.getElementById('reportScrollArea');
+  if(unlockedToday || isPremium){
+    gate.classList.remove('show');
+    scrollArea.style.display = '';
+    renderReport();
+  } else {
+    gate.classList.add('show');
+    scrollArea.style.display = 'none';
+  }
+}
+document.getElementById('reportCta').addEventListener('click', ()=>{
+  showScreen('reportScreen');
+  renderReportOrGate();
+});
+document.getElementById('watchAdBtn').addEventListener('click', ()=>{
+  const gate = document.getElementById('reportGate');
+  const mock = document.getElementById('reportAdMock');
+  const timerEl = document.getElementById('adMockTimer');
+  gate.classList.remove('show');
+  mock.classList.add('show');
+  let secs = 5;
+  timerEl.textContent = secs;
+  const timer = setInterval(async ()=>{
+    secs -= 1;
+    if(secs <= 0){
+      clearInterval(timer);
+      mock.classList.remove('show');
+      await storeSet(todayKey('report-unlocked'), true);
+      renderReportOrGate();
+      return;
+    }
+    timerEl.textContent = secs;
+  }, 1000);
+});
+document.getElementById('goSubscribeBtn').addEventListener('click', ()=>{ location.href = '/premium.html'; });
 document.getElementById('reportBack').addEventListener('click', ()=>{ renderProfile(); showScreen('profileScreen'); });
 // 이름만 고칠 수 있던 걸 프로필 전체(성별/출생연도/키/체중/음양력/생일/태어난
 // 시간)를 한 화면에서 고칠 수 있는 폼으로 확장. 사주 흐름에서만 물어보던
@@ -1103,12 +1264,32 @@ function renderProfile(){
   document.getElementById('toggleLocation').checked = !!profile.locationConsent;
   document.getElementById('togglePush').checked = !!notifSettings.push;
   document.getElementById('toggleReport').checked = notifSettings.report;
-  document.getElementById('toggleMental').checked = notifSettings.mental;
   renderTextSizeSelection();
   loadCheckinSettingsUI();
 }
-document.getElementById('toggleReport').addEventListener('change', async (e)=>{ notifSettings.report = e.target.checked; await storeSet('notif-settings', notifSettings); });
-document.getElementById('toggleMental').addEventListener('change', async (e)=>{ notifSettings.mental = e.target.checked; await storeSet('notif-settings', notifSettings); });
+document.getElementById('toggleReport').addEventListener('change', async (e)=>{
+  const reportEnabled = e.target.checked;
+  notifSettings.report = reportEnabled;
+  await storeSet('notif-settings', notifSettings);
+  if(reportEnabled && !notifSettings.push){
+    const result = await enablePush();
+    if(result.ok){ notifSettings.push = true; await storeSet('notif-settings', notifSettings); document.getElementById('togglePush').checked = true; }
+  }
+  try{
+    await fetch('/api/checkin-settings', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        bomiLinkCode: profile.crmId, reportEnabled,
+        enabled: (checkinSettingsCache && checkinSettingsCache.enabled) ?? true,
+        reportTime: (checkinSettingsCache && checkinSettingsCache.report_time) || '21:00',
+        sleepTime: (checkinSettingsCache && checkinSettingsCache.sleep_time) || '10:00',
+        mealTime: (checkinSettingsCache && checkinSettingsCache.meal_time) || '19:00',
+        activityTime: (checkinSettingsCache && checkinSettingsCache.activity_time) || '17:00',
+        moodTime: (checkinSettingsCache && checkinSettingsCache.mood_time) || '20:00',
+      }),
+    });
+  }catch(err){ /* 다음에 설정 화면 열 때 다시 시도하게 됨 */ }
+});
 
 /* ============ 글씨 크기 설정 ============ */
 // 채팅 본문·선택지·서제스천 칩뿐 아니라 프로필/설정 화면의 라벨·값·토글
@@ -1119,11 +1300,11 @@ function applyTextScale(){
 }
 function renderTextSizeSelection(){
   const scale = String((profile && profile.textScale) || 1);
-  document.querySelectorAll('#textSizeRow .gender-card').forEach(card=>{
+  document.querySelectorAll('#textSizeRow .tsize-option').forEach(card=>{
     card.classList.toggle('selected', card.dataset.size === scale);
   });
 }
-document.querySelectorAll('#textSizeRow .gender-card').forEach(card=>{
+document.querySelectorAll('#textSizeRow .tsize-option').forEach(card=>{
   card.addEventListener('click', async ()=>{
     profile.textScale = Number(card.dataset.size);
     await storeSet('profile', profile);
@@ -1133,8 +1314,9 @@ document.querySelectorAll('#textSizeRow .gender-card').forEach(card=>{
 });
 
 /* ============ 건강 안부 문자 (시간 설정 가능) ============ */
-// 실제 발송 여부/시간은 서버(bomi_checkin_settings, api/send-checkins.js 크론)가
-// 갖고 있으므로 여기선 항상 서버 값을 불러와서 화면에 반영합니다.
+// 실제 발송 여부/시간은 서버(bomi_checkin_settings, api/notifications.js의
+// ?action=checkins 크론)가 갖고 있으므로 여기선 항상 서버 값을 불러와서
+// 화면에 반영합니다.
 let checkinSettingsCache = null;
 
 async function loadCheckinSettingsUI(){
@@ -1144,6 +1326,8 @@ async function loadCheckinSettingsUI(){
     const s = await res.json();
     checkinSettingsCache = s;
     document.getElementById('toggleProactive').checked = !!s.enabled;
+    document.getElementById('toggleReport').checked = s.report_enabled === undefined ? true : !!s.report_enabled;
+    document.getElementById('checkinReportTime').value = s.report_time || '21:00';
     document.getElementById('checkinSleepTime').value = s.sleep_time || '10:00';
     document.getElementById('checkinMealTime').value = s.meal_time || '19:00';
     document.getElementById('checkinActivityTime').value = s.activity_time || '17:00';
@@ -1168,6 +1352,8 @@ document.getElementById('toggleProactive').addEventListener('change', async (e)=
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({
         bomiLinkCode: profile.crmId, enabled,
+        reportEnabled: (checkinSettingsCache && checkinSettingsCache.report_enabled) ?? true,
+        reportTime: (checkinSettingsCache && checkinSettingsCache.report_time) || '21:00',
         sleepTime: (checkinSettingsCache && checkinSettingsCache.sleep_time) || '10:00',
         mealTime: (checkinSettingsCache && checkinSettingsCache.meal_time) || '19:00',
         activityTime: (checkinSettingsCache && checkinSettingsCache.activity_time) || '17:00',
@@ -1182,6 +1368,8 @@ document.getElementById('saveCheckinTimesBtn').addEventListener('click', async (
   const payload = {
     bomiLinkCode: profile.crmId,
     enabled: document.getElementById('toggleProactive').checked,
+    reportEnabled: document.getElementById('toggleReport').checked,
+    reportTime: document.getElementById('checkinReportTime').value || '21:00',
     sleepTime: document.getElementById('checkinSleepTime').value || '10:00',
     mealTime: document.getElementById('checkinMealTime').value || '19:00',
     activityTime: document.getElementById('checkinActivityTime').value || '17:00',
@@ -1192,7 +1380,8 @@ document.getElementById('saveCheckinTimesBtn').addEventListener('click', async (
       method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload),
     });
     checkinSettingsCache = {
-      enabled: payload.enabled, sleep_time: payload.sleepTime, meal_time: payload.mealTime,
+      enabled: payload.enabled, report_enabled: payload.reportEnabled, report_time: payload.reportTime,
+      sleep_time: payload.sleepTime, meal_time: payload.mealTime,
       activity_time: payload.activityTime, mood_time: payload.moodTime,
     };
     status.textContent = '저장했어요.';
@@ -1231,7 +1420,7 @@ async function enablePush(){
     });
   }
   try{
-    await fetch('/api/push-subscribe', {
+    await fetch('/api/notifications?action=subscribe', {
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ bomiLinkCode: profile.crmId, subscription: sub.toJSON() }),
     });
@@ -1309,7 +1498,7 @@ document.getElementById('copyCrm').addEventListener('click', ()=>{
 async function maybeShowConsentScreen(){
   if(!profile) return;
   try{
-    const res = await fetch('/api/check-link-status?code=' + encodeURIComponent(profile.crmId));
+    const res = await fetch('/api/link?action=status&code=' + encodeURIComponent(profile.crmId));
     const data = await res.json();
     if(data.status === 'pending'){
       showScreen('consentScreen');
@@ -1320,9 +1509,19 @@ async function maybeShowConsentScreen(){
   }
 }
 
+// 건강리포트 알림(sw.js의 notificationclick → /?report=1)을 탭해서 들어온 경우,
+// 채팅 화면 대신 곧바로 리포트 화면(광고/구독 게이트 포함)을 보여줍니다.
+function maybeShowReportFromNotification(){
+  if(location.search.includes('report=1')){
+    showScreen('reportScreen');
+    renderReportOrGate();
+    history.replaceState(null, '', location.pathname);
+  }
+}
+
 async function respondToConsent(decision){
   try{
-    await fetch('/api/consent-respond', {
+    await fetch('/api/link?action=consent', {
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ bomiLinkCode: profile.crmId, decision }),
     });
@@ -1383,22 +1582,66 @@ document.getElementById('dPrev').addEventListener('click', ()=>{});
 document.getElementById('dNext').addEventListener('click', ()=>{});
 
 
+/* ============ 만보기 (Health Connect 브릿지로 받은 걸음수) ============ */
+// steps가 null이면(웹 브라우저로 열었을 때, 또는 아직 네이티브에서 응답 전) 걸음수
+// 자체를 만들어내지 않고 그냥 안 보여줍니다 — 폰의 만보기 데이터는 네이티브 앱의
+// Health Connect 브릿지로만 받아올 수 있어서, 없는 값을 추측해서 채우지 않습니다.
+function activityLevelFromSteps(steps, goal){
+  if(steps === null || steps === undefined) return null;
+  const ratio = goal > 0 ? steps / goal : 0;
+  if(ratio >= 1) return '활발';
+  if(ratio >= 0.5) return '보통';
+  return '저활동';
+}
+
+// 보미 AI를 Flutter 네이티브 껍데기(BomiWebViewScreen) 안에서 열었을 때만
+// window.BomiNative가 존재합니다 — 그냥 브라우저/PWA로 열면 없어서, 그 경우엔
+// 만보기 기능 자체를 안 보여줍니다.
+function requestStepsFromNative(){
+  if(window.BomiNative) window.BomiNative.postMessage('getSteps');
+}
+window.addEventListener('bomiStepsUpdate', async (e)=>{
+  todaySteps = (e.detail && typeof e.detail.steps === 'number') ? e.detail.steps : null;
+  await storeSet(todayKey('steps'), todaySteps);
+  renderPinnedChecklist();
+});
+
 /* ============ PINNED CHECKLIST (chat header bar) ============ */
 function renderPinnedChecklist(){
   const wrap = document.getElementById('pinnedChecklist');
   const btn = document.getElementById('checklistBtn');
-  if(!checklistEnabled || checklistItems.length === 0){
+  const hasSteps = stepsEnabled && todaySteps !== null && todaySteps !== undefined;
+  if(!checklistEnabled || (checklistItems.length === 0 && !hasSteps)){
     btn.style.display = 'none';
     wrap.classList.remove('open');
     return;
   }
   btn.style.display = 'flex';
   const done = checklistItems.filter(it=>checklistState[it.id]).length;
-  document.getElementById('pinnedProg').textContent = `${done}/${checklistItems.length}`;
+  const totalForProg = checklistItems.length + (hasSteps ? 1 : 0);
+  const doneForProg = done + (hasSteps && todaySteps >= stepGoal ? 1 : 0);
+  document.getElementById('pinnedProg').textContent = `${doneForProg}/${totalForProg}`;
   wrap.classList.toggle('open', pinnedExpanded);
 
   const body = document.getElementById('pinnedBody');
   body.innerHTML = '';
+
+  if(hasSteps){
+    const level = activityLevelFromSteps(todaySteps, stepGoal);
+    const pct = Math.max(0, Math.min(100, Math.round((todaySteps/stepGoal)*100)));
+    const stepsRow = document.createElement('div');
+    stepsRow.className = 'steps-row';
+    stepsRow.innerHTML = `
+      <span class="steps-icon">🚶</span>
+      <div class="steps-body">
+        <span class="steps-num">${todaySteps.toLocaleString()} / ${stepGoal.toLocaleString()}걸음</span>
+        <div class="steps-bar"><div class="steps-bar-fill" style="width:${pct}%"></div></div>
+      </div>
+      <span class="steps-badge">${level}</span>
+    `;
+    body.appendChild(stepsRow);
+  }
+
   checklistItems.forEach(item=>{
     const isDone = !!checklistState[item.id];
     const row = document.createElement('div');
@@ -1417,7 +1660,7 @@ document.getElementById('checklistBtn').addEventListener('click', ()=>{
   renderPinnedChecklist();
 });
 
-/* ============ CHECKLIST SETTINGS (profile screen) ============ */
+/* ============ CHECKLIST SETTINGS (프로필 → "체크리스트 관리" 버튼으로 여는 별도 화면) ============ */
 function renderChecklistSettings(){
   document.getElementById('toggleChecklist').checked = checklistEnabled;
   const rows = document.getElementById('checklistItemRows');
@@ -1459,6 +1702,34 @@ document.getElementById('addChecklistItem').addEventListener('click', async ()=>
     renderPinnedChecklist();
   }
 });
+document.getElementById('openChecklistSettingsBtn').addEventListener('click', ()=>{
+  renderChecklistSettings();
+  showScreen('checklistSettingsScreen');
+});
+document.getElementById('checklistSettingsBack').addEventListener('click', ()=> showScreen('profileScreen'));
+
+/* ============ 목표 걸음수 설정 (프로필 → "목표 걸음수" 버튼으로 여는 별도 화면) ============ */
+function renderStepGoalSettings(){
+  document.getElementById('toggleStepsEnabled').checked = stepsEnabled;
+  document.getElementById('stepGoalInput').value = stepGoal;
+}
+document.getElementById('toggleStepsEnabled').addEventListener('change', async (e)=>{
+  stepsEnabled = e.target.checked;
+  await storeSet('steps-enabled', stepsEnabled);
+  renderPinnedChecklist();
+});
+document.getElementById('stepGoalInput').addEventListener('change', async (e)=>{
+  const val = parseInt(e.target.value, 10);
+  stepGoal = (val && val > 0) ? val : stepGoal;
+  e.target.value = stepGoal;
+  await storeSet('step-goal', stepGoal);
+  renderPinnedChecklist();
+});
+document.getElementById('openStepGoalBtn').addEventListener('click', ()=>{
+  renderStepGoalSettings();
+  showScreen('stepGoalScreen');
+});
+document.getElementById('stepGoalBack').addEventListener('click', ()=> showScreen('profileScreen'));
 
 /* ============ CHAT LOGIC ============ */
 
@@ -1582,7 +1853,8 @@ async function regenerateReply(userText){
     if(options.length) addSuggestedOptions(options);
   }catch(e){
     removeTyping();
-    addAssistantBlock('지금 연결이 원활하지 않아요. 잠시 후 다시 말씀해 주세요 🙏', userText, true);
+    if(e instanceof RateLimitError){ showRateLimitUpsell(); }
+    else { addAssistantBlock('지금 연결이 원활하지 않아요. 잠시 후 다시 말씀해 주세요.', userText, true); }
   }
 }
 
@@ -1682,8 +1954,8 @@ function addInlineTextCard(title, placeholder, onConfirm){
   wrap.className = 'checklist-card';
   wrap.innerHTML = `
     <div class="checklist-title">${title}</div>
-    <input type="text" id="inlineTextCardInput" placeholder="${placeholder}" style="width:100%;border:1px solid var(--line);border-radius:10px;padding:10px;font-size:15px;margin-bottom:10px;background:#FAF9F6;color:var(--ink);">
-    <button type="button" id="inlineTextCardConfirm" style="width:100%;padding:11px;border-radius:10px;border:none;background:var(--navy);color:#fff;font-weight:700;font-size:14px;cursor:pointer;">확인</button>
+    <input type="text" id="inlineTextCardInput" placeholder="${placeholder}" style="width:100%;border:1px solid var(--line);border-radius:10px;padding:10px;font-size:calc(15px * var(--app-font-scale));margin-bottom:10px;background:#FAF9F6;color:var(--ink);">
+    <button type="button" id="inlineTextCardConfirm" style="width:100%;padding:11px;border-radius:10px;border:none;background:var(--navy);color:#fff;font-weight:700;font-size:calc(14px * var(--app-font-scale));cursor:pointer;">확인</button>
   `;
   chat.appendChild(wrap);
   chat.scrollTop = chat.scrollHeight;
@@ -1697,8 +1969,8 @@ function addInlineTextCard(title, placeholder, onConfirm){
   setTimeout(()=>input.focus(), 50);
 }
 
-/* ============ 대중교통 길찾기 (카카오 로컬 API + ODsay API, api/transit-route.js 참고) ============ */
-// AI를 거치지 않고 /api/transit-route를 직접 호출해서 구조화된 JSON을 받아
+/* ============ 대중교통 길찾기 (카카오 로컬 API + ODsay API, api/location.js 참고) ============ */
+// AI를 거치지 않고 /api/location?action=route를 직접 호출해서 구조화된 JSON을 받아
 // 카드로 그립니다 — 버스/지하철 선호를 더는 물어보지 않고, 가장 빠른 경로
 // 하나만 도보/지하철/버스 구간별로 보여줍니다.
 
@@ -1741,7 +2013,7 @@ function setupAutocomplete(inputEl, listEl, onSelect){
     if(query.length < 2){ hide(); return; }
     debounceTimer = setTimeout(async ()=>{
       try{
-        const res = await fetch('/api/geocode-search?query=' + encodeURIComponent(query));
+        const res = await fetch('/api/location?action=search&query=' + encodeURIComponent(query));
         const data = await res.json();
         results = data.results || [];
         render();
@@ -1772,7 +2044,7 @@ function addInlineRouteCard(onConfirm){
       <input type="text" id="transitDestInput" placeholder="예: 강남역, 서울대학교병원" style="width:100%;border:1px solid var(--line);border-radius:10px;padding:10px;font-size:calc(15px * var(--app-font-scale));background:#FAF9F6;color:var(--ink);">
       <div class="autocomplete-list" id="transitDestList"></div>
     </div>
-    <button type="button" id="transitRouteConfirm" style="width:100%;padding:11px;border-radius:10px;border:none;background:var(--navy);color:#fff;font-weight:700;font-size:14px;cursor:pointer;margin-top:4px;">확인</button>
+    <button type="button" id="transitRouteConfirm" style="width:100%;padding:11px;border-radius:10px;border:none;background:var(--navy);color:#fff;font-weight:700;font-size:calc(14px * var(--app-font-scale));cursor:pointer;margin-top:4px;">확인</button>
   `;
   chat.appendChild(wrap);
   chat.scrollTop = chat.scrollHeight;
@@ -1873,7 +2145,7 @@ async function runTransitSearch(origin, destination, originResolved, destResolve
 
   const loadingBubble = addLocalBubble('경로를 확인하고 있어요...');
   try{
-    const response = await fetch('/api/transit-route', {
+    const response = await fetch('/api/location?action=route', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ origin: originPayload, destination: destPayload })
@@ -1899,8 +2171,8 @@ function addInlineBirthDateCard(onConfirm){
   wrap.className = 'checklist-card';
   wrap.innerHTML = `
     <div class="checklist-title">${isLunar ? '음력 기준 생일(월/일)을 알려주세요' : '생일(월/일)을 알려주세요'}</div>
-    <input type="date" id="sajuBirthDateInput" style="width:100%;border:1px solid var(--line);border-radius:10px;padding:10px;font-size:15px;margin-bottom:10px;background:#FAF9F6;color:var(--ink);">
-    <button type="button" id="sajuBirthDateConfirm" style="width:100%;padding:11px;border-radius:10px;border:none;background:var(--navy);color:#fff;font-weight:700;font-size:14px;cursor:pointer;">확인</button>
+    <input type="date" id="sajuBirthDateInput" style="width:100%;border:1px solid var(--line);border-radius:10px;padding:10px;font-size:calc(15px * var(--app-font-scale));margin-bottom:10px;background:#FAF9F6;color:var(--ink);">
+    <button type="button" id="sajuBirthDateConfirm" style="width:100%;padding:11px;border-radius:10px;border:none;background:var(--navy);color:#fff;font-weight:700;font-size:calc(14px * var(--app-font-scale));cursor:pointer;">확인</button>
   `;
   chat.appendChild(wrap);
   chat.scrollTop = chat.scrollHeight;
@@ -1985,7 +2257,7 @@ function systemPrompt(){
     : '';
   return `당신은 '보미'라는 이름의 다정한 AI 건강케어 비서입니다.
 대화 상대: ${profile.name}님, 만 ${age}세, ${profile.gender}, 키 ${profile.height}cm, 체중 ${profile.weight}kg, 관심사: ${profile.interests.join(', ')}.${sajuInfoLine}
-말투: 항상 존댓말, 짧고 쉬운 문장, 따뜻하고 친근하게. 호칭은 "${profile.name}님"으로.
+말투: 항상 존댓말, 짧고 쉬운 문장, 따뜻하고 친근하게. 답변 중간이나 끝에 이름을 부르거나 "님" 같은 호칭을 붙이지 말고, 바로 본론으로 깔끔하게 답하세요.
 역할: 수면, 식사, 통증, 복약, 정서 상태를 먼저 챙기고, 관심사(${profile.interests.join(', ')})를 활용해 친밀하게 대화하세요.
 오늘의 체크리스트 현황(어르신이 복약/식사/일정을 기억 못 하실 때 이 정보로 정확히 답해주세요):
 ${checklistLines}
@@ -1994,20 +2266,22 @@ ${checklistLines}
 - 의학적 진단/처방은 하지 말고, 이상 증상엔 병원 방문이나 가벼운 스트레칭을 권유하세요.
 - 이모지·이모티콘은 절대 쓰지 마세요.
 - 매일 아침 인사나 안부 질문은 최대한 다양하게 표현하고, 최근에 나눈 대화 내용을 반영해 형식적으로 반복되지 않도록 하세요.
+- 사용자 메시지는 마이크 음성인식 결과일 수 있어서 "음", "어", "그" 같은 망설임 표현이나 말 더듬음이 섞여 있을 수 있어요. 그런 표현은 무시하고 문맥상 진짜 하고 싶은 말이 뭔지 파악해서 자연스럽게 답하세요.
 
 주제별 답변 형식 (해당하는 주제면 이 방향을 따르되, 위 규칙대로 단답으로 끝내지 마세요):
-- 오늘 날씨: 이 주제는 예외적으로 풀어서 설명하지 마세요. 이름을 부르거나 "~님, 알려드릴게요" 같은 인사말·서두 없이 곧바로 아래 4줄부터 시작하세요(각 줄 줄바꿈, 군더더기 문장 없이):
-  현재 위치(구/동 단위)
-  기온 — 반드시 숫자(예: "18도")로, 체감온도가 확인되면 함께. "맑음"·"흐림" 같은 날씨 상태 단어만 쓰고 숫자를 빼지 마세요.
-  강수확률과 강수량 — 반드시 숫자(예: "강수확률 30%, 강수량 0mm")로.
-  마지막 줄에 선크림·우산·겉옷 등 그날 날씨에 맞는 준비물을 한 문장으로 챙겨주는 멘트
+- 오늘 날씨: 이 주제는 예외적으로 풀어서 설명하지 마세요. 인사말·서두 없이 곧바로 아래 3줄 형식으로만 답하세요(줄바꿈으로 구분, 군더더기 문장 없이):
+  1번째 줄: "현재 위치기준 (동/구 단위 지명)으로 [기온]도이며, 금일 최고 온도는 [최고기온]도입니다." 형식 그대로. 기온·최고기온은 반드시 숫자.
+  2번째 줄: "강수확률 N%  미세먼지 [등급]" 형식으로 한 줄에 붙여서(등급 예: 좋음/보통/나쁨/매우 나쁨).
+  3번째 줄: 자외선 지수·강수·미세먼지·기온 중 그날 두드러진 조건 하나에 맞춰 모자·선글라스·우산·마스크·겉옷 중 알맞은 걸 챙기라고 권하는 자연스러운 한 문장(예: "오늘은 자외선 지수가 높으니 모자나 선글라스를 챙기시는 게 좋겠어요").
   위치 정보가 없으면 위치를 먼저 여쭤보고, 검색해도 구체적인 숫자를 못 찾으면 추측해서 채우지 말고 "확인이 어렵다"고 솔직히 말하세요.
+  날씨 답변 뒤에 붙는 선택지 중 하나는 반드시 "내일 날씨도 궁금하신가요?"로 하세요.
 - 검색/일반 지식: 결론을 먼저 한두 문장으로 말한 뒤, 어르신이 궁금해하실 배경이나 이유를 자연스럽게 덧붙이세요.
 - 지도/길찾기/교통: 구체적인 출발지·도착지 경로 안내는 화면 아래 "대중교통 이용" 버튼을 누르면 정확한 경로를 카드로 보여준다고 안내하세요(직접 경로·시간을 지어내지 마세요). 그 외 일반적인 교통 질문은 도움이 될 만한 일반적인 방법을 편하게 풀어서 안내하세요.
 - 사주/운세: 재미로 보는 것임을 짧게 밝히고, 생일·태어난 시간대 정보가 있으면 그걸 반영해 그 사람만을 위한 이야기처럼 구체적으로 풀어서 답하세요(정보가 없으면 연 단위로만 가볍게). 사용자가 재물운/애정운/건강운/직장운/총운 중 무엇을 물었는지에 맞춰 그 주제 중심으로 답하세요. "반드시 ~된다" 같은 단정적 예언 표현은 쓰지 마세요.
-- 경제/주가/투자: 특정 종목의 매수·매도를 추천하지 말고, 실시간 시세는 확인할 수 없다고 안내한 뒤 일반적인 경제 개념을 이해하기 쉽게 풀어서 설명하세요.
-- 부동산 정책/정치 뉴스: 사실 위주로 중립적으로 요약하고, 특정 정당·정책에 대한 찬반 의견이나 지지 표현은 절대 하지 마세요.
+- 경제/부동산 정책/정치 뉴스(시사 전반): "요즘 경기 어때?", "부동산 정책 뭐가 바뀌었어?", "정치 뉴스 뭐가 있어?"처럼 막연한 질문이면, 오늘 있었던 이슈를 여러 개 나열하거나 요약하지 말고 어떤 소식이 궁금하신지 짧게 되물으세요(예: "요즘 여러 이야기가 많은데, 어떤 소식이 궁금하세요?"), 그리고 선택지에 구체적인 이슈 2~3개를 실제로 최근 있었던 것 중에서 골라 보기로 제시하세요. 사용자가 특정 이슈를 콕 집어 물으면, 그때는 그 이슈 하나만 사실 위주로 간결하게 설명하세요(다른 이슈까지 곁들이지 마세요). 특정 종목 매수·매도 추천 금지, 실시간 시세 확인 불가 안내, 특정 정당·정책에 대한 찬반·지지 표현은 절대 금지.
 - 말벗/정서적 대화: 충분히 공감하며 이야기를 들어준 뒤, 답변 끝에 질문 하나를 되돌려줘서 어르신이 계속 이야기를 이어가시게 하세요.
+
+칩(빠른 선택지)을 눌러서 시작된 대화일수록 특히 더 깔끔하게 — 인사말이나 군더더기 없이 핵심만 담아 답하세요(단, 말벗/정서적 대화는 예외로 충분히 대화하듯 답하세요).
 
 답변을 마친 다음 줄에, 어르신이 이어서 하실 법한 짧은 말 2~3개를 아래 형식으로 반드시 덧붙이세요 (형식을 벗어나지 마세요, 이 줄은 화면에 그대로 안 보이고 선택 버튼으로 바뀝니다):
 [[선택지: 옵션1 | 옵션2 | 옵션3]]
@@ -2042,9 +2316,29 @@ async function callBomi(userText){
   const data = await response.json();
   if(!response.ok){
     console.error('chat api error:', data.error);
-    return `죄송해요 ${profile.name}님, 지금 대답이 어려워요. 다시 말씀해 주시겠어요?`;
+    // 무료 Gemini 티어의 분당/일일 요청 한도에 걸린 경우, 일반적인 "연결 오류"
+    // 문구 대신 구독 유도 멘트를 보여줍니다 — 실제로 뭐가 문제인지 어르신께
+    // 솔직히 말씀드리면서, 자연스럽게 업그레이드 여지를 안내하는 거예요.
+    if(/quota|rate limit/i.test(data.error || '')){
+      throw new RateLimitError();
+    }
+    return `죄송해요, 지금 대답이 어려워요. 다시 말씀해 주시겠어요?`;
   }
-  return data.reply || `죄송해요 ${profile.name}님, 지금 대답이 어려워요. 다시 말씀해 주시겠어요?`;
+  return data.reply || `죄송해요, 지금 대답이 어려워요. 다시 말씀해 주시겠어요?`;
+}
+class RateLimitError extends Error {}
+
+// 무료 모델 사용량 한도에 걸렸을 때 보여주는 업셀 멘트 — 기다리거나(무료),
+// 구독하거나, 프리미엄 기능 소개 페이지로 가는 세 가지 선택지를 줍니다.
+// 구독/프리미엄 버튼은 아직 실제 결제 연동 전이라 premium.html의 안내
+// 페이지로만 연결됩니다(실제 결제창처럼 속이지 않음).
+function showRateLimitUpsell(){
+  addLocalBubble('지금 무료 모델 사용량이 많아서 답변이 늦어지고 있어요. 조금 더 기다리시거나, 구독하시면 복잡한 질문도 더 빠르고 자세하게 답해드릴 수 있어요.');
+  addChoiceButtons(['월 구독 4,900원 하러 가기', '프리미엄 모델 기능에 대하여', '무료 모델 이용할게요'], (choice)=>{
+    if(choice === '월 구독 4,900원 하러 가기' || choice === '프리미엄 모델 기능에 대하여'){
+      location.href = '/premium.html';
+    }
+  });
 }
 
 async function saveFeedback(text){
@@ -2074,7 +2368,8 @@ async function sendMessage(text){
     if(options.length) addSuggestedOptions(options);
   }catch(e){
     removeTyping();
-    addAssistantBlock('지금 연결이 원활하지 않아요. 잠시 후 다시 말씀해 주세요 🙏', text, true);
+    if(e instanceof RateLimitError){ showRateLimitUpsell(); }
+    else { addAssistantBlock('지금 연결이 원활하지 않아요. 잠시 후 다시 말씀해 주세요.', text, true); }
   }
   document.getElementById('sendBtn').disabled = false;
 }
@@ -2125,12 +2420,112 @@ function closeCamera(){
 document.getElementById('cameraBtn').addEventListener('click', (e)=> openCamera(e.currentTarget));
 document.getElementById('closeCameraBtn').addEventListener('click', closeCamera);
 
-let auroraTimer = null;
-document.getElementById('voiceBtn').addEventListener('click', ()=>{
+/* ============ 마이크 음성 대화 (네이버 클로바 스피치) ============ */
+// 브라우저 MediaRecorder는 기본적으로 webm/opus로 녹음하는데, 클로바 스피치
+// API가 그 포맷을 확실히 지원하는지 문서에 안 나와있어서(실제 테스트도 못함),
+// 대신 Web Audio API로 원본 PCM 샘플을 직접 받아 16bit mono WAV로 직접
+// 인코딩합니다 — 이 WAV 포맷은 실제 API 호출로 이미 동작을 확인했습니다.
+let isRecordingVoice = false;
+let voiceAudioContext = null;
+let voiceMediaStream = null;
+let voiceScriptProcessor = null;
+let voiceRecordedChunks = [];
+let voiceMaxDurationTimer = null;
+const VOICE_MAX_SECONDS = 60; // 클로바 스피치가 1분 이내 인식에 최적화되어 있어서 그 이상은 자동 종료
+
+function floatTo16BitPCM(chunks, totalLength){
+  const pcm = new Int16Array(totalLength);
+  let offset = 0;
+  for(const chunk of chunks){
+    for(let i=0;i<chunk.length;i++){
+      const s = Math.max(-1, Math.min(1, chunk[i]));
+      pcm[offset++] = s < 0 ? s*0x8000 : s*0x7FFF;
+    }
+  }
+  return pcm;
+}
+function encodeWavBlob(chunks, sampleRate){
+  const totalLength = chunks.reduce((sum,c)=>sum+c.length, 0);
+  const pcm = floatTo16BitPCM(chunks, totalLength);
+  const buffer = new ArrayBuffer(44 + pcm.length*2);
+  const view = new DataView(buffer);
+  const writeString = (offset, s) => { for(let i=0;i<s.length;i++) view.setUint8(offset+i, s.charCodeAt(i)); };
+  writeString(0,'RIFF'); view.setUint32(4, 36+pcm.length*2, true); writeString(8,'WAVE');
+  writeString(12,'fmt '); view.setUint32(16,16,true); view.setUint16(20,1,true); view.setUint16(22,1,true);
+  view.setUint32(24,sampleRate,true); view.setUint32(28,sampleRate*2,true); view.setUint16(32,2,true); view.setUint16(34,16,true);
+  writeString(36,'data'); view.setUint32(40, pcm.length*2, true);
+  new Int16Array(buffer,44).set(pcm);
+  return new Blob([buffer], { type:'audio/wav' });
+}
+
+async function startVoiceRecording(){
+  try{
+    voiceMediaStream = await navigator.mediaDevices.getUserMedia({ audio:{ channelCount:1 } });
+  }catch(e){
+    showToast('마이크 권한이 필요해요. 설정에서 허용해 주세요.');
+    return;
+  }
+  voiceAudioContext = new (window.AudioContext || window.webkitAudioContext)();
+  const source = voiceAudioContext.createMediaStreamSource(voiceMediaStream);
+  voiceScriptProcessor = voiceAudioContext.createScriptProcessor(4096, 1, 1);
+  voiceRecordedChunks = [];
+  voiceScriptProcessor.onaudioprocess = (e)=>{
+    voiceRecordedChunks.push(new Float32Array(e.inputBuffer.getChannelData(0)));
+  };
+  source.connect(voiceScriptProcessor);
+  voiceScriptProcessor.connect(voiceAudioContext.destination);
+  isRecordingVoice = true;
   document.getElementById('auroraBorder').classList.add('active');
-  showToast('음성 대화 기능은 준비 중이에요 🎙️');
-  clearTimeout(auroraTimer);
-  auroraTimer = setTimeout(()=> document.getElementById('auroraBorder').classList.remove('active'), 2800);
+  document.getElementById('voiceBtn').classList.add('recording');
+  showToast('듣고 있어요...');
+  voiceMaxDurationTimer = setTimeout(()=> stopVoiceRecording(), VOICE_MAX_SECONDS*1000);
+}
+
+async function stopVoiceRecording(){
+  if(!isRecordingVoice) return;
+  isRecordingVoice = false;
+  clearTimeout(voiceMaxDurationTimer);
+  document.getElementById('auroraBorder').classList.remove('active');
+  document.getElementById('voiceBtn').classList.remove('recording');
+  const sampleRate = voiceAudioContext.sampleRate;
+  voiceScriptProcessor.disconnect();
+  voiceMediaStream.getTracks().forEach(t=>t.stop());
+  await voiceAudioContext.close();
+
+  if(voiceRecordedChunks.length === 0) return;
+  const wavBlob = encodeWavBlob(voiceRecordedChunks, sampleRate);
+  voiceRecordedChunks = [];
+
+  showToast('알아듣는 중...');
+  try{
+    const audioBase64 = await blobToBase64(wavBlob);
+    const response = await fetch('/api/speech-to-text', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ audioBase64 }),
+    });
+    const data = await response.json();
+    if(data.ok && data.text && data.text.trim()){
+      sendMessage(data.text.trim());
+    } else {
+      showToast(data.message || '음성을 이해하지 못했어요. 다시 말씀해 주시겠어요?');
+    }
+  }catch(e){
+    showToast('음성 인식 중 문제가 생겼어요. 다시 시도해 주시겠어요?');
+  }
+}
+
+function blobToBase64(blob){
+  return new Promise((resolve, reject)=>{
+    const reader = new FileReader();
+    reader.onloadend = ()=> resolve(reader.result.split(',')[1]);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
+document.getElementById('voiceBtn').addEventListener('click', ()=>{
+  if(isRecordingVoice) stopVoiceRecording();
+  else startVoiceRecording();
 });
 
 /* ============ APP START ============ */
@@ -2140,11 +2535,16 @@ async function startApp(isNew){
   if(!checklistItems){ checklistItems = DEFAULT_CHECKLIST_ITEMS.slice(); await storeSet('checklist-items', checklistItems); }
   const enabledStored = await storeGet('checklist-enabled');
   checklistEnabled = enabledStored === null ? true : enabledStored;
+  const stepsEnabledStored = await storeGet('steps-enabled');
+  stepsEnabled = stepsEnabledStored === null ? true : stepsEnabledStored;
+  stepGoal = (await storeGet('step-goal')) || stepGoal;
+  todaySteps = await storeGet(todayKey('steps'));
+  requestStepsFromNative(); // 네이티브 앱이면 최신 걸음수로 바로 갱신, 아니면 무시됨
   messages = await storeGet(todayKey('messages')) || [];
   showScreen('chatScreen');
 
   if(messages.length === 0){
-    const intro = `${profile.name}님, 반가워요! 보미가 매일 이런 걸 여쭤볼게요:
+    const intro = `반가워요! 보미가 매일 이런 걸 여쭤볼게요:
 
 • 오늘 컨디션은 어떠신지
 • 어젯밤은 푹 주무셨는지
@@ -2152,7 +2552,7 @@ async function startApp(isNew){
 • 요즘 마음 상태는 어떤지
 • ${profile.interests[0]||'관심사'} 활동은 즐기고 계신지
 
-이렇게 매일 대화를 나누면서 ${profile.name}님만의 건강리포트를 만들어 드릴게요! 궁금한 게 있으면 언제든 물어보세요 😊`;
+이렇게 매일 대화를 나누면서 건강리포트를 만들어 드릴게요! 궁금한 게 있으면 언제든 물어보세요.`;
     addBubble('assistant', intro);
     messages.push({role:'assistant', content:intro});
     await storeSet(todayKey('messages'), messages);
@@ -2167,22 +2567,26 @@ async function startApp(isNew){
   syncHealthSummaryIfConsented();
 }
 
-// 앱을 열 때마다 하루 1회, 동의된 회원의 건강리포트 요약만 서버로 보냅니다.
-// 원본 대화가 아니라 이미 계산된 요약 점수/소견만 보내고, 동의 여부는 서버
-// (api/sync-health-summary.js)가 bomi_links.status로 다시 한 번 확인합니다 —
-// 클라이언트가 동의 안 된 상태에서 호출해도 서버가 조용히 무시하므로 안전합니다.
+// 앱을 열 때마다 하루 1회, 동의된 회원의 "실제로 있는" 데이터만 서버로
+// 보냅니다 — 체크리스트 완료 개수(사용자가 직접 체크한 것)와 걸음수(네이티브
+// 앱의 Health Connect에서 받은 실측값, 없으면 null)만 보내고, 예전처럼
+// AI가 지어낸 수면/기분/영양/활동 "점수"는 절대 만들지도 보내지도 않습니다 —
+// 트레이너가 이걸 실제 건강 데이터로 오해하면 안 되기 때문입니다(2026-08-02
+// QA 감사에서 발견: 지어낸 점수가 CRM에 실제 데이터처럼 동기화되던 문제 수정).
+// 동의 여부는 서버(api/sync-health-summary.js)가 bomi_links.status로 다시
+// 한 번 확인합니다 — 클라이언트가 동의 안 된 상태에서 호출해도 서버가 조용히
+// 무시하므로 안전합니다.
 async function syncHealthSummaryIfConsented(){
   if(!profile || !profile.crmId) return;
   try{
-    const { sleep, mental, nutri, act, overall } = computeScores();
     const dateStr = new Date().toISOString().slice(0,10);
-    const summaryText = overall>=80 ? '컨디션이 아주 좋아요' : overall>=60 ? '무난한 상태예요' : '조금 더 챙겨볼까요';
+    const checklistCompleted = checklistItems.filter(it=>checklistState[it.id]).length;
     await fetch('/api/sync-health-summary', {
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({
         bomiLinkCode: profile.crmId, date: dateStr,
-        sleepScore: sleep, nutritionScore: nutri, activityScore: act, mentalScore: mental, overallScore: overall,
-        summaryText,
+        checklistCompleted, checklistTotal: checklistItems.length,
+        steps: todaySteps, stepGoal: todaySteps !== null ? stepGoal : null,
       }),
     });
   }catch(e){ /* 네트워크 문제면 조용히 넘어감 — 다음에 앱을 열 때 다시 시도됨 */ }
@@ -2210,6 +2614,7 @@ function hideSplash(){
     }
     startApp(false);
     maybeShowConsentScreen();
+    maybeShowReportFromNotification();
   } else {
     renderObStep();
   }

@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>보미 AI 개인정보처리방침</title>
+<style>
+  :root{
+    --blue:#9C7A54; --navy:#6F5636; --accent-soft:#F0E7D8;
+    --ink:#23201B; --sub:#7A6F5F; --bg:#F6F3EE; --card:#FFFFFF; --line:#E7E1D6;
+  }
+  *{ box-sizing:border-box; }
+  body{
+    margin:0; font-family:"Pretendard","Apple SD Gothic Neo","Malgun Gothic",-apple-system,sans-serif;
+    background:var(--bg); color:var(--ink); line-height:1.7;
+  }
+  .wrap{ max-width:720px; margin:0 auto; padding:40px 24px 80px; }
+  h1{ font-size:24px; font-weight:800; margin:0 0 6px 0; }
+  .updated{ font-size:13px; color:var(--sub); margin-bottom:32px; }
+  h2{ font-size:17px; font-weight:800; margin:32px 0 10px 0; color:var(--navy); }
+  p, li{ font-size:14.5px; color:var(--ink); }
+  ul{ padding-left:20px; margin:8px 0; }
+  li{ margin-bottom:6px; }
+  table{ width:100%; border-collapse:collapse; margin:12px 0; font-size:13.5px; }
+  th, td{ border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
+  th{ background:var(--accent-soft); color:var(--navy); font-weight:700; }
+  .note{ background:var(--card); border:1px solid var(--line); border-radius:12px; padding:14px 16px; font-size:13.5px; color:var(--sub); margin:16px 0; }
+  a{ color:var(--blue); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>보미 AI 개인정보처리방침</h1>
+  <div class="updated">시행일: 2026년 8월 2일</div>
+
+  <p>디포레(이하 "회사")는 「개인정보 보호법」에 따라 이용자의 개인정보를 보호하고 관련 고충을 신속하게 처리할 수 있도록 다음과 같이 개인정보처리방침을 수립·공개합니다. 보미 AI는 어르신을 위한 대화형 건강 동반자 서비스로, 아래와 같이 개인정보를 처리합니다.</p>
+
+  <h2>1. 수집하는 개인정보 항목 및 저장 위치</h2>
+  <p>보미 AI의 프로필 정보(이름, 출생연도, 성별, 키, 체중, 관심사, 사주 정보)는 <b>서버로 전송되어 저장되지 않고, 이용자 기기의 브라우저 저장소(localStorage)에만 보관</b>됩니다. 앱을 삭제하거나 브라우저 데이터를 지우면 함께 삭제됩니다.</p>
+
+  <table>
+    <thead><tr><th>수집 항목</th><th>수집 목적</th><th>처리 위치</th></tr></thead>
+    <tbody>
+      <tr><td>대화 내용(채팅 메시지)</td><td>AI 응답 생성</td><td>기기 저장 + AI 제공사(Google, Anthropic)로 응답 생성 요청 시에만 전송</td></tr>
+      <tr><td>음성 녹음</td><td>음성 인식(말하기로 대화 입력)</td><td>텍스트 변환 후 즉시 폐기 — 네이버 클로바 스피치로 전송, 서버에 저장 안 함</td></tr>
+      <tr><td>위치 정보(동의 시)</td><td>날씨·대중교통 경로 안내</td><td>해당 요청 처리 중에만 일시 사용, 저장 안 함</td></tr>
+      <tr><td>걸음수(안드로이드 앱, Health Connect)</td><td>체크리스트 내 활동량 표시</td><td>기기 저장. 트레이너 연동에 동의한 경우에만 서버로 전송</td></tr>
+      <tr><td>체크리스트 완료 현황</td><td>일일 건강 습관 확인</td><td>기기 저장. 트레이너 연동에 동의한 경우에만 서버로 전송</td></tr>
+      <tr><td>푸시 알림 구독 정보</td><td>안부 인사·리마인더 알림 발송</td><td>서버(Supabase) 저장</td></tr>
+    </tbody>
+  </table>
+
+  <div class="note">
+    <b>지어낸 데이터를 전달하지 않습니다.</b> 보미 AI는 실제로 확인되지 않은 건강 수치(예: 수면 점수, 심박 등)를 만들어내지 않으며, 트레이너에게 전달되는 정보는 이용자가 직접 체크한 체크리스트와 실제 기기에서 측정된 걸음수로 한정됩니다.
+  </div>
+
+  <h2>2. 제3자 제공 (트레이너 연동)</h2>
+  <p>이용자가 담당 트레이너와의 연동에 <b>명시적으로 동의</b>한 경우에만, 위 표의 "트레이너 연동에 동의한 경우" 항목이 트레이너용 관리 화면(W Health Care System)에 공유됩니다. 동의는 언제든 철회할 수 있으며, 철회 시 더 이상 공유되지 않습니다. 원본 대화 내용은 어떤 경우에도 트레이너에게 공유되지 않습니다.</p>
+
+  <h2>3. 개인정보 처리위탁 (외부 서비스)</h2>
+  <p>서비스 제공을 위해 아래 외부 서비스에 필요한 최소한의 정보를 전송합니다. 각 서비스는 자체 개인정보처리방침을 따릅니다.</p>
+  <table>
+    <thead><tr><th>수탁 업체</th><th>위탁 업무</th></tr></thead>
+    <tbody>
+      <tr><td>Google (Gemini API)</td><td>AI 대화 응답 생성</td></tr>
+      <tr><td>Anthropic (Claude API)</td><td>AI 대화 응답 생성(무료 한도 초과 시 수동 전환)</td></tr>
+      <tr><td>네이버 클라우드 플랫폼(CLOVA Speech)</td><td>음성 인식(음성→텍스트 변환)</td></tr>
+      <tr><td>카카오(Kakao Local API)</td><td>장소 검색, 위치→주소 변환</td></tr>
+      <tr><td>ODsay</td><td>대중교통 경로 조회</td></tr>
+      <tr><td>한국천문연구원(KASI)</td><td>음력·양력 변환(사주 계산용)</td></tr>
+      <tr><td>Supabase</td><td>푸시 알림 구독 정보, 트레이너 연동 동의 상태, 연동 동의 시 체크리스트/걸음수 저장</td></tr>
+      <tr><td>Vercel</td><td>서비스 호스팅(서버 인프라)</td></tr>
+    </tbody>
+  </table>
+
+  <h2>4. 개인정보의 보유 및 이용 기간</h2>
+  <ul>
+    <li>프로필·대화 내용: 이용자 기기에만 저장되며, 회사는 별도로 보관하지 않습니다.</li>
+    <li>음성 녹음: 텍스트 변환 즉시 폐기하며, 서버에 저장하지 않습니다.</li>
+    <li>트레이너 연동 동의 시 전송된 체크리스트/걸음수: 연동이 유지되는 동안 보관하며, 동의 철회 시 트레이너의 조회 권한이 즉시 차단됩니다.</li>
+    <li>푸시 알림 구독 정보: 이용자가 알림을 끄거나 앱을 삭제할 때까지 보관합니다.</li>
+  </ul>
+
+  <h2>5. 이용자의 권리</h2>
+  <p>이용자는 언제든지 앱 내 설정 화면에서 트레이너 연동을 해제하거나 알림 수신을 중단할 수 있으며, 브라우저 저장소를 삭제하여 기기에 저장된 모든 개인정보를 즉시 삭제할 수 있습니다. 트레이너에게 이미 공유된 정보의 삭제를 원하시면 아래 연락처로 요청해주세요.</p>
+
+  <h2>6. 아동의 개인정보</h2>
+  <p>보미 AI는 어르신을 대상으로 한 서비스이며, 만 14세 미만 아동으로부터 개인정보를 의도적으로 수집하지 않습니다.</p>
+
+  <h2>7. 개인정보 보호책임자</h2>
+  <p>개인정보 처리에 관한 문의사항은 아래로 연락해주세요.</p>
+  <ul>
+    <li>이메일: <a href="mailto:ajcloud41@gmail.com">ajcloud41@gmail.com</a></li>
+  </ul>
+
+  <h2>8. 개인정보처리방침의 변경</h2>
+  <p>이 개인정보처리방침은 법령·서비스 변경에 따라 수정될 수 있으며, 변경 시 이 페이지를 통해 고지합니다.</p>
+</div>
+</body>
+</html>
