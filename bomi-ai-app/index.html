@@ -236,6 +236,19 @@
     background:#fff; color:var(--navy); font-weight:700; font-size:calc(14px * var(--app-font-scale)); cursor:pointer; }
   .transit-map-btn:active{ background:#FAF9F6; }
 
+  /* ---------- 주식 시세 카드 — 국내는 빨강=상승/파랑=하락(한국 관행),
+     미국 종목도 어르신께 헷갈리지 않게 같은 색 규칙을 그대로 씁니다 ---------- */
+  .stock-result-card{ background:#fff; border:1px solid var(--line); border-radius:16px; padding:16px; max-width:86%; }
+  .stock-head{ display:flex; align-items:baseline; justify-content:space-between; margin-bottom:10px; }
+  .stock-head .name{ font-size:calc(16px * var(--app-font-scale)); font-weight:800; color:var(--ink); }
+  .stock-head .code{ font-size:calc(12px * var(--app-font-scale)); color:var(--sub); margin-left:6px; }
+  .stock-price-row{ display:flex; align-items:baseline; gap:10px; }
+  .stock-price{ font-size:calc(24px * var(--app-font-scale)); font-weight:800; color:var(--ink); }
+  .stock-change{ font-size:calc(15px * var(--app-font-scale)); font-weight:700; }
+  .stock-change.up{ color:#D9455A; }
+  .stock-change.down{ color:#3B6FD6; }
+  .stock-asof{ font-size:calc(11px * var(--app-font-scale)); color:var(--sub); margin-top:8px; }
+
   .quickchips{ display:flex; gap:12px; padding:10px 16px 14px 16px; overflow-x:auto; flex-shrink:0; background:#F6F3EE; }
   .chip{ flex-shrink:0; background:#fff; border:1px solid var(--line); color:var(--ink); font-size:calc(15px * var(--app-font-scale)); font-weight:600;
     padding:13px 20px; min-height:44px; border-radius:999px; cursor:pointer; white-space:nowrap; }
@@ -574,6 +587,7 @@
     <div class="quickchips">
       <div class="chip" data-msg="오늘 날씨 어때?">오늘 날씨 어때?</div>
       <div class="chip" id="transitChip">대중교통 이용</div>
+      <div class="chip" id="stockChip">주식</div>
       <div class="chip" id="sajuChip">오늘 운세</div>
       <div class="chip" data-msg="요즘 경기 어때?">요즘 경기</div>
       <div class="chip" data-msg="그냥 심심해서 말 걸어봤어">그냥 말벗</div>
@@ -2227,6 +2241,97 @@ async function runTransitSearch(origin, destination, originResolved, destResolve
   }
 }
 document.getElementById('transitChip').addEventListener('click', startTransitFlow);
+
+/* ============ 주식 시세 (국내: 공공데이터포털 금융위원회_주식시세정보 / 해외: Finnhub, api/stock.js 참고) ============ */
+// AI가 시세를 지어내는 일이 없도록, 시세 자체는 AI를 거치지 않고 /api/stock을
+// 직접 호출해서 실제 데이터만 카드로 보여줍니다. 애널리스트 분석·뉴스 요약처럼
+// AI의 검색 능력이 필요한 후속 질문만 sendMessage로 넘겨서 AI가 답하게 합니다.
+
+function formatStockAsOfDate(basDt){
+  if(!basDt || basDt.length !== 8) return '';
+  return `${basDt.slice(0,4)}년 ${Number(basDt.slice(4,6))}월 ${Number(basDt.slice(6,8))}일 종가 기준`;
+}
+
+function addStockResultCard(data){
+  const chat = document.getElementById('chat');
+  const wrap = document.createElement('div');
+  wrap.className = 'stock-result-card';
+  const isUp = data.change > 0;
+  const isDown = data.change < 0;
+  const changeClass = isUp ? 'up' : (isDown ? 'down' : '');
+  const arrow = isUp ? '▲' : (isDown ? '▼' : '');
+  const sign = isUp ? '+' : (isDown ? '-' : '');
+  const priceUnit = data.market === 'KR' ? '원' : '달러';
+  const priceStr = data.market === 'KR' ? Math.round(data.price).toLocaleString() : Number(data.price).toFixed(2);
+  const changeStr = data.market === 'KR' ? Math.round(Math.abs(data.change)).toLocaleString() : Math.abs(data.change).toFixed(2);
+  const pctStr = Math.abs(data.changePercent).toFixed(2);
+  wrap.innerHTML = `
+    <div class="stock-head">
+      <span class="name">${escapeHtml(data.name)}</span>
+      <span class="code">${escapeHtml(data.code)}</span>
+    </div>
+    <div class="stock-price-row">
+      <span class="stock-price">${priceStr}${priceUnit}</span>
+      <span class="stock-change ${changeClass}">${arrow} ${sign}${changeStr} (${sign}${pctStr}%)</span>
+    </div>
+    ${data.asOfDate ? `<div class="stock-asof">${formatStockAsOfDate(data.asOfDate)}</div>` : ''}
+  `;
+  chat.appendChild(wrap);
+  chat.scrollTop = chat.scrollHeight;
+
+  addChoiceButtons(['애널리스트 분석 알려줘', '관련 뉴스 요약해줘', '다른 종목 찾을게요'], (choice)=>{
+    if(choice === '다른 종목 찾을게요'){ startStockFlow(); return; }
+    sendMessage(`${data.name}(${data.code}) ${choice}`);
+  });
+}
+
+async function runStockQuote(market, code, name){
+  const loadingBubble = addLocalBubble('시세를 확인하고 있어요...');
+  try{
+    const response = await fetch(`/api/stock?action=quote&market=${encodeURIComponent(market)}&code=${encodeURIComponent(code)}`);
+    const data = await response.json();
+    loadingBubble.remove();
+    if(!data.ok){
+      addLocalBubble(data.message || '시세를 확인하지 못했어요.');
+      return;
+    }
+    addStockResultCard({ ...data, name: name || data.name });
+  }catch(e){
+    loadingBubble.remove();
+    addLocalBubble('시세를 확인하는 중 문제가 생겼어요. 잠시 후 다시 시도해주시겠어요?');
+  }
+}
+
+async function runStockSearch(query){
+  const loadingBubble = addLocalBubble('종목을 찾고 있어요...');
+  try{
+    const response = await fetch('/api/stock?action=search&query=' + encodeURIComponent(query));
+    const data = await response.json();
+    loadingBubble.remove();
+    if(!data.ok){
+      addLocalBubble(data.message || '종목을 찾지 못했어요.');
+      return;
+    }
+    addLocalBubble(`${data.name} 맞으신가요?`);
+    addChoiceButtons(['네, 맞아요', '아니요, 다시 찾을게요'], (choice)=>{
+      if(choice === '네, 맞아요'){
+        runStockQuote(data.market, data.code, data.name);
+      } else {
+        startStockFlow();
+      }
+    });
+  }catch(e){
+    loadingBubble.remove();
+    addLocalBubble('종목을 찾는 중 문제가 생겼어요. 잠시 후 다시 시도해주시겠어요?');
+  }
+}
+
+function startStockFlow(){
+  addInlineTextCard('어떤 종목이 궁금하세요?', '예: 삼성전자, 테슬라, AAPL', (query)=>{
+    runStockSearch(query);
+  });
+}
+document.getElementById('stockChip').addEventListener('click', startStockFlow);
 
 function addInlineBirthDateCard(onConfirm){
   const chat = document.getElementById('chat');
