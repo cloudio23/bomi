@@ -90,8 +90,8 @@ async function handleRoute(req, res) {
   const structured = structureRoute(best);
   res.status(200).json({
     ok: true,
-    origin: { placeName: originPlace.placeName },
-    destination: { placeName: destPlace.placeName },
+    origin: { placeName: originPlace.placeName, lat: originPlace.lat, lng: originPlace.lng },
+    destination: { placeName: destPlace.placeName, lat: destPlace.lat, lng: destPlace.lng },
     segments: structured.segments,
     totalMinutes: structured.totalMinutes,
   });

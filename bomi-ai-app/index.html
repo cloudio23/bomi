@@ -232,6 +232,9 @@
   .transit-card-total{ display:flex; justify-content:space-between; align-items:baseline; margin-top:11px; padding-top:11px; border-top:1.5px solid var(--line); }
   .transit-card-total .lb{ font-size:calc(13px * var(--app-font-scale)); color:var(--sub); font-weight:600; }
   .transit-card-total .val{ font-size:calc(16px * var(--app-font-scale)); color:var(--navy); font-weight:800; }
+  .transit-map-btn{ width:100%; margin-top:12px; padding:12px; border-radius:12px; border:1.5px solid var(--line);
+    background:#fff; color:var(--navy); font-weight:700; font-size:calc(14px * var(--app-font-scale)); cursor:pointer; }
+  .transit-map-btn:active{ background:#FAF9F6; }
 
   .quickchips{ display:flex; gap:12px; padding:10px 16px 14px 16px; overflow-x:auto; flex-shrink:0; background:#F6F3EE; }
   .chip{ flex-shrink:0; background:#fff; border:1px solid var(--line); color:var(--ink); font-size:calc(15px * var(--app-font-scale)); font-weight:600;
@@ -2161,9 +2164,23 @@ function addTransitResultCard(data){
       <span class="lb">총 소요시간</span>
       <span class="val">${data.totalMinutes}분 · ${formatKoreanClock(data.totalMinutes)} 도착</span>
     </div>
+    <button type="button" class="transit-map-btn" id="transitMapBtn">🗺️ 지도에서 길찾기 보기</button>
   `;
   chat.appendChild(wrap);
   chat.scrollTop = chat.scrollHeight;
+
+  // 카카오맵 길찾기로 그대로 이어줍니다 — 실시간 버스 도착 정보나 실제 지도
+  // 화면은 저희가 새로 만들기보다 이미 다들 쓰는 카카오맵을 그대로 여는 게
+  // 훨씬 정확하고 익숙합니다. 좌표는 서버가 이미 확정한 값을 그대로 씁니다.
+  const mapBtn = wrap.querySelector('#transitMapBtn');
+  if(data.origin.lat != null && data.destination.lat != null){
+    mapBtn.addEventListener('click', ()=>{
+      const url = `http://m.map.kakao.com/scheme/route?sp=${data.origin.lat},${data.origin.lng}&ep=${data.destination.lat},${data.destination.lng}&by=publictransit`;
+      window.open(url, '_blank');
+    });
+  } else {
+    mapBtn.style.display = 'none';
+  }
 }
 
 async function runTransitSearch(origin, destination, originResolved, destResolved){
