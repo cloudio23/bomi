@@ -4,12 +4,15 @@
 // 않고 카드로 바로 렌더링합니다 — 텍스트 나열보다 훨씬 간결하고, 경로/시간을
 // AI가 지어낼 여지 자체가 없습니다.
 //
-// 환경변수 2개가 필요합니다:
+// 환경변수:
 // - KAKAO_REST_API_KEY: https://developers.kakao.com → 애플리케이션 추가 → REST API 키
-// - ODSAY_API_KEY: https://lab.odsay.com → 회원가입 → 애플리케이션 등록 →
-//   **Server** API 키 (Web 키 아님 — 서버에서 호출하므로 Server 키가 필요합니다)
-// 둘 중 하나라도 없거나 API 호출이 실패하면 null을 반환하고, 호출부가 "못
-// 찾았다"고 안내하도록 넘깁니다 — 절대 조용히 틀린 값을 만들어내지 않습니다.
+// - ODSAY_PROXY_URL / ODSAY_PROXY_SECRET: ODsay Server 키는 호출하는 서버의
+//   고정 IP를 미리 등록해둬야 하는데, Vercel 서버리스 함수는 매번 IP가 바뀌어서
+//   직접 호출이 불가능합니다(2026-08-04 확인: ApiKeyAuthFailed). 그래서 고정 IP를
+//   가진 소형 VPS(DigitalOcean, Singapore)에 ODsay 키를 두고, 이 VPS가 대신
+//   ODsay를 호출해주는 중계 프록시를 세웠습니다 — Vercel은 그 프록시만 호출합니다.
+// 키가 없거나 호출이 실패하면 null을 반환하고, 호출부가 "못 찾았다"고 안내하도록
+// 넘깁니다 — 절대 조용히 틀린 값을 만들어내지 않습니다.
 
 export async function geocodePlace(query) {
   const key = process.env.KAKAO_REST_API_KEY;
@@ -65,15 +68,17 @@ export async function resolvePlace(place) {
 }
 
 export async function searchTransitRoutes({ startLat, startLng, endLat, endLng }) {
-  const key = process.env.ODSAY_API_KEY;
-  if (!key) return null;
+  const proxyUrl = process.env.ODSAY_PROXY_URL;
+  const proxySecret = process.env.ODSAY_PROXY_SECRET;
+  if (!proxyUrl || !proxySecret) return null;
   try {
     const params = new URLSearchParams({
-      apiKey: key,
       SX: String(startLng), SY: String(startLat),
       EX: String(endLng), EY: String(endLat),
     });
-    const response = await fetch(`https://api.odsay.com/v1/api/searchPubTransPathT?${params.toString()}`);
+    const response = await fetch(`${proxyUrl}/odsay/route?${params.toString()}`, {
+      headers: { 'X-Proxy-Secret': proxySecret },
+    });
     if (!response.ok) return null;
     const data = await response.json();
     const paths = data?.result?.path;
