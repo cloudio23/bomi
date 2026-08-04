@@ -82,7 +82,7 @@
     padding:16px; font-size:18px; outline:none; background:#FAF9F6; color:var(--ink);
   }
   .ob-input:focus{ border-color:var(--navy); background:#fff; }
-  .ob-field-label{ font-size:13px; color:var(--sub); margin:16px 0 6px 0; }
+  .ob-field-label{ font-size:calc(13px * var(--app-font-scale)); color:var(--sub); margin:16px 0 6px 0; }
   .gender-row{ display:flex; gap:12px; margin-top:4px; }
   .gender-card{
     flex:1; border:1.5px solid var(--line); border-radius:14px; padding:22px 0;
@@ -126,6 +126,10 @@
     border-radius:14px; font-size:26px; cursor:pointer;
     display:flex; align-items:center; justify-content:center;
   }
+  /* 체크리스트 아이콘이 조건부로 숨겨지면(display:none) .header 안에 남는 flex
+     자식이 menuBtn 하나뿐이라, justify-content:space-between이 그걸 왼쪽 끝으로
+     보내버림 — margin-left:auto로 항상 오른쪽에 고정. */
+  #menuBtn{ margin-left:auto; }
   .iconbtn:hover{ background:#F1EEE7; }
   .iconbtn svg{ width:32px; height:32px; display:block; }
   .iconbtn .badge-dot{
@@ -179,23 +183,23 @@
   }
 
   .checklist-card{ background:#fff; border:1px solid var(--line); border-radius:16px; padding:15px; max-width:86%; }
-  .checklist-title{ font-size:13px; font-weight:800; color:var(--blue); margin-bottom:9px; }
-  .check-item{ display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid #F1EEE7; font-size:15px; color:var(--ink); cursor:pointer; }
+  .checklist-title{ font-size:calc(13px * var(--app-font-scale)); font-weight:800; color:var(--blue); margin-bottom:9px; }
+  .check-item{ display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid #F1EEE7; font-size:calc(15px * var(--app-font-scale)); color:var(--ink); cursor:pointer; }
   .check-item:last-child{ border-bottom:none; }
   .check-item input{ width:19px; height:19px; accent-color:var(--blue); cursor:pointer; flex-shrink:0; }
   .check-item.done span.label{ text-decoration:line-through; color:var(--sub); }
 
   /* ---------- 만보기(체크리스트 상단 걸음수 표시) ---------- */
   .steps-row{ display:flex; align-items:center; gap:10px; padding:9px 0; border-bottom:1px solid #F1EEE7; }
-  .steps-row .steps-icon{ font-size:18px; flex-shrink:0; }
+  .steps-row .steps-icon{ font-size:calc(18px * var(--app-font-scale)); flex-shrink:0; }
   .steps-row .steps-body{ flex:1; min-width:0; }
-  .steps-row .steps-num{ font-size:15px; font-weight:700; color:var(--ink); }
+  .steps-row .steps-num{ font-size:calc(15px * var(--app-font-scale)); font-weight:700; color:var(--ink); }
   .steps-row .steps-bar{ height:6px; border-radius:999px; background:#F1EEE7; margin-top:5px; overflow:hidden; }
   .steps-row .steps-bar-fill{ height:100%; background:var(--blue); border-radius:999px; }
-  .steps-row .steps-badge{ font-size:12px; font-weight:700; color:var(--sub); flex-shrink:0; }
+  .steps-row .steps-badge{ font-size:calc(12px * var(--app-font-scale)); font-weight:700; color:var(--sub); flex-shrink:0; }
   .goal-steps-row{ display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 0; }
-  .goal-steps-row .lb{ font-size:14px; font-weight:700; color:var(--ink); }
-  .goal-steps-row input{ width:90px; border:1px solid var(--line); border-radius:10px; padding:8px 10px; font-size:14px; text-align:right; background:#FAF9F6; color:var(--ink); }
+  .goal-steps-row .lb{ font-size:calc(14px * var(--app-font-scale)); font-weight:700; color:var(--ink); }
+  .goal-steps-row input{ width:90px; border:1px solid var(--line); border-radius:10px; padding:8px 10px; font-size:calc(14px * var(--app-font-scale)); text-align:right; background:#FAF9F6; color:var(--ink); }
 
   /* ---------- 대중교통 출발지/도착지 자동완성 ---------- */
   .autocomplete-wrap{ position:relative; margin-bottom:10px; }
@@ -234,7 +238,7 @@
     padding:13px 20px; min-height:44px; border-radius:999px; cursor:pointer; white-space:nowrap; }
   .chip:hover{ background:#F5F1EA; }
 
-  .inputbar{ position:relative; min-height:82px; padding:8px 16px 12px 16px; background:#F6F3EE; flex-shrink:0; }
+  .inputbar{ position:relative; min-height:96px; padding:8px 16px 22px 16px; background:#F6F3EE; flex-shrink:0; }
   .roundicon{ width:36px; height:36px; border-radius:50%; border:none; background:none; color:var(--sub); font-size:16px; cursor:pointer; flex-shrink:0; }
   .inputbar input{ flex:1; border:none; background:transparent; padding:12px 6px; font-size:15px; outline:none; min-width:0; color:var(--ink); }
   .sendbtn{ background:var(--blue); border:none; color:#fff; width:38px; height:38px; border-radius:50%; font-size:16px; cursor:pointer; flex-shrink:0; box-shadow:0 2px 8px rgba(156,122,84,0.35); }
@@ -243,7 +247,7 @@
   /* ---------- INPUT DOCK (camera / keyboard / voice) — 카나나처럼 대화창
      배경에 녹아든 채로 버튼/입력창만 그림자로 떠 있는 느낌 ---------- */
   .dock, .typebar{
-    position:absolute; left:16px; right:16px; top:8px; bottom:22px;
+    position:absolute; left:16px; right:16px; top:8px; bottom:34px;
     display:flex; align-items:center;
     transition: opacity .28s ease, transform .32s cubic-bezier(.22,1,.36,1);
   }
@@ -347,7 +351,7 @@
   .pinned-head{ display:flex; align-items:center; padding:12px 16px; }
   .pinned-head .lb{ font-size:13px; font-weight:800; color:var(--blue); display:flex; align-items:center; gap:6px; }
   .pinned-body{ padding:0 16px 12px 16px; }
-  .pinned-body .check-item{ font-size:14px; padding:7px 0; }
+  .pinned-body .check-item{ font-size:calc(14px * var(--app-font-scale)); padding:7px 0; }
 
   /* ---------- PROFILE ---------- */
   .subheader{ display:flex; align-items:center; gap:12px; padding:10px 18px; border-bottom:1px solid var(--line); flex-shrink:0; }
@@ -387,6 +391,23 @@
     padding:15px 16px; margin:18px 0; cursor:pointer; }
   .report-cta .lb{ font-size:calc(15px * var(--app-font-scale)); font-weight:800; color:#C23A56; display:flex; align-items:center; gap:8px; }
   .report-cta .arrow{ color:#C23A56; font-size:16px; }
+
+  .nav-card{ display:flex; align-items:center; justify-content:space-between; background:#fff; border:1px solid var(--line); border-radius:16px;
+    padding:16px; margin-bottom:14px; cursor:pointer; }
+  .nav-card:active{ background:#FAF9F6; }
+  .nav-card .lb{ font-size:calc(14px * var(--app-font-scale)); font-weight:700; color:var(--ink); }
+  .nav-card .desc{ font-size:calc(12px * var(--app-font-scale)); color:var(--sub); margin-top:2px; }
+  .nav-card .arrow{ color:var(--sub); font-size:20px; flex-shrink:0; margin-left:10px; }
+
+  /* ---------- 글씨 크기 선택(5단계) — 가로 카드 대신 세로 목록으로,
+     각 단계가 실제로 얼마나 커지는지 미리보기 글자로 바로 보여줌 ---------- */
+  .tsize-row{ display:flex; flex-direction:column; gap:8px; margin-top:4px; }
+  .tsize-option{ display:flex; align-items:center; gap:14px; border:1.5px solid var(--line); border-radius:14px;
+    padding:12px 16px; cursor:pointer; background:#FAF9F6; }
+  .tsize-option .tsize-preview{ width:30px; flex-shrink:0; text-align:center; font-weight:800; color:#C7BEB0; }
+  .tsize-option .lb{ font-size:15px; font-weight:700; color:var(--sub); }
+  .tsize-option.selected{ border-color:var(--navy); background:var(--accent-soft); }
+  .tsize-option.selected .tsize-preview, .tsize-option.selected .lb{ color:var(--navy); }
 
   .toggle-item{ display:flex; align-items:center; justify-content:space-between; padding:13px 0; border-bottom:1px solid #F1EEE7; }
   .toggle-item:last-child{ border-bottom:none; }
@@ -478,7 +499,7 @@
       box-shadow:none;
     }
     .header{ padding-top:calc(10px + env(safe-area-inset-top)); }
-    .inputbar{ padding-bottom:calc(14px + env(safe-area-inset-bottom)); }
+    .inputbar{ padding-bottom:calc(22px + env(safe-area-inset-bottom)); }
     #onboardingView{ padding-top:calc(28px + env(safe-area-inset-top)); padding-bottom:calc(28px + env(safe-area-inset-bottom)); }
   }
 </style>
@@ -513,7 +534,7 @@
   <!-- ===== CHAT ===== -->
   <div class="screen" id="chatScreen">
     <div class="header">
-      <button class="iconbtn" id="checklistBtn" aria-label="체크리스트 보기" style="display:none;">
+      <button class="iconbtn" id="checklistBtn" aria-label="체크리스트 보기">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
           <path d="M4.5 6.5l1.4 1.4L8.5 5.3M4.5 12.5l1.4 1.4 2.6-2.6M4.5 18.5l1.4 1.4 2.6-2.6"/>
           <path d="M12 6.5h7.5M12 12.5h7.5M12 18.5h7.5"/>
@@ -619,30 +640,24 @@
       </div>
 
       <div class="section-label">체크리스트 관리</div>
-      <div class="info-card">
-        <div class="toggle-item">
-          <div><div class="lb">체크리스트 표시</div><div class="desc">대화창 상단에 고정해서 보여드려요</div></div>
-          <label class="switch"><input type="checkbox" id="toggleChecklist"><span class="slider"></span></label>
-        </div>
+      <div class="nav-card" id="openChecklistSettingsBtn">
+        <div><div class="lb">체크리스트 관리</div><div class="desc">오늘의 체크리스트 항목을 추가·수정해요</div></div>
+        <div class="arrow">›</div>
       </div>
-      <div class="info-card" id="checklistItemsCard">
-        <div id="checklistItemRows"></div>
-        <button class="cl-add" id="addChecklistItem">+ 항목 추가</button>
-      </div>
-      <div class="info-card">
-        <div class="goal-steps-row">
-          <div class="lb">목표 걸음수</div>
-          <input type="number" id="stepGoalInput" min="1000" step="500" inputmode="numeric">
-        </div>
+      <div class="nav-card" id="openStepGoalBtn">
+        <div><div class="lb">목표 걸음수</div><div class="desc">걸음수 표시를 켜고 목표를 정해요</div></div>
+        <div class="arrow">›</div>
       </div>
 
       <div class="section-label">화면 설정</div>
       <div class="info-card">
         <div class="lb" style="font-size:14px;font-weight:700;color:var(--ink);margin-bottom:10px;">글씨 크기</div>
-        <div class="gender-row" id="textSizeRow">
-          <div class="gender-card" data-size="1"><span class="lb">보통</span></div>
-          <div class="gender-card" data-size="1.3"><span class="lb">크게</span></div>
-          <div class="gender-card" data-size="1.6"><span class="lb">아주 크게</span></div>
+        <div class="tsize-row" id="textSizeRow">
+          <div class="tsize-option" data-size="1"><span class="tsize-preview" style="font-size:16px;">가</span><span class="lb">보통</span></div>
+          <div class="tsize-option" data-size="1.15"><span class="tsize-preview" style="font-size:18.4px;">가</span><span class="lb">크게</span></div>
+          <div class="tsize-option" data-size="1.3"><span class="tsize-preview" style="font-size:20.8px;">가</span><span class="lb">아주 크게</span></div>
+          <div class="tsize-option" data-size="1.45"><span class="tsize-preview" style="font-size:23.2px;">가</span><span class="lb">매우 크게</span></div>
+          <div class="tsize-option" data-size="1.6"><span class="tsize-preview" style="font-size:25.6px;">가</span><span class="lb">최대로 크게</span></div>
         </div>
       </div>
 
@@ -686,10 +701,6 @@
             <div id="checkinTimesSaveStatus" style="font-size:11px;color:var(--sub);margin-top:6px;"></div>
           </div>
         </div>
-        <div class="toggle-item">
-          <div><div class="lb">심리 상태 체크 알림</div><div class="desc">기분 변화가 있을 때 알려드려요</div></div>
-          <label class="switch"><input type="checkbox" id="toggleMental"><span class="slider"></span></label>
-        </div>
       </div>
 
       <div class="section-label">연동 코드</div>
@@ -698,6 +709,48 @@
         <div class="crm-row">
           <div class="crm-id" id="crmId"></div>
           <button class="copybtn" id="copyCrm">복사</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 체크리스트 관리 (프로필에서 버튼으로 진입, 이 화면만 표시) ===== -->
+  <div class="screen" id="checklistSettingsScreen">
+    <div class="subheader">
+      <button class="backbtn" id="checklistSettingsBack">←</button>
+      <div class="title">체크리스트 관리</div>
+    </div>
+    <div class="scroll">
+      <div class="info-card">
+        <div class="toggle-item">
+          <div><div class="lb">체크리스트 표시</div><div class="desc">대화창 상단에 고정해서 보여드려요</div></div>
+          <label class="switch"><input type="checkbox" id="toggleChecklist"><span class="slider"></span></label>
+        </div>
+      </div>
+      <div class="info-card" id="checklistItemsCard">
+        <div id="checklistItemRows"></div>
+        <button class="cl-add" id="addChecklistItem">+ 항목 추가</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 목표 걸음수 (프로필에서 버튼으로 진입, 이 화면만 표시) ===== -->
+  <div class="screen" id="stepGoalScreen">
+    <div class="subheader">
+      <button class="backbtn" id="stepGoalBack">←</button>
+      <div class="title">목표 걸음수</div>
+    </div>
+    <div class="scroll">
+      <div class="info-card">
+        <div class="toggle-item">
+          <div><div class="lb">걸음수 표시</div><div class="desc">대화창 체크리스트에 오늘 걸음수를 보여드려요</div></div>
+          <label class="switch"><input type="checkbox" id="toggleStepsEnabled"><span class="slider"></span></label>
+        </div>
+      </div>
+      <div class="info-card">
+        <div class="goal-steps-row">
+          <div class="lb">목표 걸음수</div>
+          <input type="number" id="stepGoalInput" min="1000" step="500" inputmode="numeric">
         </div>
       </div>
     </div>
@@ -803,7 +856,7 @@ const VAPID_PUBLIC_KEY = 'BEHe-CLJT7Y5q8Vk3aGKf1fqq-rkXGeKyN1Xbe-zG5QIhQalylfW7g
 
 /* ============ STATE ============ */
 let profile = null;
-let notifSettings = { report:true, proactive:true, mental:true, push:false };
+let notifSettings = { report:true, proactive:true, push:false };
 let messages = [];
 let checklistState = {};       // today's done/not-done map, keyed by item id
 let checklistItems = [];       // configurable list of {id, label}
@@ -813,6 +866,7 @@ let todaySteps = null;         // 오늘 걸음수 — 네이티브 앱(Flutter 
                                 // 열었을 때는 폰의 만보기 데이터를 읽을 방법이 없어서
                                 // null로 두고, 지어내지 않고 그냥 표시를 안 함.
 let stepGoal = 6000;            // 설정에서 입력하는 목표 걸음수
+let stepsEnabled = true;        // 목표 걸음수 화면에서 켜고 끄는 걸음수 표시 여부
 let pinnedExpanded = false;
 let obStep = 1;
 let obData = { name:'', birthYear:'', gender:'', height:'', weight:'', interests:[], locationConsent:null };
@@ -978,7 +1032,7 @@ function showScreen(id){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
 }
-document.getElementById('menuBtn').addEventListener('click', ()=>{ renderProfile(); renderChecklistSettings(); showScreen('profileScreen'); });
+document.getElementById('menuBtn').addEventListener('click', ()=>{ renderProfile(); showScreen('profileScreen'); });
 document.getElementById('profileBack').addEventListener('click', ()=> showScreen('chatScreen'));
 // 리포트는 광고를 보거나 구독해야 볼 수 있게 게이트를 둡니다 — 광고/구독 모두
 // 아직 실제 네트워크·결제 연동 전이라(사용자 확인), 정직한 자리표시자로만
@@ -1210,7 +1264,6 @@ function renderProfile(){
   document.getElementById('toggleLocation').checked = !!profile.locationConsent;
   document.getElementById('togglePush').checked = !!notifSettings.push;
   document.getElementById('toggleReport').checked = notifSettings.report;
-  document.getElementById('toggleMental').checked = notifSettings.mental;
   renderTextSizeSelection();
   loadCheckinSettingsUI();
 }
@@ -1237,7 +1290,6 @@ document.getElementById('toggleReport').addEventListener('change', async (e)=>{
     });
   }catch(err){ /* 다음에 설정 화면 열 때 다시 시도하게 됨 */ }
 });
-document.getElementById('toggleMental').addEventListener('change', async (e)=>{ notifSettings.mental = e.target.checked; await storeSet('notif-settings', notifSettings); });
 
 /* ============ 글씨 크기 설정 ============ */
 // 채팅 본문·선택지·서제스천 칩뿐 아니라 프로필/설정 화면의 라벨·값·토글
@@ -1248,11 +1300,11 @@ function applyTextScale(){
 }
 function renderTextSizeSelection(){
   const scale = String((profile && profile.textScale) || 1);
-  document.querySelectorAll('#textSizeRow .gender-card').forEach(card=>{
+  document.querySelectorAll('#textSizeRow .tsize-option').forEach(card=>{
     card.classList.toggle('selected', card.dataset.size === scale);
   });
 }
-document.querySelectorAll('#textSizeRow .gender-card').forEach(card=>{
+document.querySelectorAll('#textSizeRow .tsize-option').forEach(card=>{
   card.addEventListener('click', async ()=>{
     profile.textScale = Number(card.dataset.size);
     await storeSet('profile', profile);
@@ -1558,7 +1610,7 @@ window.addEventListener('bomiStepsUpdate', async (e)=>{
 function renderPinnedChecklist(){
   const wrap = document.getElementById('pinnedChecklist');
   const btn = document.getElementById('checklistBtn');
-  const hasSteps = todaySteps !== null && todaySteps !== undefined;
+  const hasSteps = stepsEnabled && todaySteps !== null && todaySteps !== undefined;
   if(!checklistEnabled || (checklistItems.length === 0 && !hasSteps)){
     btn.style.display = 'none';
     wrap.classList.remove('open');
@@ -1582,7 +1634,7 @@ function renderPinnedChecklist(){
     stepsRow.innerHTML = `
       <span class="steps-icon">🚶</span>
       <div class="steps-body">
-        <span class="steps-num">${todaySteps.toLocaleString()}보 / 목표 ${stepGoal.toLocaleString()}보</span>
+        <span class="steps-num">${todaySteps.toLocaleString()} / ${stepGoal.toLocaleString()}걸음</span>
         <div class="steps-bar"><div class="steps-bar-fill" style="width:${pct}%"></div></div>
       </div>
       <span class="steps-badge">${level}</span>
@@ -1608,10 +1660,9 @@ document.getElementById('checklistBtn').addEventListener('click', ()=>{
   renderPinnedChecklist();
 });
 
-/* ============ CHECKLIST SETTINGS (profile screen) ============ */
+/* ============ CHECKLIST SETTINGS (프로필 → "체크리스트 관리" 버튼으로 여는 별도 화면) ============ */
 function renderChecklistSettings(){
   document.getElementById('toggleChecklist').checked = checklistEnabled;
-  document.getElementById('stepGoalInput').value = stepGoal;
   const rows = document.getElementById('checklistItemRows');
   rows.innerHTML = '';
   if(checklistItems.length === 0){
@@ -1642,13 +1693,6 @@ document.getElementById('toggleChecklist').addEventListener('change', async (e)=
   await storeSet('checklist-enabled', checklistEnabled);
   renderPinnedChecklist();
 });
-document.getElementById('stepGoalInput').addEventListener('change', async (e)=>{
-  const val = parseInt(e.target.value, 10);
-  stepGoal = (val && val > 0) ? val : stepGoal;
-  e.target.value = stepGoal;
-  await storeSet('step-goal', stepGoal);
-  renderPinnedChecklist();
-});
 document.getElementById('addChecklistItem').addEventListener('click', async ()=>{
   const label = prompt('체크리스트 항목을 입력해 주세요 (예: 오후 08:00 저녁약 복용)');
   if(label && label.trim()){
@@ -1658,6 +1702,34 @@ document.getElementById('addChecklistItem').addEventListener('click', async ()=>
     renderPinnedChecklist();
   }
 });
+document.getElementById('openChecklistSettingsBtn').addEventListener('click', ()=>{
+  renderChecklistSettings();
+  showScreen('checklistSettingsScreen');
+});
+document.getElementById('checklistSettingsBack').addEventListener('click', ()=> showScreen('profileScreen'));
+
+/* ============ 목표 걸음수 설정 (프로필 → "목표 걸음수" 버튼으로 여는 별도 화면) ============ */
+function renderStepGoalSettings(){
+  document.getElementById('toggleStepsEnabled').checked = stepsEnabled;
+  document.getElementById('stepGoalInput').value = stepGoal;
+}
+document.getElementById('toggleStepsEnabled').addEventListener('change', async (e)=>{
+  stepsEnabled = e.target.checked;
+  await storeSet('steps-enabled', stepsEnabled);
+  renderPinnedChecklist();
+});
+document.getElementById('stepGoalInput').addEventListener('change', async (e)=>{
+  const val = parseInt(e.target.value, 10);
+  stepGoal = (val && val > 0) ? val : stepGoal;
+  e.target.value = stepGoal;
+  await storeSet('step-goal', stepGoal);
+  renderPinnedChecklist();
+});
+document.getElementById('openStepGoalBtn').addEventListener('click', ()=>{
+  renderStepGoalSettings();
+  showScreen('stepGoalScreen');
+});
+document.getElementById('stepGoalBack').addEventListener('click', ()=> showScreen('profileScreen'));
 
 /* ============ CHAT LOGIC ============ */
 
@@ -1882,8 +1954,8 @@ function addInlineTextCard(title, placeholder, onConfirm){
   wrap.className = 'checklist-card';
   wrap.innerHTML = `
     <div class="checklist-title">${title}</div>
-    <input type="text" id="inlineTextCardInput" placeholder="${placeholder}" style="width:100%;border:1px solid var(--line);border-radius:10px;padding:10px;font-size:15px;margin-bottom:10px;background:#FAF9F6;color:var(--ink);">
-    <button type="button" id="inlineTextCardConfirm" style="width:100%;padding:11px;border-radius:10px;border:none;background:var(--navy);color:#fff;font-weight:700;font-size:14px;cursor:pointer;">확인</button>
+    <input type="text" id="inlineTextCardInput" placeholder="${placeholder}" style="width:100%;border:1px solid var(--line);border-radius:10px;padding:10px;font-size:calc(15px * var(--app-font-scale));margin-bottom:10px;background:#FAF9F6;color:var(--ink);">
+    <button type="button" id="inlineTextCardConfirm" style="width:100%;padding:11px;border-radius:10px;border:none;background:var(--navy);color:#fff;font-weight:700;font-size:calc(14px * var(--app-font-scale));cursor:pointer;">확인</button>
   `;
   chat.appendChild(wrap);
   chat.scrollTop = chat.scrollHeight;
@@ -1972,7 +2044,7 @@ function addInlineRouteCard(onConfirm){
       <input type="text" id="transitDestInput" placeholder="예: 강남역, 서울대학교병원" style="width:100%;border:1px solid var(--line);border-radius:10px;padding:10px;font-size:calc(15px * var(--app-font-scale));background:#FAF9F6;color:var(--ink);">
       <div class="autocomplete-list" id="transitDestList"></div>
     </div>
-    <button type="button" id="transitRouteConfirm" style="width:100%;padding:11px;border-radius:10px;border:none;background:var(--navy);color:#fff;font-weight:700;font-size:14px;cursor:pointer;margin-top:4px;">확인</button>
+    <button type="button" id="transitRouteConfirm" style="width:100%;padding:11px;border-radius:10px;border:none;background:var(--navy);color:#fff;font-weight:700;font-size:calc(14px * var(--app-font-scale));cursor:pointer;margin-top:4px;">확인</button>
   `;
   chat.appendChild(wrap);
   chat.scrollTop = chat.scrollHeight;
@@ -2099,8 +2171,8 @@ function addInlineBirthDateCard(onConfirm){
   wrap.className = 'checklist-card';
   wrap.innerHTML = `
     <div class="checklist-title">${isLunar ? '음력 기준 생일(월/일)을 알려주세요' : '생일(월/일)을 알려주세요'}</div>
-    <input type="date" id="sajuBirthDateInput" style="width:100%;border:1px solid var(--line);border-radius:10px;padding:10px;font-size:15px;margin-bottom:10px;background:#FAF9F6;color:var(--ink);">
-    <button type="button" id="sajuBirthDateConfirm" style="width:100%;padding:11px;border-radius:10px;border:none;background:var(--navy);color:#fff;font-weight:700;font-size:14px;cursor:pointer;">확인</button>
+    <input type="date" id="sajuBirthDateInput" style="width:100%;border:1px solid var(--line);border-radius:10px;padding:10px;font-size:calc(15px * var(--app-font-scale));margin-bottom:10px;background:#FAF9F6;color:var(--ink);">
+    <button type="button" id="sajuBirthDateConfirm" style="width:100%;padding:11px;border-radius:10px;border:none;background:var(--navy);color:#fff;font-weight:700;font-size:calc(14px * var(--app-font-scale));cursor:pointer;">확인</button>
   `;
   chat.appendChild(wrap);
   chat.scrollTop = chat.scrollHeight;
@@ -2463,6 +2535,8 @@ async function startApp(isNew){
   if(!checklistItems){ checklistItems = DEFAULT_CHECKLIST_ITEMS.slice(); await storeSet('checklist-items', checklistItems); }
   const enabledStored = await storeGet('checklist-enabled');
   checklistEnabled = enabledStored === null ? true : enabledStored;
+  const stepsEnabledStored = await storeGet('steps-enabled');
+  stepsEnabled = stepsEnabledStored === null ? true : stepsEnabledStored;
   stepGoal = (await storeGet('step-goal')) || stepGoal;
   todaySteps = await storeGet(todayKey('steps'));
   requestStepsFromNative(); // 네이티브 앱이면 최신 걸음수로 바로 갱신, 아니면 무시됨
