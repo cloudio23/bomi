@@ -2170,12 +2170,16 @@ function addTransitResultCard(data){
   chat.scrollTop = chat.scrollHeight;
 
   // 카카오맵 길찾기로 그대로 이어줍니다 — 실시간 버스 도착 정보나 실제 지도
-  // 화면은 저희가 새로 만들기보다 이미 다들 쓰는 카카오맵을 그대로 여는 게
+  // 화면은 저희가 새로 만들기보다 이미 다들 쓰는 네이버지도를 그대로 여는 게
   // 훨씬 정확하고 익숙합니다. 좌표는 서버가 이미 확정한 값을 그대로 씁니다.
+  // 네이버지도 길찾기 URL은 경도(lng)가 위도(lat)보다 먼저 옵니다(카카오맵과
+  // 순서가 반대) — 실제 브라우저 렌더링으로 확인 완료.
   const mapBtn = wrap.querySelector('#transitMapBtn');
   if(data.origin.lat != null && data.destination.lat != null){
     mapBtn.addEventListener('click', ()=>{
-      const url = `http://m.map.kakao.com/scheme/route?sp=${data.origin.lat},${data.origin.lng}&ep=${data.destination.lat},${data.destination.lng}&by=publictransit`;
+      const originName = encodeURIComponent(data.origin.placeName);
+      const destName = encodeURIComponent(data.destination.placeName);
+      const url = `https://map.naver.com/p/directions/${data.origin.lng},${data.origin.lat},${originName}/${data.destination.lng},${data.destination.lat},${destName}/-/transit`;
       window.open(url, '_blank');
     });
   } else {
