@@ -399,15 +399,32 @@
   .nav-card .desc{ font-size:calc(12px * var(--app-font-scale)); color:var(--sub); margin-top:2px; }
   .nav-card .arrow{ color:var(--sub); font-size:20px; flex-shrink:0; margin-left:10px; }
 
-  /* ---------- 글씨 크기 선택(5단계) — 가로 카드 대신 세로 목록으로,
-     각 단계가 실제로 얼마나 커지는지 미리보기 글자로 바로 보여줌 ---------- */
-  .tsize-row{ display:flex; flex-direction:column; gap:8px; margin-top:4px; }
-  .tsize-option{ display:flex; align-items:center; gap:14px; border:1.5px solid var(--line); border-radius:14px;
-    padding:12px 16px; cursor:pointer; background:#FAF9F6; }
-  .tsize-option .tsize-preview{ width:30px; flex-shrink:0; text-align:center; font-weight:800; color:#C7BEB0; }
-  .tsize-option .lb{ font-size:15px; font-weight:700; color:var(--sub); }
-  .tsize-option.selected{ border-color:var(--navy); background:var(--accent-soft); }
-  .tsize-option.selected .tsize-preview, .tsize-option.selected .lb{ color:var(--navy); }
+  /* ---------- 글씨 크기 선택(5단계) — 안드로이드 설정 화면처럼 미리보기 문구
+     위에 두고, 그 아래 가로 슬라이더를 드래그해서 5단계로 조절 ---------- */
+  .tsize-preview-box{
+    background:#FAF9F6; border:1.5px solid var(--line); border-radius:14px;
+    padding:18px 14px; text-align:center; margin-bottom:20px;
+    font-weight:700; color:var(--ink); line-height:1.4; word-break:keep-all;
+  }
+  .tsize-slider-row{ display:flex; align-items:center; gap:12px; padding:0 2px; }
+  .tsize-edge-icon{ color:#C7BEB0; font-weight:800; flex-shrink:0; }
+  .tsize-edge-icon.small{ font-size:14px; }
+  .tsize-edge-icon.large{ font-size:28px; }
+  #textSizeSlider{
+    flex:1; -webkit-appearance:none; appearance:none;
+    height:8px; border-radius:999px; outline:none; margin:12px 0;
+    background:linear-gradient(to right, var(--navy) 0%, var(--navy) calc(var(--fill,0%)), #E5E0D5 calc(var(--fill,0%)), #E5E0D5 100%);
+  }
+  #textSizeSlider::-webkit-slider-thumb{
+    -webkit-appearance:none; appearance:none; width:32px; height:32px; border-radius:50%;
+    background:#fff; border:3px solid var(--navy); box-shadow:0 2px 8px rgba(35,32,27,0.25); cursor:pointer;
+  }
+  #textSizeSlider::-moz-range-thumb{
+    width:32px; height:32px; border-radius:50%; background:#fff; border:3px solid var(--navy);
+    box-shadow:0 2px 8px rgba(35,32,27,0.25); cursor:pointer;
+  }
+  #textSizeSlider::-moz-range-track{ height:8px; border-radius:999px; background:transparent; }
+  .tsize-current-label{ text-align:center; margin-top:6px; font-size:15px; font-weight:800; color:var(--navy); }
 
   .toggle-item{ display:flex; align-items:center; justify-content:space-between; padding:13px 0; border-bottom:1px solid #F1EEE7; }
   .toggle-item:last-child{ border-bottom:none; }
@@ -652,13 +669,20 @@
       <div class="section-label">화면 설정</div>
       <div class="info-card">
         <div class="lb" style="font-size:14px;font-weight:700;color:var(--ink);margin-bottom:10px;">글씨 크기</div>
-        <div class="tsize-row" id="textSizeRow">
-          <div class="tsize-option" data-size="1"><span class="tsize-preview" style="font-size:16px;">가</span><span class="lb">보통</span></div>
-          <div class="tsize-option" data-size="1.15"><span class="tsize-preview" style="font-size:18.4px;">가</span><span class="lb">크게</span></div>
-          <div class="tsize-option" data-size="1.3"><span class="tsize-preview" style="font-size:20.8px;">가</span><span class="lb">아주 크게</span></div>
-          <div class="tsize-option" data-size="1.45"><span class="tsize-preview" style="font-size:23.2px;">가</span><span class="lb">매우 크게</span></div>
-          <div class="tsize-option" data-size="1.6"><span class="tsize-preview" style="font-size:25.6px;">가</span><span class="lb">최대로 크게</span></div>
+        <div class="tsize-preview-box" id="tsizePreviewBox">안녕하세요, 보미예요</div>
+        <div class="tsize-slider-row">
+          <span class="tsize-edge-icon small">가</span>
+          <input type="range" id="textSizeSlider" min="0" max="4" step="1" value="0" list="tsizeTicks">
+          <span class="tsize-edge-icon large">가</span>
         </div>
+        <datalist id="tsizeTicks">
+          <option value="0"></option>
+          <option value="1"></option>
+          <option value="2"></option>
+          <option value="3"></option>
+          <option value="4"></option>
+        </datalist>
+        <div class="tsize-current-label" id="tsizeCurrentLabel">보통</div>
       </div>
 
       <div class="section-label">권한 설정</div>
@@ -1298,19 +1322,38 @@ document.getElementById('toggleReport').addEventListener('change', async (e)=>{
 function applyTextScale(){
   document.documentElement.style.setProperty('--app-font-scale', (profile && profile.textScale) || 1);
 }
-function renderTextSizeSelection(){
-  const scale = String((profile && profile.textScale) || 1);
-  document.querySelectorAll('#textSizeRow .tsize-option').forEach(card=>{
-    card.classList.toggle('selected', card.dataset.size === scale);
+// 안드로이드 글씨 크기 설정처럼 5단계를 가로 슬라이더로 — 드래그하는 동안
+// 미리보기 문구와 라벨이 바로 따라 커집니다.
+const TEXT_SIZE_STEPS = [1, 1.15, 1.3, 1.45, 1.6];
+const TEXT_SIZE_LABELS = ['보통', '크게', '아주 크게', '매우 크게', '최대로 크게'];
+function nearestTextSizeIndex(scale){
+  let best = 0, bestDiff = Infinity;
+  TEXT_SIZE_STEPS.forEach((s, i)=>{
+    const diff = Math.abs(s - scale);
+    if(diff < bestDiff){ bestDiff = diff; best = i; }
   });
+  return best;
 }
-document.querySelectorAll('#textSizeRow .tsize-option').forEach(card=>{
-  card.addEventListener('click', async ()=>{
-    profile.textScale = Number(card.dataset.size);
-    await storeSet('profile', profile);
-    applyTextScale();
-    renderTextSizeSelection();
-  });
+function renderTextSizeSelection(){
+  const scale = (profile && profile.textScale) || 1;
+  const idx = nearestTextSizeIndex(scale);
+  const slider = document.getElementById('textSizeSlider');
+  slider.value = idx;
+  updateTextSizeUI(idx);
+}
+function updateTextSizeUI(idx){
+  const slider = document.getElementById('textSizeSlider');
+  const pct = (idx / (TEXT_SIZE_STEPS.length - 1)) * 100;
+  slider.style.setProperty('--fill', pct + '%');
+  document.getElementById('tsizeCurrentLabel').textContent = TEXT_SIZE_LABELS[idx];
+  document.getElementById('tsizePreviewBox').style.fontSize = (16 * TEXT_SIZE_STEPS[idx]) + 'px';
+}
+document.getElementById('textSizeSlider').addEventListener('input', async (e)=>{
+  const idx = Number(e.target.value);
+  updateTextSizeUI(idx);
+  profile.textScale = TEXT_SIZE_STEPS[idx];
+  await storeSet('profile', profile);
+  applyTextScale();
 });
 
 /* ============ 건강 안부 문자 (시간 설정 가능) ============ */
