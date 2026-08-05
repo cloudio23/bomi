@@ -45,12 +45,12 @@ async function fetchKrRows({ likeItmsNm, srtnCd }) {
   if (srtnCd) params.set('srtnCd', srtnCd);
   try {
     const response = await fetch(`${KR_STOCK_ENDPOINT}?${params.toString()}`);
-    if (!response.ok) return null;
-    const data = await response.json();
+    const data = await response.json().catch(() => null);
     const items = data?.response?.body?.items?.item;
-    if (!items) return null;
+    if (!items) { global.__stockDebug = { httpStatus: response.status, header: data?.response?.header, keyLen: key.length }; return null; }
     return Array.isArray(items) ? items : [items];
   } catch (e) {
+    global.__stockDebug = { fetchError: String(e) };
     return null;
   }
 }
@@ -87,7 +87,7 @@ async function handleSearch(req, res) {
   // 2) 국내 종목명 검색 (부분일치)
   const rows = await fetchKrRows({ likeItmsNm: query });
   if (!rows || !rows.length) {
-    res.status(200).json({ ok: false, message: `"${query}" 종목을 찾지 못했어요. 정확한 종목명이나 티커로 다시 말씀해주시겠어요?` });
+    res.status(200).json({ ok: false, message: `"${query}" 종목을 찾지 못했어요. 정확한 종목명이나 티커로 다시 말씀해주시겠어요?`, _debug: global.__stockDebug });
     return;
   }
   const candidates = latestPerStock(rows);
