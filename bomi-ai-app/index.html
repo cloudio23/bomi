@@ -2406,6 +2406,20 @@ async function runStockQuote(market, code, name){
   }
 }
 
+// 자동완성으로 이미 코드까지 확정된 후보(resolved)와, 자유 텍스트 검색 결과
+// 둘 다 여기서 같은 방식으로 확인 절차를 거칩니다 — 종목명 옆에 코드/티커를
+// 같이 보여줘서 같은 이름의 다른 종목(우선주 등)과 헷갈리지 않게 합니다.
+function confirmStockPick(data){
+  addLocalBubble(`${data.name} (${data.code}) 맞으신가요?`);
+  addChoiceButtons(['네, 맞아요', '아니요, 다시 찾을게요'], (choice)=>{
+    if(choice === '네, 맞아요'){
+      runStockQuote(data.market, data.code, data.name);
+    } else {
+      startStockFlow();
+    }
+  });
+}
+
 async function runStockSearch(query){
   const loadingBubble = addLocalBubble('종목을 찾고 있어요...');
   try{
@@ -2416,23 +2430,93 @@ async function runStockSearch(query){
       addLocalBubble(data.message || '종목을 찾지 못했어요.');
       return;
     }
-    addLocalBubble(`${data.name} 맞으신가요?`);
-    addChoiceButtons(['네, 맞아요', '아니요, 다시 찾을게요'], (choice)=>{
-      if(choice === '네, 맞아요'){
-        runStockQuote(data.market, data.code, data.name);
-      } else {
-        startStockFlow();
-      }
-    });
+    confirmStockPick(data);
   }catch(e){
     loadingBubble.remove();
     addLocalBubble('종목을 찾는 중 문제가 생겼어요. 잠시 후 다시 시도해주시겠어요?');
   }
 }
 
+// 대중교통 출발지/도착지 자동완성(setupAutocomplete)과 같은 패턴이지만, 카카오
+// 장소 검색 대신 /api/stock?action=suggest를 불러서 종목명 옆에 코드/티커를
+// 함께 보여줍니다 — 목록에서 고르면 검증 단계 없이 바로 그 종목으로 확정됩니다.
+function setupStockAutocomplete(inputEl, listEl, onSelect){
+  let debounceTimer = null;
+  let results = [];
+  function hide(){ listEl.classList.remove('show'); listEl.innerHTML = ''; }
+  function render(){
+    if(!results.length){ hide(); return; }
+    listEl.innerHTML = results.map((r,i)=>`
+      <div class="autocomplete-item" data-idx="${i}">
+        <div class="place-name">${escapeHtml(r.name)}</div>
+        <div class="place-addr">${escapeHtml(r.code)}</div>
+      </div>
+    `).join('');
+    listEl.classList.add('show');
+    listEl.querySelectorAll('.autocomplete-item').forEach(item=>{
+      item.addEventListener('click', ()=>{
+        const r = results[Number(item.dataset.idx)];
+        inputEl.value = r.name;
+        hide();
+        onSelect(r);
+      });
+    });
+  }
+  inputEl.addEventListener('input', ()=>{
+    onSelect(null); // 직접 타이핑하면 이전에 골랐던 후보는 무효화
+    clearTimeout(debounceTimer);
+    const query = inputEl.value.trim();
+    if(query.length < 1){ hide(); return; }
+    debounceTimer = setTimeout(async ()=>{
+      try{
+        const res = await fetch('/api/stock?action=suggest&query=' + encodeURIComponent(query));
+        const data = await res.json();
+        results = data.results || [];
+        render();
+      }catch(e){ /* 자동완성은 있으면 좋고 없어도 그만 — 조용히 무시 */ }
+    }, 300);
+  });
+  document.addEventListener('click', (e)=>{
+    if(e.target !== inputEl && !listEl.contains(e.target)) hide();
+  });
+}
+
+function addStockSearchCard(onConfirm){
+  const chat = document.getElementById('chat');
+  const wrap = document.createElement('div');
+  wrap.className = 'checklist-card';
+  wrap.innerHTML = `
+    <div class="checklist-title">어떤 종목이 궁금하세요?</div>
+    <div class="autocomplete-wrap">
+      <input type="text" id="stockSearchInput" placeholder="예: 삼성전자, 테슬라, AAPL" style="width:100%;border:1px solid var(--line);border-radius:10px;padding:10px;font-size:calc(15px * var(--app-font-scale));background:#FAF9F6;color:var(--ink);">
+      <div class="autocomplete-list" id="stockSearchList"></div>
+    </div>
+    <button type="button" id="stockSearchConfirm" style="width:100%;padding:11px;border-radius:10px;border:none;background:var(--navy);color:#fff;font-weight:700;font-size:calc(14px * var(--app-font-scale));cursor:pointer;margin-top:10px;">확인</button>
+  `;
+  chat.appendChild(wrap);
+  chat.scrollTop = chat.scrollHeight;
+
+  let resolved = null;
+  setupStockAutocomplete(
+    wrap.querySelector('#stockSearchInput'), wrap.querySelector('#stockSearchList'),
+    (picked)=>{ resolved = picked; }
+  );
+  wrap.querySelector('#stockSearchConfirm').addEventListener('click', ()=>{
+    const query = wrap.querySelector('#stockSearchInput').value.trim();
+    if(!query) return;
+    wrap.remove();
+    onConfirm({ query, resolved });
+  });
+  setTimeout(()=>wrap.querySelector('#stockSearchInput').focus(), 50);
+}
+
 function startStockFlow(){
-  addInlineTextCard('어떤 종목이 궁금하세요?', '예: 삼성전자, 테슬라, AAPL', (query)=>{
-    runStockSearch(query);
+  addStockSearchCard(({ query, resolved })=>{
+    if(resolved){
+      confirmStockPick(resolved);
+    } else {
+      runStockSearch(query);
+    }
   });
 }
 document.getElementById('stockChip').addEventListener('click', startStockFlow);

@@ -59,3 +59,23 @@ export function resolveUsAlias(query) {
   if (looksLikeUsTicker(upper)) return { ticker: upper, name: upper };
   return null;
 }
+
+// 자동완성용 — 입력 중인 글자가 한글 별칭 안에 포함되거나 티커 앞부분과
+// 일치하면 후보로 보여줍니다(완전 일치가 아니어도 타이핑 중에 바로 뜨도록).
+export function searchUsAliases(query, limit) {
+  limit = limit || 5;
+  const trimmed = query.trim();
+  if (!trimmed) return [];
+  const upper = trimmed.toUpperCase();
+  const seen = new Set();
+  const results = [];
+  for (const [key, val] of Object.entries(US_STOCK_ALIASES)) {
+    if (seen.has(val.ticker)) continue;
+    if (key.includes(trimmed) || val.ticker.startsWith(upper)) {
+      results.push({ name: val.name, ticker: val.ticker });
+      seen.add(val.ticker);
+      if (results.length >= limit) break;
+    }
+  }
+  return results;
+}

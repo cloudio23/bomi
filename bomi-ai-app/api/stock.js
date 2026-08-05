@@ -12,8 +12,9 @@
 // - FINNHUB_API_KEY: finnhub.io 무료 가입 후 대시보드에 뜨는 API Key
 //
 // - GET ?action=search&query=...             → 종목명/티커로 후보 하나 찾기
+// - GET ?action=suggest&query=...            → 입력 중 자동완성 후보 목록
 // - GET ?action=quote&market=KR|US&code=...   → 실제 시세(종가/등락/등락률) 조회
-import { resolveUsAlias } from '../lib/stockAlias.mjs';
+import { resolveUsAlias, searchUsAliases } from '../lib/stockAlias.mjs';
 
 const KR_STOCK_ENDPOINT = 'https://apis.data.go.kr/1160100/service/GetStockSecuritiesInfoService/getStockPriceInfo';
 
@@ -44,14 +45,12 @@ async function fetchKrRows({ likeItmsNm, srtnCd }) {
   if (srtnCd) params.set('srtnCd', srtnCd);
   try {
     const response = await fetch(`${KR_STOCK_ENDPOINT}?${params.toString()}`);
-    const rawText = await response.text();
-    let data;
-    try { data = JSON.parse(rawText); } catch (e) { global.__stockDebug = { httpStatus: response.status, rawText: rawText.slice(0, 500), keyPresent: !!key, keyLen: key.length }; return null; }
+    if (!response.ok) return null;
+    const data = await response.json();
     const items = data?.response?.body?.items?.item;
-    if (!items) { global.__stockDebug = { httpStatus: response.status, header: data?.response?.header, keyPresent: !!key, keyLen: key.length }; return null; }
+    if (!items) return null;
     return Array.isArray(items) ? items : [items];
   } catch (e) {
-    global.__stockDebug = { fetchError: String(e) };
     return null;
   }
 }
@@ -88,7 +87,7 @@ async function handleSearch(req, res) {
   // 2) 국내 종목명 검색 (부분일치)
   const rows = await fetchKrRows({ likeItmsNm: query });
   if (!rows || !rows.length) {
-    res.status(200).json({ ok: false, message: `"${query}" 종목을 찾지 못했어요. 정확한 종목명이나 티커로 다시 말씀해주시겠어요?`, _debug: global.__stockDebug });
+    res.status(200).json({ ok: false, message: `"${query}" 종목을 찾지 못했어요. 정확한 종목명이나 티커로 다시 말씀해주시겠어요?` });
     return;
   }
   const candidates = latestPerStock(rows);
@@ -96,6 +95,30 @@ async function handleSearch(req, res) {
   const exact = candidates.find(c => c.itmsNm === query);
   const best = exact || candidates[0];
   res.status(200).json({ ok: true, market: 'KR', code: best.srtnCd, name: best.itmsNm });
+}
+
+// 검색 확인 절차 없이 입력 중에 바로 후보를 보여주는 자동완성 — 국내는
+// 종목명 부분일치(공공데이터포털), 해외는 한글 별칭/티커 부분일치를 함께 보여줍니다.
+async function handleSuggest(req, res) {
+  if (req.method !== 'GET') {
+    res.status(405).json({ ok: false, message: 'GET 요청만 가능해요.' });
+    return;
+  }
+  const query = ((req.query && req.query.query) || '').trim();
+  if (!query) {
+    res.status(200).json({ ok: true, results: [] });
+    return;
+  }
+
+  const usMatches = searchUsAliases(query, 5).map(m => ({ market: 'US', code: m.ticker, name: m.name }));
+
+  let krMatches = [];
+  const rows = await fetchKrRows({ likeItmsNm: query });
+  if (rows && rows.length) {
+    krMatches = latestPerStock(rows).slice(0, 6).map(r => ({ market: 'KR', code: r.srtnCd, name: r.itmsNm }));
+  }
+
+  res.status(200).json({ ok: true, results: [...krMatches, ...usMatches].slice(0, 8) });
 }
 
 async function handleQuote(req, res) {
@@ -156,8 +179,9 @@ export default async function handler(req, res) {
   try {
     const action = (req.query && req.query.action) || '';
     if (action === 'search') return await handleSearch(req, res);
+    if (action === 'suggest') return await handleSuggest(req, res);
     if (action === 'quote') return await handleQuote(req, res);
-    res.status(400).json({ error: 'action 쿼리 파라미터가 필요해요 (search | quote).' });
+    res.status(400).json({ error: 'action 쿼리 파라미터가 필요해요 (search | suggest | quote).' });
   } catch (e) {
     res.status(500).json({ ok: false, message: '요청 처리 중 문제가 생겼어요.' });
   }
