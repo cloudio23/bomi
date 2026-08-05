@@ -27,7 +27,7 @@ function formatBasDt(date) {
 
 // 최근 N일 범위로 조회해서, 그 중 가장 최신 기준일(basDt)의 데이터만 골라냅니다
 // (주말/공휴일엔 데이터가 없어서 "오늘" 하루만 조회하면 자주 빈 결과가 옵니다).
-async function fetchKrRows({ likeItmsNm, srtnCd }) {
+async function fetchKrRows({ likeItmsNm, likeSrtnCd }) {
   const rawKey = process.env.DATA_GO_KR_STOCK_KEY;
   if (!rawKey) return null;
   // data.go.kr의 "인증키 발급현황" 화면 자체가 키를 URL 인코딩된 형태(%2F 등)로
@@ -47,7 +47,7 @@ async function fetchKrRows({ likeItmsNm, srtnCd }) {
     endBasDt: formatBasDt(end),
   });
   if (likeItmsNm) params.set('likeItmsNm', likeItmsNm);
-  if (srtnCd) params.set('srtnCd', srtnCd);
+  if (likeSrtnCd) params.set('likeSrtnCd', likeSrtnCd);
   try {
     const response = await fetch(`${KR_STOCK_ENDPOINT}?${params.toString()}`);
     if (!response.ok) return null;
@@ -139,12 +139,16 @@ async function handleQuote(req, res) {
   }
 
   if (market === 'KR') {
-    const rows = await fetchKrRows({ srtnCd: code });
-    if (!rows || !rows.length) {
+    // 이 API는 정확일치 코드 파라미터(srtnCd)가 실제로는 필터링을 하지 않고
+    // 전체 목록을 돌려주는 버그가 있어서, likeSrtnCd(부분일치)로 받은 뒤
+    // 코드가 정확히 같은 것만 다시 걸러냅니다(6자리 코드라 부분일치 오검출 위험은 없음).
+    const rows = await fetchKrRows({ likeSrtnCd: code });
+    const matching = rows ? rows.filter(r => r.srtnCd === code) : [];
+    if (!matching.length) {
       res.status(200).json({ ok: false, message: '시세를 확인하지 못했어요.' });
       return;
     }
-    const latest = latestPerStock(rows)[0];
+    const latest = latestPerStock(matching)[0];
     res.status(200).json({
       ok: true, market: 'KR', name: latest.itmsNm, code: latest.srtnCd,
       price: Number(latest.clpr), change: Number(latest.vs), changePercent: Number(latest.fltRt),
