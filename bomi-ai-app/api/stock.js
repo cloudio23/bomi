@@ -28,7 +28,12 @@ function formatBasDt(date) {
 // 최근 N일 범위로 조회해서, 그 중 가장 최신 기준일(basDt)의 데이터만 골라냅니다
 // (주말/공휴일엔 데이터가 없어서 "오늘" 하루만 조회하면 자주 빈 결과가 옵니다).
 async function fetchKrRows({ likeItmsNm, srtnCd }) {
-  const key = process.env.DATA_GO_KR_STOCK_KEY;
+  const rawKey = process.env.DATA_GO_KR_STOCK_KEY;
+  if (!rawKey) return null;
+  // data.go.kr의 "인증키 발급현황" 화면 자체가 키를 URL 인코딩된 형태(%2F 등)로
+  // 보여줘서, 그 화면 그대로 복사해 넣는 실수가 반복되기 쉽습니다. 인코딩된
+  // 형태가 감지되면 서버에서 자동으로 디코딩해서 두 형태 모두 동작하게 합니다.
+  const key = rawKey.includes('%') ? decodeURIComponent(rawKey) : rawKey;
   if (!key) return null;
   const end = new Date();
   const begin = new Date();
