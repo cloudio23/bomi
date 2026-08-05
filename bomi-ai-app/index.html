@@ -249,16 +249,10 @@
   .stock-change.down{ color:#3B6FD6; }
   .stock-asof{ font-size:calc(11px * var(--app-font-scale)); color:var(--sub); margin-top:8px; }
 
-  /* ---------- 날씨 이미지 카드 — 아이폰 날씨앱처럼 하늘색 배경 위에 큰 아이콘
-     하나만 보여줍니다(이모지 대신 직접 그린 벡터 아이콘). ---------- */
-  .weather-hero{ max-width:86%; border-radius:20px; padding:26px 20px 20px; margin:4px 0 12px; display:flex; align-items:center; justify-content:center; }
-  .weather-hero svg{ width:132px; height:132px; display:block; }
-  .weather-hero.wh-clear{ background:linear-gradient(180deg,#5FB6E8 0%,#BEE3F8 100%); }
-  .weather-hero.wh-partly_cloudy{ background:linear-gradient(180deg,#7FB8DE 0%,#D3E7F2 100%); }
-  .weather-hero.wh-cloudy{ background:linear-gradient(180deg,#8C9BAA 0%,#C7D0D8 100%); }
-  .weather-hero.wh-rain{ background:linear-gradient(180deg,#5A6B7D 0%,#8FA3B3 100%); }
-  .weather-hero.wh-heavy_rain{ background:linear-gradient(180deg,#3B4A58 0%,#5F717F 100%); }
-  .weather-hero.wh-snow{ background:linear-gradient(180deg,#8FA0AE 0%,#DCE5EC 100%); }
+  /* ---------- 날씨 이미지 카드 — 아이폰 날씨앱처럼 실제 사진(맑음/구름 조금/
+     흐림/비/비강함/눈)을 큼직하게 보여줍니다(이모지 대신 실사 이미지). ---------- */
+  .weather-hero{ max-width:86%; border-radius:20px; margin:4px 0 12px; overflow:hidden; flex-shrink:0; }
+  .weather-hero img{ display:block; width:100%; height:190px; object-fit:cover; object-position:center bottom; }
 
   .quickchips{ display:flex; gap:12px; padding:10px 16px 14px 16px; overflow-x:auto; flex-shrink:0; background:#F6F3EE; }
   .chip{ flex-shrink:0; background:#fff; border:1px solid var(--line); color:var(--ink); font-size:calc(15px * var(--app-font-scale)); font-weight:600;
@@ -1982,71 +1976,18 @@ function addSuggestedOptions(options){
 // 직접 그린 아이콘을 아이폰 날씨앱처럼 큼직하게 보여줍니다. 실제 기온/강수확률/
 // 미세먼지 값은 여전히 AI가 검색해서 답한 실제 텍스트 그대로이고, 이 태그는
 // 그 실제 날씨를 6개 아이콘 중 무엇으로 보여줄지 분류만 하는 용도입니다.
-const WEATHER_CODES = ['clear','partly_cloudy','cloudy','rain','heavy_rain','snow'];
-const WEATHER_ICONS = {
-  clear: `<svg viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg">
-    <circle cx="80" cy="80" r="34" fill="#FFD65C"/>
-    <g stroke="#FFD65C" stroke-width="8" stroke-linecap="round">
-      <line x1="80" y1="14" x2="80" y2="30"/><line x1="80" y1="130" x2="80" y2="146"/>
-      <line x1="14" y1="80" x2="30" y2="80"/><line x1="130" y1="80" x2="146" y2="80"/>
-      <line x1="34" y1="34" x2="45" y2="45"/><line x1="115" y1="115" x2="126" y2="126"/>
-      <line x1="126" y1="34" x2="115" y2="45"/><line x1="45" y1="115" x2="34" y2="126"/>
-    </g>
-  </svg>`,
-  partly_cloudy: `<svg viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg">
-    <circle cx="103" cy="52" r="26" fill="#FFD65C"/>
-    <g stroke="#FFD65C" stroke-width="7" stroke-linecap="round">
-      <line x1="103" y1="8" x2="103" y2="20"/><line x1="141" y1="18" x2="132" y2="28"/><line x1="150" y1="52" x2="137" y2="52"/>
-    </g>
-    <g fill="#FFFFFF">
-      <ellipse cx="68" cy="102" rx="38" ry="24"/><ellipse cx="100" cy="94" rx="28" ry="22"/>
-      <ellipse cx="43" cy="108" rx="22" ry="16"/><rect x="43" y="98" width="80" height="26" rx="13"/>
-    </g>
-  </svg>`,
-  cloudy: `<svg viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg">
-    <g fill="#F5F7F9" opacity="0.95">
-      <ellipse cx="92" cy="58" rx="36" ry="22"/><ellipse cx="57" cy="64" rx="24" ry="18"/>
-      <rect x="45" y="56" width="80" height="26" rx="13"/>
-    </g>
-    <g fill="#C9D2D9">
-      <ellipse cx="66" cy="98" rx="38" ry="24"/><ellipse cx="104" cy="90" rx="30" ry="24"/>
-      <rect x="47" y="90" width="86" height="30" rx="15"/>
-    </g>
-  </svg>`,
-  rain: `<svg viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg">
-    <g fill="#DDE3E8">
-      <ellipse cx="80" cy="62" rx="38" ry="24"/><ellipse cx="115" cy="58" rx="26" ry="20"/>
-      <ellipse cx="48" cy="66" rx="24" ry="18"/><rect x="45" y="56" width="86" height="28" rx="14"/>
-    </g>
-    <g stroke="#6FA8DC" stroke-width="6" stroke-linecap="round">
-      <line x1="60" y1="108" x2="52" y2="128"/><line x1="85" y1="112" x2="77" y2="134"/><line x1="110" y1="108" x2="102" y2="128"/>
-    </g>
-  </svg>`,
-  heavy_rain: `<svg viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg">
-    <g fill="#AEB9C2">
-      <ellipse cx="80" cy="56" rx="40" ry="24"/><ellipse cx="116" cy="52" rx="26" ry="20"/>
-      <ellipse cx="46" cy="60" rx="24" ry="18"/><rect x="43" y="50" width="90" height="28" rx="14"/>
-    </g>
-    <g stroke="#3E77B5" stroke-width="7" stroke-linecap="round">
-      <line x1="52" y1="100" x2="42" y2="128"/><line x1="74" y1="104" x2="64" y2="132"/>
-      <line x1="96" y1="104" x2="86" y2="132"/><line x1="118" y1="100" x2="108" y2="128"/>
-    </g>
-  </svg>`,
-  snow: `<svg viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg">
-    <g fill="#E4E9EE">
-      <ellipse cx="80" cy="56" rx="38" ry="24"/><ellipse cx="115" cy="52" rx="26" ry="20"/>
-      <ellipse cx="47" cy="60" rx="24" ry="18"/><rect x="44" y="50" width="88" height="28" rx="14"/>
-    </g>
-    <g stroke="#FFFFFF" stroke-width="5" stroke-linecap="round">
-      <line x1="55" y1="98" x2="55" y2="116"/><line x1="46" y1="107" x2="64" y2="107"/>
-      <line x1="49" y1="100" x2="61" y2="114"/><line x1="61" y1="100" x2="49" y2="114"/>
-      <line x1="90" y1="106" x2="90" y2="124"/><line x1="81" y1="115" x2="99" y2="115"/>
-      <line x1="84" y1="108" x2="96" y2="122"/><line x1="96" y1="108" x2="84" y2="122"/>
-      <line x1="118" y1="96" x2="118" y2="110"/><line x1="111" y1="103" x2="125" y2="103"/>
-      <line x1="113" y1="98" x2="123" y2="108"/><line x1="123" y1="98" x2="113" y2="108"/>
-    </g>
-  </svg>`,
+// 실사 날씨 사진(weather-*.jpg, 하나의 4x4 콜라주 이미지에서 잘라낸 것 —
+// 각 사진 하단에 "맑음"/"구름 조금"/"흐림"/"비"/"비(강함)"/"눈" 라벨이 이미
+// 박혀 있어 아래 텍스트 설명과 자연스럽게 이어집니다).
+const WEATHER_IMAGES = {
+  clear: 'weather-clear.jpg',
+  partly_cloudy: 'weather-partly-cloudy.jpg',
+  cloudy: 'weather-cloudy.jpg',
+  rain: 'weather-rain.jpg',
+  heavy_rain: 'weather-heavy-rain.jpg',
+  snow: 'weather-snow.jpg',
 };
+const WEATHER_CODES = Object.keys(WEATHER_IMAGES);
 
 // AI 답변 끝(선택지 태그가 이미 parseBomiReply로 떨어져 나간 뒤)에 남아있는
 // "[[날씨코드: X]]" 태그를 찾아 떼어내고, 화면에 보일 텍스트와 아이콘 코드를 나눠 돌려줍니다.
@@ -2057,12 +1998,12 @@ function extractWeatherCode(text){
 }
 
 function addWeatherHero(code){
-  const icon = WEATHER_ICONS[code];
-  if(!icon) return;
+  const file = WEATHER_IMAGES[code];
+  if(!file) return;
   const chat = document.getElementById('chat');
   const wrap = document.createElement('div');
-  wrap.className = `weather-hero wh-${code}`;
-  wrap.innerHTML = icon;
+  wrap.className = 'weather-hero';
+  wrap.innerHTML = `<img src="/${file}" alt="">`;
   chat.appendChild(wrap);
   chat.scrollTop = chat.scrollHeight;
 }
