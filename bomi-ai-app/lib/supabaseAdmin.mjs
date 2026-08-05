@@ -104,6 +104,27 @@ export async function ensureDefaultCheckinSettings(code) {
   });
 }
 
+// 헤더의 "대화 가능량" 원형게이지용 — Gemini 무료 티어는 남은 할당량을 실시간
+// 조회하는 방법이 없어서(초과하면 그제서야 에러), 저희가 직접 오늘 요청 수를
+// 세어 자체 설정한 하루 목표치(api/usage.js의 DAILY_CHAT_BUDGET)와 비교합니다.
+// 동시 요청이 몰릴 때 read-then-write라 카운트가 약간 어긋날 수 있지만, 소규모
+// 센터 트래픽 규모에서는 무시 가능한 수준이라 별도 DB 함수(RPC) 없이 이 방식으로 둡니다.
+export async function getDailyUsage(dateKey) {
+  const rows = await restRequest(`bomi_usage_daily?usage_date=eq.${dateKey}&select=request_count`);
+  return rows && rows[0] ? rows[0].request_count : 0;
+}
+
+export async function incrementDailyUsage(dateKey) {
+  const current = await getDailyUsage(dateKey);
+  const next = current + 1;
+  await restRequest('bomi_usage_daily?on_conflict=usage_date', {
+    method: 'POST',
+    headers: { Prefer: 'resolution=merge-duplicates' },
+    body: { usage_date: dateKey, request_count: next, updated_at: new Date().toISOString() },
+  });
+  return next;
+}
+
 // 안부 문자(enabled)와 건강리포트 알림(report_enabled)은 서로 독립적으로 켜고 끌
 // 수 있어서, 둘 중 하나라도 켜진 행을 가져온 다음 send-checkins.js가 항목별로
 // 각자의 enabled 플래그를 다시 확인합니다.

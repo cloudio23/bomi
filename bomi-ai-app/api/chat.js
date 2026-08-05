@@ -8,6 +8,8 @@ import { callAI } from '../lib/aiProviders.mjs';
 import { calculateBaziPillars, describeBaziPillarsKorean } from '../lib/bazi.mjs';
 import { convertLunarToSolar } from '../lib/lunarConvert.mjs';
 import { reverseGeocode } from '../lib/transit.mjs';
+import { incrementDailyUsage } from '../lib/supabaseAdmin.mjs';
+import { todayKeyKST } from '../lib/usage.mjs';
 
 // 클라이언트가 사주 정보(생년월일시)를 보내면, LLM이 사주팔자를 직접(부정확하게)
 // "지어내게" 하는 대신 검증된 만세력 조회 테이블로 정밀 계산해서 그 결과를
@@ -69,6 +71,9 @@ export default async function handler(req, res) {
 
     const fullSystem = (system || '') + await buildSajuContext(sajuBirth) + await buildLocationContext(location);
     const reply = await callAI(fullSystem, messages, { maxTokens: 500 });
+    // 헤더의 "대화 가능량" 게이지용 사용량 집계 — 실패해도 채팅 응답 자체를
+    // 막으면 안 되므로 별도로 잡아서 무시합니다(fire-and-forget).
+    incrementDailyUsage(todayKeyKST()).catch(() => {});
     res.status(200).json({ reply });
   } catch (e) {
     res.status(500).json({ error: e.message });
