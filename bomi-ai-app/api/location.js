@@ -102,10 +102,21 @@ async function handleRoute(req, res) {
   });
 }
 
-// 주변 맛집 추천 — 카카오 로컬의 카테고리 검색(category_group_code=FD6, 음식점)을
-// 현재 좌표 기준 거리순으로 불러옵니다. AI가 맛집을 지어내거나 오래된 정보를
-// 사실처럼 말하는 일이 없도록, 이것도 대중교통/주식처럼 AI를 거치지 않고
-// 카카오 실제 데이터를 그대로 카드로 보여줍니다.
+function haversineMeters(lat1, lng1, lat2, lng2) {
+  const R = 6371000;
+  const toRad = d => (d * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+  return Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
+}
+
+// 주변 맛집 추천 — 카카오/네이버 로컬 검색은 리뷰 수·평점 데이터 자체를 안 줘서
+// (확인 완료), 리뷰 500개 이상인 곳만 추리려면 구글 Places API(New)가 사실상
+// 유일한 선택지입니다. AI가 맛집을 지어내지 않도록 이것도 대중교통/주식처럼
+// AI를 거치지 않고 실제 데이터를 그대로 카드로 보여줍니다.
+const MIN_REVIEW_COUNT = 500;
+
 async function handleRestaurants(req, res) {
   if (req.method !== 'GET') {
     res.status(405).json({ ok: false, message: 'GET 요청만 가능해요.' });
@@ -117,37 +128,49 @@ async function handleRestaurants(req, res) {
     res.status(400).json({ ok: false, message: '위치 정보(lat, lng)가 필요해요.' });
     return;
   }
-  const key = process.env.KAKAO_REST_API_KEY;
+  const key = process.env.GOOGLE_PLACES_API_KEY;
   if (!key) {
     res.status(200).json({ ok: false, message: '맛집 정보를 가져오지 못했어요.' });
     return;
   }
   try {
-    const params = new URLSearchParams({
-      category_group_code: 'FD6',
-      x: String(lng), y: String(lat),
-      radius: '1500', sort: 'distance', size: '5',
-    });
-    const response = await fetch(`https://dapi.kakao.com/v2/local/search/category.json?${params.toString()}`, {
-      headers: { Authorization: `KakaoAK ${key}` },
+    const response = await fetch('https://places.googleapis.com/v1/places:searchNearby', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Goog-Api-Key': key,
+        'X-Goog-FieldMask': 'places.displayName,places.rating,places.userRatingCount,places.formattedAddress,places.location,places.googleMapsUri,places.primaryTypeDisplayName',
+      },
+      body: JSON.stringify({
+        includedTypes: ['restaurant'],
+        maxResultCount: 20,
+        locationRestriction: { circle: { center: { latitude: lat, longitude: lng }, radius: 1500.0 } },
+        languageCode: 'ko',
+        rankPreference: 'POPULARITY',
+      }),
     });
     if (!response.ok) {
       res.status(200).json({ ok: false, message: '맛집 정보를 가져오지 못했어요.' });
       return;
     }
     const data = await response.json();
-    const results = (data.documents || []).map(d => ({
-      name: d.place_name,
-      category: (d.category_name || '').split(' > ').pop() || '',
-      address: d.road_address_name || d.address_name || '',
-      distance: Number(d.distance) || null,
-      phone: d.phone || '',
-      url: d.place_url || '',
-    }));
-    if (!results.length) {
-      res.status(200).json({ ok: false, message: '주변에서 맛집을 찾지 못했어요.' });
+    const places = data.places || [];
+    // 리뷰 수로 먼저 거르고, 그 안에서는 구글이 이미 인기순(POPULARITY)으로
+    // 정렬해서 준 순서를 그대로 씁니다.
+    const qualified = places.filter(p => (p.userRatingCount || 0) >= MIN_REVIEW_COUNT).slice(0, 5);
+    if (!qualified.length) {
+      res.status(200).json({ ok: false, message: `주변에서 리뷰 ${MIN_REVIEW_COUNT}개 이상인 맛집을 찾지 못했어요.` });
       return;
     }
+    const results = qualified.map(p => ({
+      name: (p.displayName && p.displayName.text) || '',
+      category: (p.primaryTypeDisplayName && p.primaryTypeDisplayName.text) || '',
+      rating: p.rating != null ? p.rating : null,
+      reviewCount: p.userRatingCount || 0,
+      address: p.formattedAddress || '',
+      distance: p.location ? haversineMeters(lat, lng, p.location.latitude, p.location.longitude) : null,
+      mapsUrl: p.googleMapsUri || '',
+    }));
     res.status(200).json({ ok: true, results });
   } catch (e) {
     res.status(200).json({ ok: false, message: '맛집 정보를 가져오는 중 문제가 생겼어요.' });

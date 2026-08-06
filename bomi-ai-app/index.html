@@ -284,10 +284,12 @@
   /* ---------- 맛집 카드 ---------- */
   .restaurant-card{ background:#fff; border:1px solid var(--line); border-radius:16px; padding:15px; max-width:86%; }
   .restaurant-title{ font-size:calc(15px * var(--app-font-scale)); font-weight:800; color:var(--ink); margin-bottom:8px; }
-  .restaurant-item{ padding:10px 0; border-bottom:1px solid #F1EEE7; }
+  .restaurant-item{ padding:10px 0; border-bottom:1px solid #F1EEE7; cursor:pointer; border-radius:8px; }
   .restaurant-item:last-of-type{ border-bottom:none; padding-bottom:0; }
+  .restaurant-item:active{ background:#FAF9F6; }
   .restaurant-name{ font-size:calc(15px * var(--app-font-scale)); font-weight:700; color:var(--ink); }
   .restaurant-meta{ font-size:calc(12.5px * var(--app-font-scale)); color:var(--sub); margin-top:2px; }
+  .restaurant-rating{ color:#C9971B; font-weight:700; margin-left:6px; }
   .restaurant-addr{ font-size:calc(12.5px * var(--app-font-scale)); color:var(--sub); margin-top:1px; }
 
   /* ---------- 날씨 이미지 카드 — 아이폰 날씨앱처럼 실제 사진(맑음/구름 조금/
@@ -2664,17 +2666,25 @@ function addRestaurantListCard(results){
   const wrap = document.createElement('div');
   wrap.className = 'restaurant-card';
   wrap.innerHTML = `
-    <div class="restaurant-title">주변 맛집 추천</div>
-    ${results.map(r => `
-      <div class="restaurant-item">
+    <div class="restaurant-title">주변 맛집 추천 (리뷰 500개 이상)</div>
+    ${results.map((r,i)=>`
+      <div class="restaurant-item" data-idx="${i}">
         <div class="restaurant-name">${escapeHtml(r.name)}</div>
-        <div class="restaurant-meta">${escapeHtml(r.category)}${r.distance != null ? ` · ${r.distance}m` : ''}</div>
+        <div class="restaurant-meta">
+          ${escapeHtml(r.category)}${r.distance != null ? ` · ${r.distance}m` : ''}
+          ${r.rating != null ? `<span class="restaurant-rating">★ ${r.rating.toFixed(1)} (리뷰 ${r.reviewCount.toLocaleString()}개)</span>` : ''}
+        </div>
         <div class="restaurant-addr">${escapeHtml(r.address)}</div>
       </div>
     `).join('')}
   `;
   chat.appendChild(wrap);
   chat.scrollTop = chat.scrollHeight;
+  wrap.querySelectorAll('.restaurant-item').forEach(item=>{
+    const r = results[Number(item.dataset.idx)];
+    if(!r.mapsUrl) return;
+    item.addEventListener('click', ()=> window.open(r.mapsUrl, '_blank'));
+  });
 }
 
 async function startRestaurantFlow(){
@@ -2851,6 +2861,7 @@ ${checklistLines}
 - 답변은 단답으로 끝내지 말고, 자연스러운 대화체로 보통 3~5문장 정도 편하게 이야기하듯 답하세요. 짧은 게 목표가 아니라, 대화가 계속 이어지는 느낌이 목표입니다.
 - 의학적 진단/처방은 하지 말고, 이상 증상엔 병원 방문이나 가벼운 스트레칭을 권유하세요.
 - 이모지·이모티콘은 절대 쓰지 마세요.
+- 화면은 마크다운을 지원하지 않고 글자를 그대로 보여줘요. 별표(**굵게**, * 목록), #, - 같은 마크다운 기호를 절대 쓰지 말고 일반 문장과 줄바꿈만으로 답하세요.
 - 매일 아침 인사나 안부 질문은 최대한 다양하게 표현하고, 최근에 나눈 대화 내용을 반영해 형식적으로 반복되지 않도록 하세요.
 - 사용자 메시지는 마이크 음성인식 결과일 수 있어서 "음", "어", "그" 같은 망설임 표현이나 말 더듬음이 섞여 있을 수 있어요. 그런 표현은 무시하고 문맥상 진짜 하고 싶은 말이 뭔지 파악해서 자연스럽게 답하세요.
 
