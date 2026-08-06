@@ -5,6 +5,7 @@
 //
 // - GET  ?action=search&query=...   → 장소 자동완성 검색 (카카오 로컬)
 // - POST ?action=route   {origin, destination}  → 대중교통 경로 (카카오+ODsay)
+// - GET  ?action=restaurants&lat=&lng=  → 주변 음식점 추천 (카카오 로컬 카테고리 검색)
 import { resolvePlace, searchTransitRoutes, pickRoutes, structureRoute } from '../lib/transit.mjs';
 
 // 출발지/도착지 입력창의 자동완성 검색용 — 카카오 로컬 키워드 검색 결과를
@@ -101,12 +102,65 @@ async function handleRoute(req, res) {
   });
 }
 
+// 주변 맛집 추천 — 카카오 로컬의 카테고리 검색(category_group_code=FD6, 음식점)을
+// 현재 좌표 기준 거리순으로 불러옵니다. AI가 맛집을 지어내거나 오래된 정보를
+// 사실처럼 말하는 일이 없도록, 이것도 대중교통/주식처럼 AI를 거치지 않고
+// 카카오 실제 데이터를 그대로 카드로 보여줍니다.
+async function handleRestaurants(req, res) {
+  if (req.method !== 'GET') {
+    res.status(405).json({ ok: false, message: 'GET 요청만 가능해요.' });
+    return;
+  }
+  const lat = Number(req.query && req.query.lat);
+  const lng = Number(req.query && req.query.lng);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+    res.status(400).json({ ok: false, message: '위치 정보(lat, lng)가 필요해요.' });
+    return;
+  }
+  const key = process.env.KAKAO_REST_API_KEY;
+  if (!key) {
+    res.status(200).json({ ok: false, message: '맛집 정보를 가져오지 못했어요.' });
+    return;
+  }
+  try {
+    const params = new URLSearchParams({
+      category_group_code: 'FD6',
+      x: String(lng), y: String(lat),
+      radius: '1500', sort: 'distance', size: '5',
+    });
+    const response = await fetch(`https://dapi.kakao.com/v2/local/search/category.json?${params.toString()}`, {
+      headers: { Authorization: `KakaoAK ${key}` },
+    });
+    if (!response.ok) {
+      res.status(200).json({ ok: false, message: '맛집 정보를 가져오지 못했어요.' });
+      return;
+    }
+    const data = await response.json();
+    const results = (data.documents || []).map(d => ({
+      name: d.place_name,
+      category: (d.category_name || '').split(' > ').pop() || '',
+      address: d.road_address_name || d.address_name || '',
+      distance: Number(d.distance) || null,
+      phone: d.phone || '',
+      url: d.place_url || '',
+    }));
+    if (!results.length) {
+      res.status(200).json({ ok: false, message: '주변에서 맛집을 찾지 못했어요.' });
+      return;
+    }
+    res.status(200).json({ ok: true, results });
+  } catch (e) {
+    res.status(200).json({ ok: false, message: '맛집 정보를 가져오는 중 문제가 생겼어요.' });
+  }
+}
+
 export default async function handler(req, res) {
   try {
     const action = (req.query && req.query.action) || '';
     if (action === 'search') return await handleSearch(req, res);
     if (action === 'route') return await handleRoute(req, res);
-    res.status(400).json({ error: 'action 쿼리 파라미터가 필요해요 (search | route).' });
+    if (action === 'restaurants') return await handleRestaurants(req, res);
+    res.status(400).json({ error: 'action 쿼리 파라미터가 필요해요 (search | route | restaurants).' });
   } catch (e) {
     res.status(500).json({ ok: false, message: '요청 처리 중 문제가 생겼어요.' });
   }

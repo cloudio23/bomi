@@ -281,6 +281,15 @@
   .stock-naver-link{ width:100%; margin-top:12px; padding:11px; border-radius:12px; border:1.5px solid var(--line); background:#fff; color:var(--navy); font-weight:700; font-size:calc(13.5px * var(--app-font-scale)); cursor:pointer; }
   .stock-naver-link:active{ background:#FAF9F6; }
 
+  /* ---------- 맛집 카드 ---------- */
+  .restaurant-card{ background:#fff; border:1px solid var(--line); border-radius:16px; padding:15px; max-width:86%; }
+  .restaurant-title{ font-size:calc(15px * var(--app-font-scale)); font-weight:800; color:var(--ink); margin-bottom:8px; }
+  .restaurant-item{ padding:10px 0; border-bottom:1px solid #F1EEE7; }
+  .restaurant-item:last-of-type{ border-bottom:none; padding-bottom:0; }
+  .restaurant-name{ font-size:calc(15px * var(--app-font-scale)); font-weight:700; color:var(--ink); }
+  .restaurant-meta{ font-size:calc(12.5px * var(--app-font-scale)); color:var(--sub); margin-top:2px; }
+  .restaurant-addr{ font-size:calc(12.5px * var(--app-font-scale)); color:var(--sub); margin-top:1px; }
+
   /* ---------- 날씨 이미지 카드 — 아이폰 날씨앱처럼 실제 사진(맑음/구름 조금/
      흐림/비/비강함/눈)을 큼직하게 보여줍니다(이모지 대신 실사 이미지). ---------- */
   .weather-hero{ max-width:86%; border-radius:20px; margin:4px 0 12px; overflow:hidden; flex-shrink:0; }
@@ -640,14 +649,15 @@
     </div>
     <div class="chat" id="chat"></div>
     <div class="quickchips">
-      <div class="chip" data-msg="오늘 날씨 어때?">오늘 날씨 어때?</div>
-      <div class="chip" id="transitChip">대중교통 이용</div>
+      <div class="chip" id="callChip">통화</div>
+      <div class="chip" data-msg="오늘 날씨 어때?">날씨</div>
+      <div class="chip" id="transitChip">대중교통</div>
+      <div class="chip" id="restaurantChip">맛집</div>
+      <div class="chip" id="civilChip">민원</div>
+      <div class="chip" id="newsChip">뉴스</div>
       <div class="chip" id="stockChip">주식</div>
       <div class="chip" id="sajuChip">오늘 운세</div>
-      <div class="chip" data-msg="요즘 경기 어때?">요즘 경기</div>
-      <div class="chip" data-msg="그냥 심심해서 말 걸어봤어">그냥 말벗</div>
-      <div class="chip" data-msg="요즘 부동산 정책 뭐가 바뀌었어?">부동산 정책</div>
-      <div class="chip" data-msg="요즘 정치 뉴스 뭐가 있어?">정치 뉴스</div>
+      <div class="chip" data-msg="그냥 심심해서 말 걸어봤어">말벗</div>
     </div>
     <div class="inputbar" id="inputBar">
       <div class="dock" id="dockButtons">
@@ -2610,6 +2620,121 @@ function startStockFlow(){
 }
 document.getElementById('stockChip').addEventListener('click', startStockFlow);
 
+/* ============ 뉴스 (시사/경제/연예 선택지 → AI 검색 답변, systemPrompt 참고) ============ */
+function startNewsFlow(){
+  addLocalBubble('어떤 소식이 궁금하세요?');
+  addChoiceButtons(['시사', '경제', '연예'], (choice)=>{
+    const prompts = { '시사': '요즘 시사 뉴스 뭐가 있어?', '경제': '요즘 경기 어때?', '연예': '요즘 연예 뉴스 뭐가 있어?' };
+    sendMessage(prompts[choice] || choice);
+  });
+}
+document.getElementById('newsChip').addEventListener('click', startNewsFlow);
+
+/* ============ 민원/행정 서비스 (AI 검색 답변, systemPrompt의 "민원: " 규칙 참고) ============ */
+// 실제 절차·서류 안내는 AI가 검색해서 답하되, "민원: " 접두사로 보내서
+// systemPrompt가 이 질문을 일반 잡담이 아니라 민원 안내 규칙(할루시네이션
+// 주의, 정부24/주민센터 확인 안내)으로 다루게 합니다.
+function startCivilFlow(){
+  addInlineTextCard('어떤 민원이 궁금하세요?', '예: 주민등록등본 발급, 인감증명서 재발급', (query)=>{
+    sendMessage(`민원: ${query}`);
+  });
+}
+document.getElementById('civilChip').addEventListener('click', startCivilFlow);
+
+/* ============ 맛집 (카카오 로컬 카테고리 검색, api/location.js?action=restaurants 참고) ============ */
+// AI가 맛집을 지어내거나 오래된 정보를 말하지 않도록, 대중교통/주식처럼 AI를
+// 거치지 않고 카카오 실제 데이터를 거리순으로 그대로 카드에 보여줍니다.
+function addRestaurantListCard(results){
+  const chat = document.getElementById('chat');
+  const wrap = document.createElement('div');
+  wrap.className = 'restaurant-card';
+  wrap.innerHTML = `
+    <div class="restaurant-title">주변 맛집 추천</div>
+    ${results.map(r => `
+      <div class="restaurant-item">
+        <div class="restaurant-name">${escapeHtml(r.name)}</div>
+        <div class="restaurant-meta">${escapeHtml(r.category)}${r.distance != null ? ` · ${r.distance}m` : ''}</div>
+        <div class="restaurant-addr">${escapeHtml(r.address)}</div>
+      </div>
+    `).join('')}
+  `;
+  chat.appendChild(wrap);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+async function startRestaurantFlow(){
+  const loc = await getLocationIfConsented();
+  if(!loc){
+    addLocalBubble('주변 맛집을 찾으려면 위치 정보가 필요해요. 설정에서 위치 정보 제공을 켜주시겠어요?');
+    return;
+  }
+  const loadingBubble = addLocalBubble('주변 맛집을 찾고 있어요...');
+  try{
+    const response = await fetch(`/api/location?action=restaurants&lat=${loc.lat}&lng=${loc.lng}`);
+    const data = await response.json();
+    loadingBubble.remove();
+    if(!data.ok){
+      addLocalBubble(data.message || '주변에서 맛집을 찾지 못했어요.');
+      return;
+    }
+    addRestaurantListCard(data.results);
+  }catch(e){
+    loadingBubble.remove();
+    addLocalBubble('맛집을 찾는 중 문제가 생겼어요. 잠시 후 다시 시도해주시겠어요?');
+  }
+}
+document.getElementById('restaurantChip').addEventListener('click', startRestaurantFlow);
+
+/* ============ 통화 (연락처 검색 — 안드로이드 앱의 BomiNative 브릿지 필요) ============ */
+// 웹 단독(브라우저)에서는 기기 연락처를 읽을 방법이 없어서, 안드로이드 앱의
+// Flutter 쪽에 연락처 검색을 요청하고(main.dart의 searchContacts 처리) 결과를
+// bomiContactsResult 이벤트로 받습니다. 이름만 입력했다고 바로 전화가 걸리지
+// 않도록, 반드시 "OOO님께 전화 걸까요?" 확인을 한 번 더 거친 뒤에만 tel: 링크를
+// 엽니다(그러면 네이티브 쪽 onNavigationRequest가 전화 앱을 띄웁니다).
+function startCallFlow(){
+  addInlineTextCard('누구에게 걸까요?', '이름을 입력해주세요', (name)=>{
+    searchContactsNative(name);
+  });
+}
+
+function searchContactsNative(name){
+  if(!window.BomiNative){
+    addLocalBubble('통화 기능은 보미 안드로이드 앱에서만 사용할 수 있어요.');
+    return;
+  }
+  const loadingBubble = addLocalBubble('연락처를 찾고 있어요...');
+  const onResult = (e)=>{
+    window.removeEventListener('bomiContactsResult', onResult);
+    loadingBubble.remove();
+    const contacts = (e.detail && e.detail.contacts) || [];
+    if(!contacts.length){
+      addLocalBubble(`"${name}"님을 연락처에서 찾지 못했어요. 이름을 다시 확인해주시겠어요?`);
+      return;
+    }
+    if(contacts.length === 1){
+      confirmCall(contacts[0]);
+      return;
+    }
+    addLocalBubble('여러 명이 검색됐어요. 누구에게 거시겠어요?');
+    addChoiceButtons(contacts.map(c=>c.name), (picked)=>{
+      const match = contacts.find(c=>c.name === picked);
+      if(match) confirmCall(match);
+    });
+  };
+  window.addEventListener('bomiContactsResult', onResult);
+  window.BomiNative.postMessage(JSON.stringify({ action:'searchContacts', name }));
+}
+
+function confirmCall(contact){
+  addLocalBubble(`${contact.name}님께 전화 걸까요?`);
+  addChoiceButtons(['네, 전화 걸게요', '아니요'], (choice)=>{
+    if(choice === '네, 전화 걸게요'){
+      window.location.href = 'tel:' + contact.phone;
+    }
+  });
+}
+document.getElementById('callChip').addEventListener('click', startCallFlow);
+
 function addInlineBirthDateCard(onConfirm){
   const chat = document.getElementById('chat');
   const isLunar = profile.birthCalendarType === 'lunar';
@@ -2720,12 +2845,15 @@ ${checklistLines}
   2번째 줄: "강수확률 N%  미세먼지 [등급]" 형식으로 한 줄에 붙여서(등급 예: 좋음/보통/나쁨/매우 나쁨).
   3번째 줄: 자외선 지수·강수·미세먼지·기온 중 그날 두드러진 조건 하나에 맞춰 모자·선글라스·우산·마스크·겉옷 중 알맞은 걸 챙기라고 권하는 자연스러운 한 문장(예: "오늘은 자외선 지수가 높으니 모자나 선글라스를 챙기시는 게 좋겠어요").
   위치 정보가 없으면 위치를 먼저 여쭤보고, 검색해도 구체적인 숫자를 못 찾으면 추측해서 채우지 말고 "확인이 어렵다"고 솔직히 말하세요.
-  날씨 답변 뒤에 붙는 선택지 중 하나는 반드시 "내일 날씨도 궁금하신가요?"로 하세요.
-  위 3줄 다음 줄에 화면에 보이지 않는 태그를 반드시 하나 추가하세요: [[날씨코드: X]] — X는 그날 실제 날씨 상태에 가장 가까운 것 딱 하나를 다음 중에서 고르세요: clear(쨍쨍한 맑음), partly_cloudy(구름 낀 맑음), cloudy(흐림), rain(비), heavy_rain(폭우·강한 비·뇌우), snow(눈). 이 태그는 큰 날씨 이미지를 보여주는 데만 쓰이고 사용자에게는 보이지 않아요.
+  날씨 답변의 선택지는 다른 주제와 달리 자유롭게 만들지 말고, 아래 맨 끝의 "2~3개" 규칙을 무시하고 반드시 이 2개만 정확히 그대로 쓰세요:
+  [[선택지: 내일 날씨도 궁금하신가요? | 다른 지역 날씨도 궁금하세요?]]
+  위 3줄 다음 줄에(선택지 줄보다 앞에) 화면에 보이지 않는 태그를 반드시 하나 추가하세요: [[날씨코드: X]] — X는 그날 실제 날씨 상태에 가장 가까운 것 딱 하나를 다음 중에서 고르세요: clear(쨍쨍한 맑음), partly_cloudy(구름 낀 맑음), cloudy(흐림), rain(비), heavy_rain(폭우·강한 비·뇌우), snow(눈). 이 태그는 큰 날씨 이미지를 보여주는 데만 쓰이고 사용자에게는 보이지 않아요.
 - 검색/일반 지식: 결론을 먼저 한두 문장으로 말한 뒤, 어르신이 궁금해하실 배경이나 이유를 자연스럽게 덧붙이세요.
 - 지도/길찾기/교통: 구체적인 출발지·도착지 경로 안내는 화면 아래 "대중교통 이용" 버튼을 누르면 정확한 경로를 카드로 보여준다고 안내하세요(직접 경로·시간을 지어내지 마세요). 그 외 일반적인 교통 질문은 도움이 될 만한 일반적인 방법을 편하게 풀어서 안내하세요.
 - 사주/운세: 재미로 보는 것임을 짧게 밝히고, 생일·태어난 시간대 정보가 있으면 그걸 반영해 그 사람만을 위한 이야기처럼 구체적으로 풀어서 답하세요(정보가 없으면 연 단위로만 가볍게). 사용자가 재물운/애정운/건강운/직장운/총운 중 무엇을 물었는지에 맞춰 그 주제 중심으로 답하세요. "반드시 ~된다" 같은 단정적 예언 표현은 쓰지 마세요.
-- 경제/부동산 정책/정치 뉴스(시사 전반): "요즘 경기 어때?", "부동산 정책 뭐가 바뀌었어?", "정치 뉴스 뭐가 있어?"처럼 막연한 질문이면, 오늘 있었던 이슈를 여러 개 나열하거나 요약하지 말고 어떤 소식이 궁금하신지 짧게 되물으세요(예: "요즘 여러 이야기가 많은데, 어떤 소식이 궁금하세요?"), 그리고 선택지에 구체적인 이슈 2~3개를 실제로 최근 있었던 것 중에서 골라 보기로 제시하세요. 사용자가 특정 이슈를 콕 집어 물으면, 그때는 그 이슈 하나만 사실 위주로 간결하게 설명하세요(다른 이슈까지 곁들이지 마세요). 검색 결과 중 반드시 가장 최근 날짜의 정보를 기준으로 답하고, 그 소식이 언제 보도됐는지 날짜(몇 월 며칠, 또는 오래된 소식이면 몇 년 몇 월)를 문장 안에 자연스럽게 함께 언급하세요(예: "8월 3일 보도에 따르면..."). 검색 결과 자체가 오래됐다면 그 사실도 솔직히 알려주세요. 특정 종목 매수·매도 추천 금지, 실시간 시세 확인 불가 안내, 특정 정당·정책에 대한 찬반·지지 표현은 절대 금지.
+- 경제/부동산 정책/정치 뉴스(시사 전반): "요즘 경기 어때?", "요즘 시사 뉴스 뭐가 있어?"처럼 막연한 질문이면, 오늘 있었던 이슈를 여러 개 나열하거나 요약하지 말고 어떤 소식이 궁금하신지 짧게 되물으세요(예: "요즘 여러 이야기가 많은데, 어떤 소식이 궁금하세요?"), 그리고 선택지에 구체적인 이슈 2~3개를 실제로 최근 있었던 것 중에서 골라 보기로 제시하세요. 사용자가 특정 이슈를 콕 집어 물으면, 그때는 그 이슈 하나만 사실 위주로 간결하게 설명하세요(다른 이슈까지 곁들이지 마세요). 검색 결과 중 반드시 가장 최근 날짜의 정보를 기준으로 답하고, 그 소식이 언제 보도됐는지 날짜(몇 월 며칠, 또는 오래된 소식이면 몇 년 몇 월)를 문장 안에 자연스럽게 함께 언급하세요(예: "8월 3일 보도에 따르면..."). 검색 결과 자체가 오래됐다면 그 사실도 솔직히 알려주세요. 특정 종목 매수·매도 추천 금지, 실시간 시세 확인 불가 안내, 특정 정당·정책에 대한 찬반·지지 표현은 절대 금지.
+- 연예 뉴스: 최근 있었던 연예계 소식을 사실 위주로 간단히 요약하세요. 확정되지 않은 의혹이나 논란은 사실처럼 단정하지 말고 "~라는 보도가 있어요"처럼 신중하게 전달하세요. 다른 뉴스와 마찬가지로 가장 최근 날짜 기준으로 답하고, 그 소식이 보도된 날짜를 문장 안에 함께 언급하세요.
+- 민원/행정 서비스("민원: "으로 시작하는 질문): 서류 발급·신청 절차·준비물처럼 구체적인 민원 내용을 검색 결과 바탕으로 정확하게 안내하세요. 수수료·필요서류처럼 지역이나 시점에 따라 달라질 수 있는 세부 사항은 확실하지 않으면 추측해서 채우지 말고, "정확한 내용은 가까운 주민센터나 정부24(www.gov.kr)에서 다시 확인해보시라"고 반드시 안내하세요. 검색 결과가 오래됐으면 그 사실도 솔직히 말하세요.
 - 말벗/정서적 대화: 충분히 공감하며 이야기를 들어준 뒤, 답변 끝에 질문 하나를 되돌려줘서 어르신이 계속 이야기를 이어가시게 하세요.
 
 칩(빠른 선택지)을 눌러서 시작된 대화일수록 특히 더 깔끔하게 — 인사말이나 군더더기 없이 핵심만 담아 답하세요(단, 말벗/정서적 대화는 예외로 충분히 대화하듯 답하세요).
