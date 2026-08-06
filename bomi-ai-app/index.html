@@ -2115,10 +2115,19 @@ const WEATHER_CODES = Object.keys(WEATHER_IMAGES);
 
 // AI 답변 끝(선택지 태그가 이미 parseBomiReply로 떨어져 나간 뒤)에 남아있는
 // "[[날씨코드: X]]" 태그를 찾아 떼어내고, 화면에 보일 텍스트와 아이콘 코드를 나눠 돌려줍니다.
+// 지시대로라면 이 태그는 항상 맨 끝에 오지만, 실제로는 모델이 종종 맨 앞이나
+// 중간에 끼워 넣습니다 — 끝에만 고정해서 찾으면(앵커 $) 그런 경우 태그를 못
+// 떼어내서 "[[날씨코드: clear]]" 같은 글자가 그대로 화면에 보이는 버그가
+// 있었습니다. 위치와 상관없이 어디서든 찾아서 제거합니다(앞뒤 줄바꿈까지
+// 같이 먹으면 중간에 낀 경우 두 문장이 붙어버려서, 줄바꿈은 그대로 두고
+// 혹시 생기는 빈 줄만 나중에 정리).
 function extractWeatherCode(text){
-  const match = text.match(/\n?\[\[\s*날씨코드\s*:\s*([a-z_]+)\s*\]\]\s*$/);
+  const match = text.match(/\[\[\s*날씨코드\s*:\s*([a-z_]+)\s*\]\]/);
   if(!match || !WEATHER_CODES.includes(match[1])) return { text, code: null };
-  return { text: text.slice(0, match.index).trim(), code: match[1] };
+  const cleaned = (text.slice(0, match.index) + text.slice(match.index + match[0].length))
+    .replace(/[ \t]*\n[ \t]*\n[ \t]*\n+/g, '\n\n')
+    .trim();
+  return { text: cleaned, code: match[1] };
 }
 
 
