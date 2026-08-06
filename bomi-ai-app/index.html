@@ -295,7 +295,16 @@
   /* 날씨 답변 사진 — ai-content 안에서 글과 같은 카드 흐름으로 이어지도록
      (예전엔 사진을 별도 메시지로 먼저 넣어서, 타자기 효과로 글이 길어지며
      자동 스크롤될 때 사진만 화면 위로 밀려나 안 보이는 문제가 있었음). */
-  .ai-weather-img{ display:block; width:100%; max-width:360px; height:190px; object-fit:cover; object-position:center bottom; border-radius:16px; }
+  /* 날씨 답변만 흰 배경 테두리 카드로(대중교통/주식 카드와 같은 스타일) —
+     사진은 카드 위쪽에 꽉 차게, 글/안내문구/피드백 아이콘은 안쪽 여백을 줘서
+     사진+글이 하나의 카드처럼 보이게 합니다. */
+  .weather-card{ max-width:86%; background:#fff; border:1px solid var(--line); border-radius:18px; overflow:hidden; flex-shrink:0; }
+  .weather-card .ai-content{ gap:0; padding-bottom:14px; }
+  .weather-card .ai-text{ padding:0 15px; }
+  .weather-card .ai-disclaimer{ padding:0 15px; margin-top:8px; }
+  .weather-card .ai-feedback{ padding:0 15px; margin-top:2px; }
+  .ai-weather-img{ display:block; width:100%; height:190px; object-fit:cover; object-position:center bottom; border-radius:16px; margin-bottom:12px; }
+  .weather-card .ai-weather-img{ border-radius:0; margin-bottom:12px; }
 
   .quickchips{ display:flex; gap:12px; padding:10px 16px 14px 16px; overflow-x:auto; flex-shrink:0; background:#F6F3EE; }
   .chip{ flex-shrink:0; background:#fff; border:1px solid var(--line); color:var(--ink); font-size:calc(15px * var(--app-font-scale)); font-weight:600;
@@ -1953,10 +1962,11 @@ function addAssistantBlock(text, userText, animate, weatherCode){
   const chat = document.getElementById('chat');
   const showFeedback = text.length >= FEEDBACK_MIN_LENGTH;
   const wrap = document.createElement('div');
-  wrap.className = 'ai-block';
-  // 날씨 답변은 사진과 글을 같은 ai-content 안에 나란히 넣어서 하나로 이어진
-  // 카드처럼 보이게 합니다(따로 떨어진 두 메시지처럼 보이지 않도록).
+  // 날씨 답변은 사진과 글을 흰 배경 테두리 카드 하나로 묶어서(대중교통/주식
+  // 카드와 같은 스타일) 보여줍니다 — 그냥 사진+민글자를 순서대로 늘어놓기만
+  // 하면 "카드"라기보다 서로 다른 메시지 두 개처럼 보여서요.
   const weatherImgFile = weatherCode && WEATHER_IMAGES[weatherCode];
+  wrap.className = weatherImgFile ? 'ai-block weather-card' : 'ai-block';
   const heroHtml = weatherImgFile ? `<img class="ai-weather-img" src="/${weatherImgFile}" alt="">` : '';
   wrap.innerHTML = `
     <div class="ai-content">
