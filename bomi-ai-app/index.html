@@ -256,9 +256,15 @@
   .transit-card-total{ display:flex; justify-content:space-between; align-items:baseline; margin-top:11px; padding-top:11px; border-top:1.5px solid var(--line); }
   .transit-card-total .lb{ font-size:calc(13px * var(--app-font-scale)); color:var(--sub); font-weight:600; }
   .transit-card-total .val{ font-size:calc(16px * var(--app-font-scale)); color:var(--navy); font-weight:800; }
-  .transit-map-btn{ width:100%; margin-top:12px; padding:12px; border-radius:12px; border:1.5px solid var(--line);
-    background:#fff; color:var(--navy); font-weight:700; font-size:calc(14px * var(--app-font-scale)); cursor:pointer; }
-  .transit-map-btn:active{ background:#FAF9F6; }
+  .transit-btn-row{ display:flex; gap:8px; margin-top:12px; }
+  .transit-map-btn, .transit-alt-btn{ flex:1; padding:12px 8px; border-radius:12px; border:1.5px solid var(--line);
+    background:#fff; color:var(--navy); font-weight:700; font-size:calc(13.5px * var(--app-font-scale)); cursor:pointer; }
+  .transit-map-btn:active, .transit-alt-btn:active{ background:#FAF9F6; }
+  .transit-route-list{ margin-top:10px; border-top:1px solid var(--line); padding-top:6px; }
+  .transit-route-item{ display:flex; align-items:center; justify-content:space-between; padding:11px 6px; border-radius:10px; cursor:pointer; }
+  .transit-route-item:active{ background:#FAF9F6; }
+  .tri-summary{ font-size:calc(14px * var(--app-font-scale)); color:var(--ink); font-weight:600; }
+  .tri-arrow{ color:var(--sub); font-size:16px; }
 
   /* ---------- 주식 시세 카드 — 국내는 빨강=상승/파랑=하락(한국 관행),
      미국 종목도 어르신께 헷갈리지 않게 같은 색 규칙을 그대로 씁니다 ---------- */
@@ -272,6 +278,8 @@
   .stock-change.up{ color:#D9455A; }
   .stock-change.down{ color:#3B6FD6; }
   .stock-asof{ font-size:calc(11px * var(--app-font-scale)); color:var(--sub); margin-top:8px; }
+  .stock-naver-link{ width:100%; margin-top:12px; padding:11px; border-radius:12px; border:1.5px solid var(--line); background:#fff; color:var(--navy); font-weight:700; font-size:calc(13.5px * var(--app-font-scale)); cursor:pointer; }
+  .stock-naver-link:active{ background:#FAF9F6; }
 
   /* ---------- 날씨 이미지 카드 — 아이폰 날씨앱처럼 실제 사진(맑음/구름 조금/
      흐림/비/비강함/눈)을 큼직하게 보여줍니다(이모지 대신 실사 이미지). ---------- */
@@ -2298,12 +2306,13 @@ const TRANSIT_STEP_ICON = { walk:'🚶', subway:'🚇', bus:'🚌' };
 // 서버가 이미 계산해 준 구간(segments)을 그대로 순서대로 보여주는 카드 —
 // AI 문장으로 풀어 쓰지 않아서 "글로 나열하는" 느낌이 없습니다. 지하철/버스
 // 구간에만 누적 소요시간 기준 예상 도착 시각을 계산해 붙입니다.
-function addTransitResultCard(data){
-  const chat = document.getElementById('chat');
-  const wrap = document.createElement('div');
-  wrap.className = 'transit-result-card';
+// data.routes[routeIndex]의 segments/totalMinutes로 카드 내용만 바꿔 그립니다
+// (카드 전체를 새로 만들지 않아서 "다른 노선"을 고르면 그 자리에서 바로
+// 바뀌는 느낌을 줍니다).
+function renderTransitRoute(wrap, data, routeIndex){
+  const route = data.routes[routeIndex];
   let elapsed = 0;
-  const stepsHtml = data.segments.map(seg=>{
+  const stepsHtml = route.segments.map(seg=>{
     elapsed += seg.minutes || 0;
     const etaHtml = seg.type === 'walk' ? '' : `<div class="transit-step-eta">${formatKoreanClock(elapsed)} 도착 예정</div>`;
     return `
@@ -2316,16 +2325,36 @@ function addTransitResultCard(data){
       </div>
     `;
   }).join('');
+  wrap.querySelector('.transit-steps').innerHTML = stepsHtml;
+  wrap.querySelector('.transit-card-total .val').textContent = `${route.totalMinutes}분 · ${formatKoreanClock(route.totalMinutes)} 도착`;
+}
+
+// "다른 노선 보기" 목록에 보여줄 한 줄 요약 — 구간 아이콘을 순서대로 나열해서
+// 도보/지하철/버스 조합을 한눈에 훑을 수 있게 합니다.
+function routeSummaryLabel(route){
+  const icons = route.segments.map(seg => TRANSIT_STEP_ICON[seg.type] || '').join(' ');
+  return `${icons}  ${route.totalMinutes}분`;
+}
+
+function addTransitResultCard(data){
+  const chat = document.getElementById('chat');
+  const wrap = document.createElement('div');
+  wrap.className = 'transit-result-card';
   wrap.innerHTML = `
     <div class="transit-route-head"><b>${escapeHtml(data.origin.placeName)}</b>에서 <b>${escapeHtml(data.destination.placeName)}</b>까지</div>
-    ${stepsHtml}
+    <div class="transit-steps"></div>
     <div class="transit-card-total">
       <span class="lb">총 소요시간</span>
-      <span class="val">${data.totalMinutes}분 · ${formatKoreanClock(data.totalMinutes)} 도착</span>
+      <span class="val"></span>
     </div>
-    <button type="button" class="transit-map-btn" id="transitMapBtn">🗺️ 지도에서 길찾기 보기</button>
+    <div class="transit-btn-row">
+      <button type="button" class="transit-map-btn" id="transitMapBtn">🗺️ 지도에서 길찾기 보기</button>
+      <button type="button" class="transit-alt-btn" id="transitAltBtn">🔀 다른 노선 보기</button>
+    </div>
+    <div class="transit-route-list" id="transitRouteList" style="display:none;"></div>
   `;
   chat.appendChild(wrap);
+  renderTransitRoute(wrap, data, 0);
   chat.scrollTop = chat.scrollHeight;
 
   // 카카오맵 길찾기로 그대로 이어줍니다 — 실시간 버스 도착 정보나 실제 지도
@@ -2344,6 +2373,34 @@ function addTransitResultCard(data){
   } else {
     mapBtn.style.display = 'none';
   }
+
+  // ODsay가 후보를 하나만 준 경우(routes.length < 2)엔 고를 다른 노선이 없으니
+  // 버튼 자체를 숨깁니다 — 눌러도 아무 일 없는 버튼을 보여주지 않기 위함.
+  const altBtn = wrap.querySelector('#transitAltBtn');
+  const listEl = wrap.querySelector('#transitRouteList');
+  if(!data.routes || data.routes.length < 2){
+    altBtn.style.display = 'none';
+    return;
+  }
+  altBtn.addEventListener('click', ()=>{
+    const isShowing = listEl.style.display !== 'none';
+    if(isShowing){ listEl.style.display = 'none'; return; }
+    listEl.innerHTML = data.routes.map((route, i)=>`
+      <div class="transit-route-item" data-idx="${i}">
+        <span class="tri-summary">${routeSummaryLabel(route)}</span>
+        <span class="tri-arrow">›</span>
+      </div>
+    `).join('');
+    listEl.querySelectorAll('.transit-route-item').forEach(item=>{
+      item.addEventListener('click', ()=>{
+        renderTransitRoute(wrap, data, Number(item.dataset.idx));
+        listEl.style.display = 'none';
+        chat.scrollTop = chat.scrollHeight;
+      });
+    });
+    listEl.style.display = 'block';
+    chat.scrollTop = chat.scrollHeight;
+  });
 }
 
 async function runTransitSearch(origin, destination, originResolved, destResolved){
@@ -2420,9 +2477,14 @@ function addStockResultCard(data){
       <span class="stock-change ${changeClass}">${arrow} ${sign}${changeStr} (${sign}${pctStr}%)</span>
     </div>
     ${data.asOfDate ? `<div class="stock-asof">${formatStockAsOfDate(data.asOfDate)}</div>` : ''}
+    ${data.naverUrl ? `<button type="button" class="stock-naver-link" id="stockNaverLink">네이버 증권에서 자세히 보기 ↗</button>` : ''}
   `;
   chat.appendChild(wrap);
   chat.scrollTop = chat.scrollHeight;
+
+  if(data.naverUrl){
+    wrap.querySelector('#stockNaverLink').addEventListener('click', ()=> window.open(data.naverUrl, '_blank'));
+  }
 
   addChoiceButtons(['애널리스트 분석 알려줘', '관련 뉴스 요약해줘', '다른 종목 찾을게요'], (choice)=>{
     if(choice === '다른 종목 찾을게요'){ startStockFlow(); return; }
@@ -2447,20 +2509,6 @@ async function runStockQuote(market, code, name){
   }
 }
 
-// 자동완성으로 이미 코드까지 확정된 후보(resolved)와, 자유 텍스트 검색 결과
-// 둘 다 여기서 같은 방식으로 확인 절차를 거칩니다 — 종목명 옆에 코드/티커를
-// 같이 보여줘서 같은 이름의 다른 종목(우선주 등)과 헷갈리지 않게 합니다.
-function confirmStockPick(data){
-  addLocalBubble(`${data.name} (${data.code}) 맞으신가요?`);
-  addChoiceButtons(['네, 맞아요', '아니요, 다시 찾을게요'], (choice)=>{
-    if(choice === '네, 맞아요'){
-      runStockQuote(data.market, data.code, data.name);
-    } else {
-      startStockFlow();
-    }
-  });
-}
-
 async function runStockSearch(query){
   const loadingBubble = addLocalBubble('종목을 찾고 있어요...');
   try{
@@ -2471,7 +2519,7 @@ async function runStockSearch(query){
       addLocalBubble(data.message || '종목을 찾지 못했어요.');
       return;
     }
-    confirmStockPick(data);
+    runStockQuote(data.market, data.code, data.name);
   }catch(e){
     loadingBubble.remove();
     addLocalBubble('종목을 찾는 중 문제가 생겼어요. 잠시 후 다시 시도해주시겠어요?');
@@ -2554,7 +2602,7 @@ function addStockSearchCard(onConfirm){
 function startStockFlow(){
   addStockSearchCard(({ query, resolved })=>{
     if(resolved){
-      confirmStockPick(resolved);
+      runStockQuote(resolved.market, resolved.code, resolved.name);
     } else {
       runStockSearch(query);
     }

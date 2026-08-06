@@ -94,6 +94,13 @@ export function pickBestRoute(paths) {
   return [...paths].sort((a, b) => (a.info?.totalTime ?? 999) - (b.info?.totalTime ?? 999))[0] || null;
 }
 
+// "다른 노선 보기"용 — 소요시간 오름차순으로 상위 N개 후보를 그대로 돌려줍니다
+// (ODsay가 이미 서로 다른 경로 조합으로 후보를 나눠서 주기 때문에 별도
+// 중복 제거는 하지 않음).
+export function pickRoutes(paths, limit = 3) {
+  return [...paths].sort((a, b) => (a.info?.totalTime ?? 999) - (b.info?.totalTime ?? 999)).slice(0, limit);
+}
+
 // 지하철은 lane[0].name(예: "수도권 2호선"), 버스는 lane[0].busNo(예: "341")에
 // 노선 식별자가 들어있음 — 필드명이 서로 달라서 trafficType별로 나눠서 읽습니다.
 function laneLabel(sp) {

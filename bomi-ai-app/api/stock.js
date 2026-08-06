@@ -153,6 +153,7 @@ async function handleQuote(req, res) {
       ok: true, market: 'KR', name: latest.itmsNm, code: latest.srtnCd,
       price: Number(latest.clpr), change: Number(latest.vs), changePercent: Number(latest.fltRt),
       asOfDate: latest.basDt,
+      naverUrl: `https://finance.naver.com/item/main.naver?code=${encodeURIComponent(latest.srtnCd)}`,
     });
     return;
   }
@@ -178,9 +179,30 @@ async function handleQuote(req, res) {
     res.status(200).json({
       ok: true, market: 'US', name: code, code,
       price: data.c, change: data.d, changePercent: data.dp, asOfDate: null,
+      naverUrl: await buildNaverUsUrl(code, finnhubKey),
     });
   } catch (e) {
     res.status(200).json({ ok: false, message: '시세를 확인하지 못했어요.' });
+  }
+}
+
+// 네이버 증권 해외주식 페이지는 URL에 거래소 접미사가 필요합니다(나스닥=.O,
+// 뉴욕거래소=.N — 실제 페이지 렌더링으로 확인). Finnhub의 회사 개요 API가
+// 주는 거래소 이름으로 그 접미사를 판단합니다. 어느 쪽인지 확실하지 않으면
+// (다른 거래소이거나 조회 실패) 잘못된 링크를 보여주는 대신 링크 자체를 뺍니다.
+async function buildNaverUsUrl(ticker, finnhubKey) {
+  try {
+    const response = await fetch(`https://finnhub.io/api/v1/stock/profile2?symbol=${encodeURIComponent(ticker)}&token=${finnhubKey}`);
+    if (!response.ok) return null;
+    const data = await response.json();
+    const exchange = (data && data.exchange || '').toUpperCase();
+    let suffix = null;
+    if (exchange.includes('NASDAQ')) suffix = 'O';
+    else if (exchange.includes('NEW YORK STOCK EXCHANGE') || exchange.includes('NYSE')) suffix = 'N';
+    if (!suffix) return null;
+    return `https://m.stock.naver.com/worldstock/stock/${encodeURIComponent(ticker)}.${suffix}/total`;
+  } catch (e) {
+    return null;
   }
 }
 

@@ -5,7 +5,7 @@
 //
 // - GET  ?action=search&query=...   → 장소 자동완성 검색 (카카오 로컬)
 // - POST ?action=route   {origin, destination}  → 대중교통 경로 (카카오+ODsay)
-import { resolvePlace, searchTransitRoutes, pickBestRoute, structureRoute } from '../lib/transit.mjs';
+import { resolvePlace, searchTransitRoutes, pickRoutes, structureRoute } from '../lib/transit.mjs';
 
 // 출발지/도착지 입력창의 자동완성 검색용 — 카카오 로컬 키워드 검색 결과를
 // 여러 개(최대 5개) 그대로 클라이언트에 전달합니다. lib/transit.mjs의
@@ -86,14 +86,18 @@ async function handleRoute(req, res) {
     return;
   }
 
-  const best = pickBestRoute(paths);
-  const structured = structureRoute(best);
+  // 소요시간 기준 상위 3개 후보를 모두 구조화해서 돌려줍니다 — 화면엔 가장
+  // 빠른 것(routes[0])을 기본으로 보여주고, "다른 노선 보기"에서 나머지를
+  // 고를 수 있게 합니다.
+  const routes = pickRoutes(paths, 3).map(p => structureRoute(p));
+  const best = routes[0];
   res.status(200).json({
     ok: true,
     origin: { placeName: originPlace.placeName, lat: originPlace.lat, lng: originPlace.lng },
     destination: { placeName: destPlace.placeName, lat: destPlace.lat, lng: destPlace.lng },
-    segments: structured.segments,
-    totalMinutes: structured.totalMinutes,
+    segments: best.segments,
+    totalMinutes: best.totalMinutes,
+    routes,
   });
 }
 
