@@ -2505,18 +2505,35 @@ async function showCheckinStatusScreen(){
 async function renderCheckinStatus(){
   const body = document.getElementById('checkinStatusBody');
   body.innerHTML = `<div class="cl-empty">불러오는 중이에요...</div>`;
-  let checkin = null, meals = [];
+  let checkin = null, meals = [], settings = null;
   try{
     const res = await fetch(`/api/sync-health-summary?action=daily-checkin&code=${encodeURIComponent(profile.crmId)}&date=${calDateStr(new Date())}`);
     const data = await res.json();
     if(data.ok){ checkin = data.checkin; meals = data.meals || []; }
   }catch(e){}
+  try{
+    const res = await fetch(`/api/checkin-settings?code=${encodeURIComponent(profile.crmId)}`);
+    settings = await res.json();
+  }catch(e){}
 
-  const mealFilled = meals.length > 0;
-  const mealDetail = mealFilled ? (meals.some(m=>m.photo_data_uri) ? '사진으로 기록됨' : `${meals[0].meal_score ?? '-'}/5로 기록됨`) : '';
+  // 끼니는 설정(온보딩/설정화면)에서 켜둔 아침/점심/저녁 개수(1~3개)만큼 각각
+  // 따로 보여줍니다 — 하나로 뭉뚱그리면 두 끼를 챙겨 드셨어도 한 끼만
+  // 기록된 것처럼 보였습니다. 설정을 못 불러온 경우엔 안전하게 세 끼 다 보여줍니다.
+  const MEAL_TYPES = [
+    { type:'breakfast', label:'아침 식사', enabledKey:'breakfast_enabled' },
+    { type:'lunch', label:'점심 식사', enabledKey:'lunch_enabled' },
+    { type:'dinner', label:'저녁 식사', enabledKey:'dinner_enabled' },
+  ];
+  const enabledMeals = MEAL_TYPES.filter(m => !settings || settings[m.enabledKey] !== false);
+  const mealRows = (enabledMeals.length ? enabledMeals : [{ type:null, label:'식사' }]).map(m=>{
+    const found = m.type ? meals.find(x=>x.meal_type===m.type) : meals[0];
+    const detail = found ? (found.photo_data_uri ? '사진으로 기록됨' : `${found.meal_score ?? '-'}/5로 기록됨`) : '';
+    return { kind:'meal', mealType:m.type, icon:'🍚', label:m.label, filled: !!found, detail };
+  });
+
   const rows = [
     { kind:'sleep', icon:'🌙', label:'수면', filled: !!(checkin && checkin.sleep_score!=null), detail: checkin && checkin.sleep_score!=null ? `${checkin.sleep_score}/5로 기록됨` : '' },
-    { kind:'meal', icon:'🍚', label:'식사', filled: mealFilled, detail: mealDetail },
+    ...mealRows,
     { kind:'activity', icon:'🚶', label:'활동량', filled: !!(checkin && checkin.steps!=null), detail: checkin && checkin.steps!=null ? `${checkin.steps.toLocaleString('ko-KR')}보` : '아직 기록 없음' },
     { kind:'mood', icon:'😊', label:'기분', filled: !!(checkin && checkin.mood_score!=null), detail: checkin && checkin.mood_score!=null ? `${checkin.mood_score}/5로 기록됨` : '' },
   ];
@@ -2524,7 +2541,7 @@ async function renderCheckinStatus(){
   body.innerHTML = `
     <div class="tip-box" style="margin-top:14px;">💡 항목을 누르면 채우거나 다시 입력할 수 있어요. 활동량은 걸음수가 자동으로 채워지지만, 눌러서 직접 고치실 수도 있어요.</div>
     ${rows.map(r=>`
-      <div class="checkin-status-row" data-kind="${r.kind}">
+      <div class="checkin-status-row" data-kind="${r.kind}" data-meal-type="${r.mealType||''}">
         <div class="checkin-status-icon">${r.icon}</div>
         <div class="checkin-status-info">
           <div class="checkin-status-label">${r.label}</div>
@@ -2538,7 +2555,8 @@ async function renderCheckinStatus(){
   body.querySelectorAll('.checkin-status-row').forEach(row=>{
     row.addEventListener('click', ()=>{
       const kind = row.dataset.kind;
-      startCheckinFlow([{ kind }], { skipConfirm:true, returnTo:'checkinStatusScreen' });
+      const mealType = row.dataset.mealType || undefined;
+      startCheckinFlow([{ kind, mealType }], { skipConfirm:true, returnTo:'checkinStatusScreen' });
     });
   });
   document.getElementById('checkinStatusReportBtn').addEventListener('click', ()=>{
