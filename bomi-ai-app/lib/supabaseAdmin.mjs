@@ -193,6 +193,7 @@ export async function addCalendarEvent(code, event) {
       // 몇 시간 전에 알림을 보낼지(0=정시). 시간이 없는 일정은 애초에 알람이
       // 안 나가므로(아래 알림 스케줄러가 start_time 있는 것만 봄) 항상 0.
       alarm_lead_hours: event.startTime ? (event.alarmLeadHours || 0) : 0,
+      location: event.location || null,
     },
   });
 }

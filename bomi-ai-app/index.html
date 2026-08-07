@@ -192,6 +192,8 @@
   .cal-event-item{ padding:11px 0; border-bottom:1px solid #F1EEE7; }
   .cal-event-row{ display:flex; align-items:center; gap:10px; }
   .cal-event-ics{ display:inline-block; margin-top:6px; font-size:calc(12px * var(--app-font-scale)); color:var(--blue); font-weight:700; text-decoration:none; }
+  .cal-event-location{ display:block; margin-top:5px; font-size:calc(12.5px * var(--app-font-scale)); color:var(--sub); text-decoration:none; }
+  .cal-event-location:hover{ text-decoration:underline; }
   .cal-event-item:last-child{ border-bottom:none; }
   .cal-event-time{ font-size:calc(12.5px * var(--app-font-scale)); color:var(--sub); font-weight:700; min-width:78px; }
   .cal-event-title{ flex:1; font-size:calc(14.5px * var(--app-font-scale)); color:var(--ink); }
@@ -1151,6 +1153,10 @@
           <label>종료</label>
           <input type="time" id="calAddEnd">
         </div>
+      </div>
+      <div class="autocomplete-wrap">
+        <input type="text" id="calAddLocation" class="cal-input" placeholder="장소(선택) — 예: 서울대학교병원">
+        <div class="autocomplete-list" id="calAddLocationList"></div>
       </div>
       <div class="cal-alarm-row">
         <span>알림 받기</span>
@@ -2887,6 +2893,7 @@ function renderCalDayDetail(){
         ${ev.alarm_enabled ? '<span class="cal-event-alarm">🔔</span>' : ''}
         <button type="button" class="cal-event-del" data-id="${ev.id}" aria-label="삭제">✕</button>
       </div>
+      ${ev.location ? `<a class="cal-event-location" href="https://map.naver.com/p/search/${encodeURIComponent(ev.location)}" target="_blank" rel="noopener">📍 ${escapeHtml(ev.location)}</a>` : ''}
       ${!window.BomiNative ? `<a class="cal-event-ics" href="${buildIcsDataUri(ev.title, calSelectedDate, ev.start_time ? ev.start_time.slice(0,5) : null, ev.end_time ? ev.end_time.slice(0,5) : null)}" download="${escapeHtml(ev.title)}.ics">📅 휴대폰 캘린더에 추가</a>` : ''}
     </div>
   `).join('');
@@ -2990,10 +2997,17 @@ document.getElementById('calNextMonth').addEventListener('click', async ()=>{
   renderCalGrid();
 });
 
+let calAddLocationResolved = null;
+setupAutocomplete(
+  document.getElementById('calAddLocation'), document.getElementById('calAddLocationList'),
+  (picked)=>{ calAddLocationResolved = picked; }
+);
 document.getElementById('calAddBtn').addEventListener('click', ()=>{
   document.getElementById('calAddTitle').value = '';
   document.getElementById('calAddStart').value = '';
   document.getElementById('calAddEnd').value = '';
+  document.getElementById('calAddLocation').value = '';
+  calAddLocationResolved = null;
   document.getElementById('calAddAlarm').checked = false;
   document.getElementById('calAddLeadRow').style.display = 'none';
   document.getElementById('calAddLead').value = '0';
@@ -3016,11 +3030,13 @@ document.getElementById('calAddSave').addEventListener('click', async ()=>{
   const endTime = document.getElementById('calAddEnd').value || null;
   const alarmEnabled = document.getElementById('calAddAlarm').checked;
   const alarmLeadHours = alarmEnabled ? parseInt(document.getElementById('calAddLead').value, 10) : 0;
+  const locationTyped = document.getElementById('calAddLocation').value.trim();
+  const location = calAddLocationResolved ? calAddLocationResolved.placeName : (locationTyped || null);
   document.getElementById('calAddBackdrop').classList.remove('show');
   try{
     const res = await fetch('/api/calendar?action=add', {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ bomiLinkCode: profile.crmId, eventDate: calSelectedDate, title, startTime, endTime, alarmEnabled, alarmLeadHours }),
+      body: JSON.stringify({ bomiLinkCode: profile.crmId, eventDate: calSelectedDate, title, startTime, endTime, alarmEnabled, alarmLeadHours, location }),
     });
     const data = await res.json();
     if(data.ok && data.event) syncCalendarEventToNative(data.event, calSelectedDate, title, startTime, endTime);
@@ -3413,29 +3429,88 @@ function extractCalendarIntent(text){
   return { text: cleaned, event: { eventDate: dateStr, startTime, title } };
 }
 
+// "병원", "치과"처럼 어디를 가는지가 중요한 일정은 몇 시간 전 알림을 묻기
+// 전에 정확히 어느 곳인지부터 찾아 물어봅니다(askEventLocation) — 장소를
+// 알아야 나중에 달력에서 그 장소를 눌러 네이버 지도로 바로 갈 수 있어서.
+const PLACE_VISIT_KEYWORDS = /병원|의원|치과|한의원|약국|안과|피부과|정형외과|이비인후과|산부인과|내과|외과|검진센터|은행|우체국|동사무소|주민센터|미용실|헤어샵|마트|시장/;
+
 // 시간이 있는 일정만 "몇 시간 전에 알림 받으실래요?"를 물어봅니다 — 시간이
 // 없으면 알림을 걸 기준 시각 자체가 없어서(api/notifications.js가 start_time
 // 없는 일정은 알림 대상에서 아예 제외) 바로 알림 없이 등록합니다.
 function handleCalendarIntent(event){
   if(!event.startTime){
-    createCalendarEventFromChat(event, false, 0);
+    createCalendarEventFromChat(event, false, 0, null);
     return;
   }
+  if(PLACE_VISIT_KEYWORDS.test(event.title)){
+    askEventLocation(event);
+    return;
+  }
+  askAlarmLead(event, null);
+}
+
+function askAlarmLead(event, place){
   addLocalBubble(`"${event.title}" 일정, 몇 시간 전에 알림 받으실래요?`);
   addChoiceButtons(['정시에 받을게요', '1시간 전', '2시간 전', '3시간 전', '알림 안 받을게요'], (choice)=>{
     const leadMap = { '정시에 받을게요':0, '1시간 전':1, '2시간 전':2, '3시간 전':3 };
     const alarmEnabled = choice !== '알림 안 받을게요';
-    createCalendarEventFromChat(event, alarmEnabled, leadMap[choice] || 0);
+    createCalendarEventFromChat(event, alarmEnabled, leadMap[choice] || 0, place);
   });
 }
 
-async function createCalendarEventFromChat(event, alarmEnabled, alarmLeadHours){
+function askEventLocation(event){
+  addLocalBubble(`"${event.title}" 일정이네요. 어느 곳인지 찾아드릴까요?`);
+  addInlineLocationSearchCard((place)=>{
+    askAlarmLead(event, place);
+  });
+}
+
+// 장소 이름을 검색해서 고르게 하는 인라인 카드 — addInlineRouteCard(대중교통
+// 길찾기)와 같은 자동완성 헬퍼(setupAutocomplete)를 재사용합니다. 정확한
+// 곳을 몰라도("모르겠어요") 건너뛸 수 있고, 목록에서 고르지 않고 이름만
+// 치고 확인해도(좌표 없이 이름만) 저장은 됩니다 — 네이버 지도는 이름
+// 검색만으로도 웬만큼 정확히 찾아가므로 좌표가 꼭 필요하진 않습니다.
+function addInlineLocationSearchCard(onConfirm){
+  const chat = document.getElementById('chat');
+  const wrap = document.createElement('div');
+  wrap.className = 'checklist-card';
+  wrap.innerHTML = `
+    <div class="checklist-title">어느 장소인가요?</div>
+    <div class="autocomplete-wrap">
+      <input type="text" id="calEventPlaceInput" placeholder="예: 서울대학교병원" style="width:100%;border:1px solid var(--line);border-radius:10px;padding:10px;font-size:calc(15px * var(--app-font-scale));background:#FAF9F6;color:var(--ink);">
+      <div class="autocomplete-list" id="calEventPlaceList"></div>
+    </div>
+    <button type="button" id="calEventPlaceConfirm" style="width:100%;padding:11px;border-radius:10px;border:none;background:var(--navy);color:#fff;font-weight:700;font-size:calc(14px * var(--app-font-scale));cursor:pointer;margin-top:4px;">확인</button>
+    <button type="button" id="calEventPlaceSkip" style="width:100%;padding:10px;border-radius:10px;border:none;background:none;color:var(--sub);font-size:calc(13px * var(--app-font-scale));cursor:pointer;margin-top:2px;">모르겠어요, 넘어갈게요</button>
+  `;
+  chat.appendChild(wrap);
+  chat.scrollTop = chat.scrollHeight;
+  let resolved = null;
+  setupAutocomplete(
+    wrap.querySelector('#calEventPlaceInput'), wrap.querySelector('#calEventPlaceList'),
+    (picked)=>{ resolved = picked; }
+  );
+  wrap.querySelector('#calEventPlaceConfirm').addEventListener('click', ()=>{
+    const typed = wrap.querySelector('#calEventPlaceInput').value.trim();
+    const place = resolved || (typed ? { placeName: typed } : null);
+    wrap.remove();
+    onConfirm(place);
+  });
+  wrap.querySelector('#calEventPlaceSkip').addEventListener('click', ()=>{
+    wrap.remove();
+    onConfirm(null);
+  });
+  setTimeout(()=>wrap.querySelector('#calEventPlaceInput').focus(), 50);
+}
+
+async function createCalendarEventFromChat(event, alarmEnabled, alarmLeadHours, place){
   try{
     const res = await fetch('/api/calendar?action=add', {
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({
         bomiLinkCode: profile.crmId, eventDate: event.eventDate, title: event.title,
         startTime: event.startTime, endTime: null, alarmEnabled, alarmLeadHours,
+        location: place ? place.placeName : null,
       }),
     });
     const data = await res.json();

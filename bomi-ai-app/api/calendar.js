@@ -2,7 +2,7 @@
 //
 // - GET  ?action=list&code=...&month=YYYY-MM        → 한 달치 일정 조회
 // - GET  ?action=today&code=...&date=YYYY-MM-DD      → 특정 날짜 일정만(체크리스트 위젯용)
-// - POST ?action=add    {bomiLinkCode, eventDate, title, startTime, endTime, alarmEnabled, alarmLeadHours} → 일정 추가
+// - POST ?action=add    {bomiLinkCode, eventDate, title, startTime, endTime, alarmEnabled, alarmLeadHours, location} → 일정 추가
 // - POST ?action=delete {bomiLinkCode, id}            → 일정 삭제
 // - POST ?action=set-native-id {bomiLinkCode, id, nativeEventId} → 안드로이드 네이티브 앱이
 //   휴대폰 기본 캘린더에도 같은 일정을 만든 뒤, 그 기기 쪽 이벤트 id를 이 행에 기록
@@ -27,6 +27,7 @@
 //     alarm_lead_hours integer not null default 0,
 //     alarm_sent boolean not null default false,
 //     native_event_id text,
+//     location text,
 //     created_at timestamptz not null default now()
 //   )
 import {
@@ -74,13 +75,13 @@ async function handleToday(req, res) {
 
 async function handleAdd(req, res) {
   if (req.method !== 'POST') { res.status(405).json({ ok: false, message: 'POST 요청만 가능해요.' }); return; }
-  const { bomiLinkCode, eventDate, title, startTime, endTime, alarmEnabled, alarmLeadHours } = req.body || {};
+  const { bomiLinkCode, eventDate, title, startTime, endTime, alarmEnabled, alarmLeadHours, location } = req.body || {};
   if (!bomiLinkCode || !eventDate || !title || !title.trim()) {
     res.status(400).json({ ok: false, message: 'bomiLinkCode, eventDate, title이 필요해요.' });
     return;
   }
   try {
-    const rows = await addCalendarEvent(bomiLinkCode, { eventDate, title: title.trim(), startTime, endTime, alarmEnabled, alarmLeadHours });
+    const rows = await addCalendarEvent(bomiLinkCode, { eventDate, title: title.trim(), startTime, endTime, alarmEnabled, alarmLeadHours, location });
     res.status(200).json({ ok: true, event: rows && rows[0] });
   } catch (e) {
     res.status(200).json({ ok: false, message: '일정을 저장하지 못했어요.' });
