@@ -1064,6 +1064,7 @@
       <div class="hn-cat-card">
         <button type="button" class="hn-cat-btn" data-cat="activity"><span class="lb">활동 안부</span><span class="arrow">▾</span></button>
         <div class="hn-detail" id="hn-detail-activity" style="display:none;">
+          <div class="toggle-item"><div><div class="lb">알림 받기</div></div><label class="switch"><input type="checkbox" id="hnActivityEnabled"><span class="slider"></span></label></div>
           <div class="ob-field-label" style="margin-top:0;">기록 방식</div>
           <select id="hnActivityMode" class="cal-lead-select" style="width:100%;padding:10px;">
             <option value="auto">자동 (걸음수 연동)</option>
@@ -1965,6 +1966,7 @@ async function loadHealthNotifSettings(){
     document.getElementById('hnLunchTime').value = s.lunch_time || '12:30';
     document.getElementById('hnDinnerEnabled').checked = s.dinner_enabled === undefined ? true : !!s.dinner_enabled;
     document.getElementById('hnDinnerTime').value = s.dinner_time || '18:30';
+    document.getElementById('hnActivityEnabled').checked = s.activity_enabled === undefined ? true : !!s.activity_enabled;
     document.getElementById('hnActivityMode').value = s.activity_mode === 'manual' ? 'manual' : 'auto';
     document.getElementById('hnActivityTime').value = s.activity_time || '20:00';
     document.getElementById('hnMoodEnabled').checked = s.mood_enabled === undefined ? true : !!s.mood_enabled;
@@ -1974,14 +1976,18 @@ async function loadHealthNotifSettings(){
 }
 
 function updateActivityModeHint(){
+  const enabled = document.getElementById('hnActivityEnabled').checked;
   const isManual = document.getElementById('hnActivityMode').value === 'manual';
-  document.getElementById('hnActivityHint').textContent = isManual
-    ? '이 시간에 오늘 활동량을 직접 알려달라고 알려드려요.'
-    : (window.BomiNative
-        ? '걸음수가 자동으로 연동돼요. 이 시간까지 걸어다니신 걸음수가 리포트에 반영돼요.'
-        : '연동된 걸음수가 없으면 활동량이 비어있을 수 있어요. 그런 경우엔 수기입력을 권해드려요.');
+  document.getElementById('hnActivityHint').textContent = !enabled
+    ? '활동 안부 알림을 받지 않아요. 걸음수 자동 연동은 이 설정과 무관하게 계속 반영돼요.'
+    : isManual
+      ? '이 시간에 오늘 활동량을 직접 알려달라고 알려드려요.'
+      : (window.BomiNative
+          ? '걸음수가 자동으로 연동돼요. 이 시간까지 걸어다니신 걸음수가 리포트에 반영돼요.'
+          : '연동된 걸음수가 없으면 활동량이 비어있을 수 있어요. 그런 경우엔 수기입력을 권해드려요.');
 }
 document.getElementById('hnActivityMode').addEventListener('change', updateActivityModeHint);
+document.getElementById('hnActivityEnabled').addEventListener('change', updateActivityModeHint);
 
 document.getElementById('hnSaveBtn').addEventListener('click', async ()=>{
   const status = document.getElementById('hnSaveStatus');
@@ -1997,6 +2003,7 @@ document.getElementById('hnSaveBtn').addEventListener('click', async ()=>{
     lunchTime: document.getElementById('hnLunchTime').value || '12:30',
     dinnerEnabled: document.getElementById('hnDinnerEnabled').checked,
     dinnerTime: document.getElementById('hnDinnerTime').value || '18:30',
+    activityEnabled: document.getElementById('hnActivityEnabled').checked,
     activityMode: document.getElementById('hnActivityMode').value,
     activityTime: document.getElementById('hnActivityTime').value || '20:00',
     moodEnabled: document.getElementById('hnMoodEnabled').checked,

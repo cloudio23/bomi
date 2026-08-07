@@ -132,7 +132,7 @@ export async function incrementDailyUsage(dateKey) {
 // 각자의 플래그+시간을 다시 정확히 확인합니다(여긴 대략적인 사전 필터).
 export async function listEnabledCheckinSettings() {
   return restRequest(
-    'bomi_checkin_settings?or=(report_enabled.eq.true,sleep_enabled.eq.true,breakfast_enabled.eq.true,lunch_enabled.eq.true,dinner_enabled.eq.true,mood_enabled.eq.true,activity_mode.eq.manual)'
+    'bomi_checkin_settings?or=(report_enabled.eq.true,sleep_enabled.eq.true,breakfast_enabled.eq.true,lunch_enabled.eq.true,dinner_enabled.eq.true,mood_enabled.eq.true,and(activity_enabled.eq.true,activity_mode.eq.manual))'
   );
 }
 

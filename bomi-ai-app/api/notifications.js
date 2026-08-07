@@ -106,7 +106,7 @@ function buildDueNotifications(settings, hour) {
     }
   }
 
-  if (settings.activity_mode === 'manual' && hourOf(settings.activity_time) === hour) {
+  if (settings.activity_enabled !== false && settings.activity_mode === 'manual' && hourOf(settings.activity_time) === hour) {
     due.push({ type: 'checkin_activity', title: '보미가 안부를 물어요', body: '오늘은 어떤 운동이나 활동을 하셨을까요?' });
   }
   if (settings.mood_enabled !== false && hourOf(settings.mood_time) === hour) {

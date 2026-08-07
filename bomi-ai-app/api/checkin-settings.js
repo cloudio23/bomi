@@ -10,7 +10,7 @@
 // GET  ?code=... → 현재 설정 조회
 // POST { bomiLinkCode, reportEnabled, reportTime, sleepEnabled, sleepTime,
 //        breakfastEnabled, breakfastTime, lunchEnabled, lunchTime,
-//        dinnerEnabled, dinnerTime, activityMode, activityTime,
+//        dinnerEnabled, dinnerTime, activityEnabled, activityMode, activityTime,
 //        moodEnabled, moodTime, wakeTime, mealCount } → 저장
 import { getCheckinSettings, upsertCheckinSettings } from '../lib/supabaseAdmin.mjs';
 
@@ -21,7 +21,7 @@ const DEFAULTS = {
   breakfast_enabled: true, breakfast_time: '08:00',
   lunch_enabled: true, lunch_time: '12:30',
   dinner_enabled: true, dinner_time: '18:30',
-  activity_mode: 'auto', activity_time: '20:00',
+  activity_enabled: true, activity_mode: 'auto', activity_time: '20:00',
   mood_enabled: true, mood_time: '20:00',
 };
 
@@ -50,7 +50,7 @@ export default async function handler(req, res) {
         breakfastEnabled, breakfastTime,
         lunchEnabled, lunchTime,
         dinnerEnabled, dinnerTime,
-        activityMode, activityTime,
+        activityEnabled, activityMode, activityTime,
         moodEnabled, moodTime,
         wakeTime, mealCount,
       } = req.body || {};
@@ -69,6 +69,7 @@ export default async function handler(req, res) {
         lunch_time: lunchTime || DEFAULTS.lunch_time,
         dinner_enabled: dinnerEnabled !== undefined ? !!dinnerEnabled : DEFAULTS.dinner_enabled,
         dinner_time: dinnerTime || DEFAULTS.dinner_time,
+        activity_enabled: activityEnabled !== undefined ? !!activityEnabled : DEFAULTS.activity_enabled,
         activity_mode: activityMode === 'manual' ? 'manual' : DEFAULTS.activity_mode,
         activity_time: activityTime || DEFAULTS.activity_time,
         mood_enabled: moodEnabled !== undefined ? !!moodEnabled : DEFAULTS.mood_enabled,
