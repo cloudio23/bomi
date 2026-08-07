@@ -364,6 +364,8 @@
   .chip{ flex-shrink:0; background:#fff; border:1px solid var(--line); color:var(--ink); font-size:calc(15px * var(--app-font-scale)); font-weight:600;
     padding:13px 20px; min-height:44px; border-radius:999px; cursor:pointer; white-space:nowrap; }
   .chip:hover{ background:#F5F1EA; }
+  .chip-alert{ background:#FDEEEE; border-color:#F0C6C6; color:#B3423F; }
+  .chip-alert:hover{ background:#FBE1E1; }
 
   .inputbar{ position:relative; min-height:96px; padding:8px 16px 22px 16px; background:#F6F3EE; flex-shrink:0; }
   .roundicon{ width:36px; height:36px; border-radius:50%; border:none; background:none; color:var(--sub); font-size:16px; cursor:pointer; flex-shrink:0; }
@@ -607,6 +609,12 @@
   .cl-add{ width:100%; margin-top:10px; background:var(--accent-soft); color:var(--navy); border:none; border-radius:12px; padding:11px; font-size:calc(14px * var(--app-font-scale)); font-weight:700; cursor:pointer; }
   .cl-empty{ font-size:calc(13px * var(--app-font-scale)); color:var(--sub); text-align:center; padding:14px 0; }
 
+  .ec-row{ display:flex; align-items:center; gap:8px; padding:10px 0; border-bottom:1px solid #F1EEE7; }
+  .ec-row:last-child{ border-bottom:none; }
+  .ec-info{ flex:1; }
+  .ec-name{ font-size:calc(14px * var(--app-font-scale)); font-weight:700; color:var(--ink); }
+  .ec-detail{ font-size:calc(12px * var(--app-font-scale)); color:var(--sub); margin-top:2px; }
+
   .fb-row{ padding:10px 0; border-bottom:1px solid #F1EEE7; }
   .fb-row:last-child{ border-bottom:none; }
   .fb-meta{ font-size:11px; color:var(--sub); margin-bottom:3px; }
@@ -763,11 +771,12 @@
     </div>
     <div class="quickchips">
       <div class="chip" id="callChip">통화</div>
-      <div class="chip" data-msg="오늘 날씨 어때?">날씨</div>
+      <div class="chip" id="calendarChip">달력</div>
       <div class="chip" id="transitChip">대중교통</div>
       <div class="chip" id="restaurantChip">맛집</div>
       <div class="chip" id="sajuChip">오늘 운세</div>
-      <div class="chip" id="calendarChip">달력</div>
+      <div class="chip" id="reportChip">건강리포트</div>
+      <div class="chip chip-alert" id="phishingChip">보이스피싱 의심</div>
     </div>
     <div class="inputbar" id="inputBar">
       <div class="dock" id="dockButtons">
@@ -855,6 +864,12 @@
       </div>
       <div class="nav-card" id="openStepGoalBtn">
         <div><div class="lb">목표 걸음수</div><div class="desc">걸음수 표시를 켜고 목표를 정해요</div></div>
+        <div class="arrow">›</div>
+      </div>
+
+      <div class="section-label">안전 설정</div>
+      <div class="nav-card" id="openEmergencyContactsBtn">
+        <div><div class="lb">비상연락처 관리</div><div class="desc">보이스피싱 의심 시 문자를 받을 자녀·친구 연락처예요</div></div>
         <div class="arrow">›</div>
       </div>
 
@@ -946,6 +961,33 @@
       <div class="info-card" id="checklistItemsCard">
         <div id="checklistItemRows"></div>
         <button class="cl-add" id="addChecklistItem">+ 항목 추가</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 비상연락처 관리 (프로필 → "비상연락처 관리" 버튼으로 진입) ===== -->
+  <div class="screen" id="emergencyContactsScreen">
+    <div class="subheader">
+      <button class="backbtn" id="emergencyContactsBack">←</button>
+      <div class="title">비상연락처 관리</div>
+    </div>
+    <div class="scroll">
+      <div class="tip-box">💡 "보이스피싱 의심" 버튼을 누르면 여기 등록된 분들께 바로 문자로 알려드려요.</div>
+      <div class="info-card" id="ecItemsCard">
+        <div id="ecItemRows"></div>
+        <button class="cl-add" id="addEcItem">+ 연락처 추가</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="usage-modal-backdrop" id="ecAddBackdrop">
+    <div class="usage-modal cal-add-modal">
+      <div class="usage-modal-title">비상연락처 추가</div>
+      <input type="text" id="ecAddName" class="cal-input" placeholder="이름 (예: 딸 지영)">
+      <input type="tel" id="ecAddPhone" class="cal-input" placeholder="전화번호 (예: 010-1234-5678)" style="margin-top:10px;">
+      <div class="cal-btn-row">
+        <button type="button" id="ecAddCancel" class="cal-btn-ghost">취소</button>
+        <button type="button" id="ecAddSave" class="cal-btn-primary">저장</button>
       </div>
     </div>
   </div>
@@ -1116,7 +1158,7 @@ const DEFAULT_CHECKLIST_ITEMS = [
   { id:'lunch',  label:'오후 01:00 점심 식사' },
   { id:'walk',   label:'오후 04:00 산책 30분' },
 ];
-const TOTAL_STEPS = 6;
+const TOTAL_STEPS = 7;
 // 이 값은 공개되는 게 정상입니다(그래서 이름이 public) — 서버 쪽 VAPID_PRIVATE_KEY와
 // 반드시 한 쌍으로 발급된 값을 써야 합니다.
 const VAPID_PUBLIC_KEY = 'BEHe-CLJT7Y5q8Vk3aGKf1fqq-rkXGeKyN1Xbe-zG5QIhQalylfW7g8rRm3pm4QJBVqCPK8CUCvAxE8T5Fl4G8U';
@@ -1136,7 +1178,7 @@ let stepGoal = 6000;            // 설정에서 입력하는 목표 걸음수
 let stepsEnabled = true;        // 목표 걸음수 화면에서 켜고 끄는 걸음수 표시 여부
 let pinnedExpanded = false;
 let obStep = 1;
-let obData = { name:'', birthYear:'', gender:'', height:'', weight:'', interests:[], locationConsent:null };
+let obData = { name:'', birthYear:'', gender:'', height:'', weight:'', interests:[], locationConsent:null, emergencyContacts:[] };
 
 /* ============ STORAGE HELPERS (real browser localStorage) ============ */
 function todayKey(prefix){ const d=new Date(); return `${prefix}:${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}`; }
@@ -1262,6 +1304,45 @@ function renderObStep(){
     });
     nextBtn.disabled = obData.locationConsent === null;
   }
+  else if(obStep === 7){
+    area.innerHTML = `
+      <div class="ob-title">보이스피싱이 의심될 때<br>알려드릴 분이 있나요?</div>
+      <div class="ob-sub">등록해두시면 "보이스피싱 의심" 버튼을 눌렀을 때 바로 문자로 알려드려요. 지금 건너뛰고 나중에 설정에서 추가하셔도 괜찮아요.</div>
+      <div id="obEcList"></div>
+      <div class="ob-field-label">이름</div>
+      <input class="ob-input" id="obEcName" placeholder="예: 딸 지영" />
+      <div class="ob-field-label">전화번호</div>
+      <input class="ob-input" id="obEcPhone" type="tel" placeholder="010-1234-5678" />
+      <button type="button" class="cl-add" id="obEcAddBtn" style="margin-top:10px;">+ 연락처 추가</button>
+    `;
+    const renderObEcList = ()=>{
+      const wrap = document.getElementById('obEcList');
+      if(obData.emergencyContacts.length === 0){ wrap.innerHTML = ''; return; }
+      wrap.innerHTML = '';
+      obData.emergencyContacts.forEach((c, idx)=>{
+        const row = document.createElement('div');
+        row.className = 'ec-row';
+        row.innerHTML = `<div class="ec-info"><div class="ec-name">${c.name}</div><div class="ec-detail">${c.phone}</div></div><button type="button" class="cl-del">✕</button>`;
+        row.querySelector('.cl-del').addEventListener('click', ()=>{
+          obData.emergencyContacts.splice(idx,1);
+          renderObEcList();
+        });
+        wrap.appendChild(row);
+      });
+    };
+    renderObEcList();
+    document.getElementById('obEcAddBtn').addEventListener('click', ()=>{
+      const nameEl = document.getElementById('obEcName');
+      const phoneEl = document.getElementById('obEcPhone');
+      const name = nameEl.value.trim();
+      const phone = phoneEl.value.trim();
+      if(!name || !phone) return;
+      obData.emergencyContacts.push({ name, phone });
+      nameEl.value = ''; phoneEl.value = '';
+      renderObEcList();
+    });
+    nextBtn.disabled = false; // 등록 없이 건너뛸 수 있음(나중에 설정에서 추가 가능)
+  }
 }
 
 document.getElementById('obPrev').addEventListener('click', ()=>{ if(obStep>1){ obStep--; renderObStep(); } });
@@ -1279,6 +1360,16 @@ document.getElementById('obNext').addEventListener('click', async ()=>{
   };
   await storeSet('profile', profile);
   await storeSet('notif-settings', notifSettings);
+  // 온보딩에서 등록한 비상연락처를 방금 발급된 crmId로 저장 — 실패해도
+  // 온보딩 자체를 막지 않고 조용히 넘어감(나중에 설정에서 다시 등록 가능).
+  for(const c of obData.emergencyContacts){
+    try{
+      await fetch('/api/emergency?action=add-contact', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ bomiLinkCode: profile.crmId, name:c.name, phone:c.phone }),
+      });
+    }catch(e){}
+  }
   startApp(true);
 });
 
@@ -1394,6 +1485,10 @@ async function renderReportOrGate(){
   }
 }
 document.getElementById('reportCta').addEventListener('click', ()=>{
+  showScreen('reportScreen');
+  renderReportOrGate();
+});
+document.getElementById('reportChip').addEventListener('click', ()=>{
   showScreen('reportScreen');
   renderReportOrGate();
 });
@@ -2249,6 +2344,71 @@ document.getElementById('openChecklistSettingsBtn').addEventListener('click', ()
   showScreen('checklistSettingsScreen');
 });
 document.getElementById('checklistSettingsBack').addEventListener('click', ()=> showScreen('profileScreen'));
+
+/* ============ 비상연락처 관리 (프로필 → "비상연락처 관리" 버튼으로 여는 별도 화면) ============ */
+async function loadEmergencyContacts(){
+  try{
+    const res = await fetch(`/api/emergency?action=contacts&code=${encodeURIComponent(profile.crmId)}`);
+    const data = await res.json();
+    return (data.ok && data.contacts) || [];
+  }catch(e){ return []; }
+}
+async function renderEmergencyContactsSettings(){
+  const rows = document.getElementById('ecItemRows');
+  rows.innerHTML = `<div class="cl-empty">불러오는 중이에요...</div>`;
+  const contacts = await loadEmergencyContacts();
+  emergencyContactsCache = contacts;
+  if(contacts.length === 0){
+    rows.innerHTML = `<div class="cl-empty">등록된 비상연락처가 없어요</div>`;
+    return;
+  }
+  rows.innerHTML = '';
+  contacts.forEach(c=>{
+    const row = document.createElement('div');
+    row.className = 'ec-row';
+    row.innerHTML = `<div class="ec-info"><div class="ec-name">${c.name}</div><div class="ec-detail">${c.phone}</div></div><button type="button" class="cl-del">✕</button>`;
+    row.querySelector('.cl-del').addEventListener('click', async ()=>{
+      try{
+        await fetch('/api/emergency?action=delete-contact', {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ bomiLinkCode: profile.crmId, id: c.id }),
+        });
+      }catch(e){}
+      renderEmergencyContactsSettings();
+    });
+    rows.appendChild(row);
+  });
+}
+let emergencyContactsCache = [];
+document.getElementById('openEmergencyContactsBtn').addEventListener('click', ()=>{
+  renderEmergencyContactsSettings();
+  showScreen('emergencyContactsScreen');
+});
+document.getElementById('emergencyContactsBack').addEventListener('click', ()=> showScreen('profileScreen'));
+document.getElementById('addEcItem').addEventListener('click', ()=>{
+  document.getElementById('ecAddName').value = '';
+  document.getElementById('ecAddPhone').value = '';
+  document.getElementById('ecAddBackdrop').classList.add('show');
+});
+document.getElementById('ecAddCancel').addEventListener('click', ()=>{
+  document.getElementById('ecAddBackdrop').classList.remove('show');
+});
+document.getElementById('ecAddBackdrop').addEventListener('click', (e)=>{
+  if(e.target.id === 'ecAddBackdrop') e.currentTarget.classList.remove('show');
+});
+document.getElementById('ecAddSave').addEventListener('click', async ()=>{
+  const name = document.getElementById('ecAddName').value.trim();
+  const phone = document.getElementById('ecAddPhone').value.trim();
+  if(!name || !phone) return;
+  document.getElementById('ecAddBackdrop').classList.remove('show');
+  try{
+    await fetch('/api/emergency?action=add-contact', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ bomiLinkCode: profile.crmId, name, phone }),
+    });
+  }catch(e){}
+  renderEmergencyContactsSettings();
+});
 
 /* ============ 목표 걸음수 설정 (프로필 → "목표 걸음수" 버튼으로 여는 별도 화면) ============ */
 function renderStepGoalSettings(){
@@ -3203,6 +3363,39 @@ function showSajuTopicMenu(){
   addChoiceButtons(SAJU_TOPICS, (topic)=> sendMessage(`${topic} 봐주세요`));
 }
 document.getElementById('sajuChip').addEventListener('click', startSajuFlow);
+
+/* ============ 보이스피싱 의심 (칩 → 재확인 → 등록된 비상연락처에 문자) ============ */
+async function startPhishingAlertFlow(){
+  addLocalBubble('지금 보이스피싱이 의심되는 상황이 맞으신가요? 확인을 누르시면 등록해두신 비상연락처로 바로 문자를 보내드려요.');
+  addChoiceButtons(['네, 알려주세요', '아니에요, 취소할게요'], async (choice)=>{
+    if(choice !== '네, 알려주세요'){
+      addLocalBubble('취소했어요. 안심하세요.');
+      return;
+    }
+    const loadingBubble = addLocalBubble('비상연락처로 문자를 보내는 중이에요...');
+    try{
+      const res = await fetch('/api/emergency?action=alert', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ bomiLinkCode: profile.crmId, userName: profile.name }),
+      });
+      const data = await res.json();
+      loadingBubble.remove();
+      if(!res.ok || !data.ok){
+        addLocalBubble('문자를 보내는 중 문제가 생겼어요. 지금은 직접 전화로 상황을 확인해 보시는 게 안전해요.');
+      } else if(data.noContacts){
+        addLocalBubble('등록된 비상연락처가 없어요. 설정(☰)의 "비상연락처 관리"에서 먼저 등록해 주세요. 지금은 직접 전화로 확인해 보시는 게 안전해요.');
+      } else if(data.sentCount > 0){
+        addLocalBubble(`등록하신 비상연락처 ${data.sentCount}곳에 문자를 보냈어요. 확실해지기 전까지는 절대 돈을 보내거나 개인정보를 알려주지 마세요.`);
+      } else {
+        addLocalBubble('문자 발송에 실패했어요. 지금은 직접 전화로 상황을 확인해 보시는 게 안전해요.');
+      }
+    }catch(e){
+      loadingBubble.remove();
+      addLocalBubble('문자를 보내는 중 문제가 생겼어요. 지금은 직접 전화로 상황을 확인해 보시는 게 안전해요.');
+    }
+  });
+}
+document.getElementById('phishingChip').addEventListener('click', startPhishingAlertFlow);
 
 function systemPrompt(){
   const age = new Date().getFullYear() - profile.birthYear;

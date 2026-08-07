@@ -181,3 +181,30 @@ export async function markCalendarAlarmSent(id) {
     body: { alarm_sent: true },
   });
 }
+
+// 비상연락처(보이스피싱 의심 알림 문자 수신자) — 온보딩 또는 프로필 설정에서 등록.
+export async function listEmergencyContacts(code) {
+  return restRequest(
+    `bomi_emergency_contacts?bomi_link_code=eq.${encodeURIComponent(code)}&order=created_at.asc`
+  );
+}
+
+export async function addEmergencyContact(code, contact) {
+  return restRequest('bomi_emergency_contacts', {
+    method: 'POST',
+    headers: { Prefer: 'return=representation' },
+    body: {
+      bomi_link_code: code,
+      name: contact.name,
+      phone: contact.phone,
+      relation: contact.relation || null,
+    },
+  });
+}
+
+export async function deleteEmergencyContact(code, id) {
+  return restRequest(
+    `bomi_emergency_contacts?id=eq.${encodeURIComponent(id)}&bomi_link_code=eq.${encodeURIComponent(code)}`,
+    { method: 'DELETE' }
+  );
+}
