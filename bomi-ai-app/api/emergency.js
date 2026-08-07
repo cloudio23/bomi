@@ -73,7 +73,7 @@ export default async function handler(req, res) {
         return;
       }
       const name = userName || '어르신';
-      const text = `[보미] ${name}님이 방금 보이스피싱이 의심되는 상황에 있다고 알려왔어요. 지금 바로 연락해서 상황을 확인해 주세요.`;
+      const text = `[보미] ${name}님이 방금 보이스피싱이 의심되는 상황에 있다고 알려왔어요. 보이스피싱범과 통화 중이실 수 있으니, 전화보다는 문자 연락으로 현재 상황을 파악해 주세요.`;
       const results = await Promise.all(contacts.map((c) => sendSms(c.phone, text)));
       const sentCount = results.filter((r) => r.ok).length;
       res.status(200).json({ ok: true, sentCount, failedCount: results.length - sentCount });
