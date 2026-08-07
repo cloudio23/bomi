@@ -410,6 +410,27 @@
   .auroraBorder.active{ opacity:1; animation: auroraSpin 5s linear infinite; }
   @keyframes auroraSpin{ to{ --angle:360deg; } }
 
+  /* ---------- 음성 대화 오버레이 (제미나이 라이브 스타일 참고) ----------
+     "듣고 있어요" 상태에서는 실제 목소리 크기(진폭)에 맞춰 원이 커졌다
+     작아지고, "알아듣는 중"으로 넘어가면 진폭 반응 없이 은은하게 숨쉬듯
+     펄스만 남습니다 — 지금 어떤 상태인지 한눈에 구분되도록. */
+  .voice-overlay{
+    position:fixed; inset:0; z-index:80; display:none; flex-direction:column;
+    align-items:center; justify-content:center; gap:20px;
+    background:rgba(246,243,238,0.94); pointer-events:none;
+  }
+  .voice-overlay.active{ display:flex; }
+  .voice-orb{
+    width:120px; height:120px; border-radius:50%; border:none; cursor:pointer; pointer-events:auto;
+    background:radial-gradient(circle at 35% 30%, #9FDBFF, #6C63FF 60%, #4C46B8);
+    box-shadow:0 6px 30px rgba(108,99,255,0.35);
+    transform:scale(1); transition:transform 0.09s ease-out;
+  }
+  .voice-overlay.processing .voice-orb{ animation:voiceOrbBreathe 1.6s ease-in-out infinite; }
+  @keyframes voiceOrbBreathe{ 0%,100%{ transform:scale(1); } 50%{ transform:scale(1.08); } }
+  .voice-status-text{ font-size:calc(18px * var(--app-font-scale)); font-weight:800; color:var(--ink); }
+  .voice-hint-text{ font-size:calc(13px * var(--app-font-scale)); color:var(--sub); }
+
   /* ---------- CAMERA OVERLAY (iris expand from button origin) ---------- */
   .cameraOverlay{
     position:absolute; inset:0; z-index:30; border-radius:var(--app-radius); background:#0B0B0F; color:#fff;
@@ -435,7 +456,7 @@
   .toast.show{ opacity:1; transform:translate(-50%,0); }
 
   @media (prefers-reduced-motion: reduce){
-    .dock, .typebar, .cameraOverlay, .auroraBorder, .toast, .chat-aurora, .chat-aurora::before{ transition:none !important; animation:none !important; }
+    .dock, .typebar, .cameraOverlay, .auroraBorder, .toast, .chat-aurora, .chat-aurora::before, .voice-orb{ transition:none !important; animation:none !important; }
   }
 
   /* ---------- SPLASH SCREEN (앱 첫 실행 시 잠깐 노출되는 브랜드 화면 —
@@ -658,6 +679,11 @@
   </div>
 
   <div class="auroraBorder" id="auroraBorder"></div>
+  <div class="voice-overlay" id="voiceOverlay">
+    <button type="button" class="voice-orb" id="voiceOrb" aria-label="말하기 종료"></button>
+    <div class="voice-status-text" id="voiceStatusText">듣고 있어요</div>
+    <div class="voice-hint-text" id="voiceHintText">다 말씀하셨으면 원 안을 눌러주세요</div>
+  </div>
   <div class="cameraOverlay" id="cameraOverlay">
     <button class="camera-close" id="closeCameraBtn" aria-label="닫기">✕</button>
     <div class="camera-icon">📷</div>
@@ -3381,6 +3407,15 @@ let voiceRecordedChunks = [];
 let voiceMaxDurationTimer = null;
 const VOICE_MAX_SECONDS = 60; // 클로바 스피치가 1분 이내 인식에 최적화되어 있어서 그 이상은 자동 종료
 
+// 어르신들은 말을 천천히, 끊어서 하실 수 있어서 자동 침묵감지만으로 녹음을
+// 끝내면 말하는 도중에 잘릴 위험이 있습니다 — 그래서 종료는 기본적으로 수동
+// (마이크나 원을 다시 누름)이고, 자동 종료는 "이미 한 번 말을 시작한 뒤"
+// 아주 길게(4.5초) 조용해졌을 때만 보조 안전장치로 작동합니다.
+const VOICE_SILENCE_RMS_THRESHOLD = 0.015;
+const VOICE_SILENCE_TIMEOUT_MS = 4500;
+let voiceHasSpoken = false;
+let voiceLastLoudTime = 0;
+
 function floatTo16BitPCM(chunks, totalLength){
   const pcm = new Int16Array(totalLength);
   let offset = 0;
@@ -3417,17 +3452,66 @@ async function startVoiceRecording(){
   const source = voiceAudioContext.createMediaStreamSource(voiceMediaStream);
   voiceScriptProcessor = voiceAudioContext.createScriptProcessor(4096, 1, 1);
   voiceRecordedChunks = [];
+  voiceHasSpoken = false;
+  voiceLastLoudTime = Date.now();
   voiceScriptProcessor.onaudioprocess = (e)=>{
-    voiceRecordedChunks.push(new Float32Array(e.inputBuffer.getChannelData(0)));
+    const data = e.inputBuffer.getChannelData(0);
+    voiceRecordedChunks.push(new Float32Array(data));
+
+    // RMS(제곱평균제곱근)로 이번 조각의 목소리 크기를 가늠해서, 원이 실제
+    // 목소리 크기에 반응하며 커졌다 작아지게 하고, 동시에 "말하다가 오래
+    // 조용해졌는지"도 같은 값으로 판단합니다.
+    let sumSquares = 0;
+    for(let i=0;i<data.length;i++) sumSquares += data[i]*data[i];
+    const rms = Math.sqrt(sumSquares/data.length);
+    updateVoiceOrbAmplitude(rms);
+
+    const now = Date.now();
+    if(rms > VOICE_SILENCE_RMS_THRESHOLD){
+      voiceLastLoudTime = now;
+      voiceHasSpoken = true;
+    }
+    if(voiceHasSpoken && (now - voiceLastLoudTime) > VOICE_SILENCE_TIMEOUT_MS){
+      stopVoiceRecording();
+    }
   };
   source.connect(voiceScriptProcessor);
   voiceScriptProcessor.connect(voiceAudioContext.destination);
   isRecordingVoice = true;
   document.getElementById('auroraBorder').classList.add('active');
   document.getElementById('voiceBtn').classList.add('recording');
-  showToast('듣고 있어요...');
+  setVoiceOverlayState('listening');
   voiceMaxDurationTimer = setTimeout(()=> stopVoiceRecording(), VOICE_MAX_SECONDS*1000);
 }
+
+// 듣는 중(listening) / 알아듣는 중(processing) / 꺼짐(off) 세 상태를 뚜렷하게
+// 구분해서 "지금 말해도 되는지, 다 됐는지"가 한눈에 보이게 합니다(제미나이
+// 라이브 참고).
+function setVoiceOverlayState(state){
+  const overlay = document.getElementById('voiceOverlay');
+  const statusText = document.getElementById('voiceStatusText');
+  const hintText = document.getElementById('voiceHintText');
+  if(state === 'off'){
+    overlay.classList.remove('active', 'processing');
+    return;
+  }
+  overlay.classList.add('active');
+  overlay.classList.toggle('processing', state === 'processing');
+  if(state === 'listening'){
+    statusText.textContent = '듣고 있어요';
+    hintText.textContent = '다 말씀하셨으면 원 안을 눌러주세요';
+    document.getElementById('voiceOrb').style.transform = 'scale(1)';
+  } else {
+    statusText.textContent = '알아듣는 중...';
+    hintText.textContent = '';
+  }
+}
+function updateVoiceOrbAmplitude(rms){
+  if(!isRecordingVoice) return;
+  const scale = 1 + Math.min(rms * 9, 0.55);
+  document.getElementById('voiceOrb').style.transform = `scale(${scale})`;
+}
+document.getElementById('voiceOrb').addEventListener('click', ()=> stopVoiceRecording());
 
 async function stopVoiceRecording(){
   if(!isRecordingVoice) return;
@@ -3435,16 +3519,16 @@ async function stopVoiceRecording(){
   clearTimeout(voiceMaxDurationTimer);
   document.getElementById('auroraBorder').classList.remove('active');
   document.getElementById('voiceBtn').classList.remove('recording');
+  setVoiceOverlayState('processing');
   const sampleRate = voiceAudioContext.sampleRate;
   voiceScriptProcessor.disconnect();
   voiceMediaStream.getTracks().forEach(t=>t.stop());
   await voiceAudioContext.close();
 
-  if(voiceRecordedChunks.length === 0) return;
+  if(voiceRecordedChunks.length === 0){ setVoiceOverlayState('off'); return; }
   const wavBlob = encodeWavBlob(voiceRecordedChunks, sampleRate);
   voiceRecordedChunks = [];
 
-  showToast('알아듣는 중...');
   try{
     const audioBase64 = await blobToBase64(wavBlob);
     const response = await fetch('/api/speech-to-text', {
@@ -3452,12 +3536,14 @@ async function stopVoiceRecording(){
       body: JSON.stringify({ audioBase64 }),
     });
     const data = await response.json();
+    setVoiceOverlayState('off');
     if(data.ok && data.text && data.text.trim()){
       handleUserInput(data.text.trim());
     } else {
       showToast(data.message || '음성을 이해하지 못했어요. 다시 말씀해 주시겠어요?');
     }
   }catch(e){
+    setVoiceOverlayState('off');
     showToast('음성 인식 중 문제가 생겼어요. 다시 시도해 주시겠어요?');
   }
 }
