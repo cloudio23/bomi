@@ -160,7 +160,13 @@ async function sendDueCalendarAlarms(hour) {
   let failed = 0;
   for (const ev of pending || []) {
     const evHour = ev.start_time ? parseInt(String(ev.start_time).split(':')[0], 10) : null;
-    if (evHour !== hour) continue;
+    if (evHour === null) continue;
+    // 몇 시간 전에 알려줄지(0=정시) — 같은 날 안에서만 당겨서 계산합니다.
+    // 새벽 시간대 일정에 큰 lead를 걸면 음수가 나올 수 있는데, 그런 경우는
+    // 오늘 안에 알릴 시각이 없다는 뜻이라 그냥 안 보냅니다(하루 전 알림처럼
+    // 전날로 넘어가는 경우는 지원하지 않음 — "몇 시간 전"만 지원).
+    const targetHour = evHour - (ev.alarm_lead_hours || 0);
+    if (targetHour !== hour) continue;
     const sub = await getPushSubscription(ev.bomi_link_code);
     if (sub) {
       try {
