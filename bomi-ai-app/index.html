@@ -101,22 +101,30 @@
     display:flex; gap:10px; background:var(--accent-soft); border-radius:12px; padding:12px 14px;
     margin-top:14px; font-size:13px; color:var(--navy); line-height:1.5;
   }
-  .stepper-val{ font-size:26px; font-weight:800; color:var(--ink); min-width:100px; text-align:center; }
+  .stepper-val{ font-size:calc(26px * var(--app-font-scale)); font-weight:800; color:var(--ink); min-width:100px; text-align:center; }
   .mood-slider{ width:100%; margin-top:22px; accent-color:var(--navy); height:34px; }
   .meal-photo-btn-row{ display:flex; gap:8px; margin-top:16px; }
   .meal-photo-btn-row .cal-btn-ghost{ flex:1; }
-  .meal-score-divider{ display:flex; align-items:center; gap:10px; margin:26px 0 14px; color:var(--sub); font-size:12.5px; font-weight:700; }
+  .meal-score-divider{ display:flex; align-items:center; gap:10px; margin:26px 0 14px; color:var(--sub); font-size:calc(12.5px * var(--app-font-scale)); font-weight:700; }
   .meal-score-divider::before, .meal-score-divider::after{ content:''; flex:1; height:1px; background:var(--line); }
 
   .checkin-status-row{ display:flex; align-items:center; gap:14px; padding:16px 4px; border-bottom:1px solid #F1EEE7; cursor:pointer; }
-  .checkin-status-row.auto{ cursor:default; }
   .checkin-status-row:last-of-type{ border-bottom:none; }
-  .checkin-status-icon{ font-size:24px; flex-shrink:0; }
+  .checkin-status-icon{ font-size:calc(24px * var(--app-font-scale)); flex-shrink:0; }
   .checkin-status-info{ flex:1; }
-  .checkin-status-label{ font-size:15px; font-weight:700; color:var(--ink); }
-  .checkin-status-detail{ font-size:12.5px; color:var(--sub); margin-top:2px; }
-  .checkin-status-badge{ font-size:12px; font-weight:700; color:var(--warn); background:#FFF1F1; padding:5px 10px; border-radius:999px; flex-shrink:0; }
+  .checkin-status-label{ font-size:calc(15px * var(--app-font-scale)); font-weight:700; color:var(--ink); }
+  .checkin-status-detail{ font-size:calc(12.5px * var(--app-font-scale)); color:var(--sub); margin-top:2px; }
+  .checkin-status-badge{ font-size:calc(12px * var(--app-font-scale)); font-weight:700; color:var(--warn); background:#FFF1F1; padding:5px 10px; border-radius:999px; flex-shrink:0; white-space:nowrap; }
   .checkin-status-badge.filled{ color:#4F8F34; background:#E7F0DD; }
+
+  /* 오늘 체크인 화면들은 .ob-title/.ob-sub/.tip-box를 재사용하는데(온보딩과 공유),
+     온보딩과 달리 이 화면들은 평소에 계속 쓰는 화면이라 글씨 크기 설정이
+     반드시 반영돼야 합니다 — 온보딩 쪽 기본값은 그대로 두고 이 두 화면에서만
+     스케일을 덮어씁니다. */
+  #checkinFlowScreen .ob-title, #checkinStatusScreen .ob-title{ font-size:calc(23px * var(--app-font-scale)); }
+  #checkinFlowScreen .ob-sub, #checkinStatusScreen .ob-sub{ font-size:calc(14px * var(--app-font-scale)); }
+  #checkinFlowScreen .ob-input{ font-size:calc(18px * var(--app-font-scale)); }
+  #checkinStatusScreen .tip-box{ font-size:calc(13px * var(--app-font-scale)); }
   .ob-footer{ margin-top:auto; display:flex; gap:10px; padding-top:24px; }
   .btn{
     flex:1; border:none; border-radius:14px; padding:16px; font-size:16px; font-weight:700;
@@ -868,9 +876,6 @@
       </div>
 
       <div id="profileEditArea" style="display:none;"></div>
-
-      <div class="section-label">관심사</div>
-      <div class="tags" id="tagArea"></div>
 
       <div class="report-cta" id="reportCta">
         <div class="lb">💗 건강리포트 서비스</div>
@@ -1795,28 +1800,6 @@ function renderProfile(){
     sajuRow.style.display = 'none';
   }
 
-  const tagArea = document.getElementById('tagArea');
-  tagArea.innerHTML = '';
-  profile.interests.forEach((t,i)=>{
-    const el = document.createElement('div');
-    el.className = 'tag';
-    el.innerHTML = `<span>${t}</span><span class="x" data-i="${i}">✕</span>`;
-    el.querySelector('.x').addEventListener('click', async ()=>{
-      profile.interests.splice(i,1);
-      await storeSet('profile', profile);
-      renderProfile();
-    });
-    tagArea.appendChild(el);
-  });
-  const addBtn = document.createElement('div');
-  addBtn.className = 'tag-add';
-  addBtn.textContent = '+ 추가';
-  addBtn.addEventListener('click', async ()=>{
-    const v = prompt('관심사를 입력해 주세요');
-    if(v && v.trim()){ profile.interests.push(v.trim()); await storeSet('profile', profile); renderProfile(); }
-  });
-  tagArea.appendChild(addBtn);
-
   document.getElementById('crmId').textContent = profile.crmId;
   document.getElementById('toggleLocation').checked = !!profile.locationConsent;
   document.getElementById('togglePush').checked = !!notifSettings.push;
@@ -2192,7 +2175,7 @@ let checkinQueue = [];
 let checkinReturnTo = 'checkinStatusScreen';
 
 function checkinLabel(kind){
-  return kind==='sleep' ? '수면' : kind==='mood' ? '기분' : '식사';
+  return kind==='sleep' ? '수면' : kind==='mood' ? '기분' : kind==='activity' ? '활동량' : '식사';
 }
 
 async function checkinAlreadyAnswered(kind, mealType){
@@ -2204,12 +2187,13 @@ async function checkinAlreadyAnswered(kind, mealType){
     const meals = data.meals || [];
     if(kind==='sleep') return !!(c && c.sleep_score!=null);
     if(kind==='mood') return !!(c && c.mood_score!=null);
+    if(kind==='activity') return !!(c && c.steps!=null);
     if(kind==='meal') return mealType ? meals.some(m=>m.meal_type===mealType) : meals.length>0;
   }catch(e){}
   return false;
 }
 
-// items: [{kind:'sleep'|'meal'|'mood', mealType?}]. skipConfirm이면(상태
+// items: [{kind:'sleep'|'meal'|'mood'|'activity', mealType?}]. skipConfirm이면(상태
 // 대시보드에서 눌러서 들어온 경우 — 이미 채워진 값을 보고 눌렀으니 다시
 // 물어볼 필요 없음) 덮어쓰기 확인 없이 바로 입력 화면을 엽니다. 푸시로
 // 들어온 경우에만 "이미 답하셨는데 다시 하시겠어요?"를 확인합니다.
@@ -2243,6 +2227,7 @@ function renderCheckinStep(){
   const body = document.getElementById('checkinFlowBody');
   if(item.kind === 'sleep') renderSleepStep(body);
   else if(item.kind === 'mood') renderMoodStep(body);
+  else if(item.kind === 'activity') renderActivityStep(body);
   else if(item.kind === 'meal') renderMealStep(body, item.mealType);
 }
 function advanceCheckin(){
@@ -2294,6 +2279,28 @@ function renderMoodStep(body){
         body: JSON.stringify({ bomiLinkCode: profile.crmId, date: calDateStr(new Date()), moodScore: val }),
       });
     }catch(e){}
+  });
+}
+
+// 활동량은 걸음수가 자동으로 채워지지만(bomiStepsUpdate), 웹 단독 사용이라
+// 자동 기록이 안 되거나 값을 고치고 싶을 때를 위해 직접 입력도 받습니다.
+function renderActivityStep(body){
+  const steps = (typeof todaySteps === 'number' && todaySteps !== null) ? todaySteps : null;
+  body.innerHTML = `
+    <div class="ob-title" style="margin-top:20px;">오늘 활동량을 알려주세요</div>
+    <div class="ob-sub">${steps!==null ? '자동으로 기록된 걸음수예요. 다르면 직접 고쳐 넣으실 수 있어요.' : '걸음수를 직접 입력해 주세요'}</div>
+    <input class="ob-input" type="number" inputmode="numeric" id="manualStepsInput" placeholder="예: 3000" value="${steps!==null?steps:''}">
+    <button type="button" class="cal-btn-primary" id="activitySaveBtn" style="width:100%;margin-top:24px;">저장</button>
+  `;
+  document.getElementById('activitySaveBtn').addEventListener('click', async ()=>{
+    const val = parseInt(document.getElementById('manualStepsInput').value || '0', 10);
+    try{
+      await fetch('/api/sync-health-summary?action=daily-checkin', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ bomiLinkCode: profile.crmId, date: calDateStr(new Date()), steps: val }),
+      });
+    }catch(e){}
+    advanceCheckin();
   });
 }
 
@@ -2415,7 +2422,8 @@ function maybeShowCheckinFromNotification(){
 
 /* ============ 오늘 체크인 상태 대시보드("건강리포트" 칩이 여는 화면) ============ */
 // 오늘 수면/식사/활동량/기분이 채워졌는지 한눈에 보여주고, 항목을 누르면
-// (활동량 제외 — 걸음수 자동) 채우거나 고칠 수 있게 합니다.
+// 채우거나 고칠 수 있게 합니다. 활동량은 걸음수가 자동으로 채워지지만,
+// 눌러서 직접 고쳐 넣을 수도 있어요(수기입력).
 async function showCheckinStatusScreen(){
   showScreen('checkinStatusScreen');
   await renderCheckinStatus();
@@ -2435,20 +2443,20 @@ async function renderCheckinStatus(){
   const rows = [
     { kind:'sleep', icon:'🌙', label:'수면', filled: !!(checkin && checkin.sleep_score!=null), detail: checkin && checkin.sleep_score!=null ? `${checkin.sleep_score}/5로 기록됨` : '' },
     { kind:'meal', icon:'🍚', label:'식사', filled: mealFilled, detail: mealDetail },
-    { kind:'activity', icon:'🚶', label:'활동량', filled: !!(checkin && checkin.steps!=null), detail: checkin && checkin.steps!=null ? `${checkin.steps.toLocaleString('ko-KR')}보 (자동)` : '아직 기록 없음' },
+    { kind:'activity', icon:'🚶', label:'활동량', filled: !!(checkin && checkin.steps!=null), detail: checkin && checkin.steps!=null ? `${checkin.steps.toLocaleString('ko-KR')}보` : '아직 기록 없음' },
     { kind:'mood', icon:'😊', label:'기분', filled: !!(checkin && checkin.mood_score!=null), detail: checkin && checkin.mood_score!=null ? `${checkin.mood_score}/5로 기록됨` : '' },
   ];
 
   body.innerHTML = `
-    <div class="tip-box" style="margin-top:14px;">💡 항목을 누르면 채우거나 다시 입력할 수 있어요.</div>
+    <div class="tip-box" style="margin-top:14px;">💡 항목을 누르면 채우거나 다시 입력할 수 있어요. 활동량은 걸음수가 자동으로 채워지지만, 눌러서 직접 고치실 수도 있어요.</div>
     ${rows.map(r=>`
-      <div class="checkin-status-row${r.kind==='activity' ? ' auto' : ''}" data-kind="${r.kind}">
+      <div class="checkin-status-row" data-kind="${r.kind}">
         <div class="checkin-status-icon">${r.icon}</div>
         <div class="checkin-status-info">
           <div class="checkin-status-label">${r.label}</div>
           <div class="checkin-status-detail">${r.filled ? r.detail : '아직 기록이 없어요'}</div>
         </div>
-        <div class="checkin-status-badge ${r.filled?'filled':''}">${r.filled ? '✓' : (r.kind==='activity' ? '' : '미입력')}</div>
+        <div class="checkin-status-badge ${r.filled?'filled':''}">${r.filled ? '✓' : '미입력'}</div>
       </div>
     `).join('')}
     <button type="button" class="cal-btn-primary" id="checkinStatusReportBtn" style="width:100%;margin-top:22px;">건강리포트 보기</button>
@@ -2456,7 +2464,6 @@ async function renderCheckinStatus(){
   body.querySelectorAll('.checkin-status-row').forEach(row=>{
     row.addEventListener('click', ()=>{
       const kind = row.dataset.kind;
-      if(kind === 'activity'){ showToast('활동량은 걸음수로 자동 기록돼요.'); return; }
       startCheckinFlow([{ kind }], { skipConfirm:true, returnTo:'checkinStatusScreen' });
     });
   });
