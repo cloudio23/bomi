@@ -5,6 +5,7 @@
 //
 // SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY는 웹 CRM(deforet-w-health)이 쓰는
 // 것과 동일한 Supabase 프로젝트를 가리켜야 합니다 (같은 프로젝트 공유 결정).
+import { randomBytes } from 'crypto';
 
 function supabaseConfig() {
   const url = process.env.SUPABASE_URL;
@@ -170,6 +171,95 @@ export async function setCalendarEventNativeId(code, id, nativeEventId) {
     method: 'PATCH',
     body: { native_event_id: nativeEventId },
   });
+}
+
+// 가족 리포트(카카오 알림톡) — 자녀가 crmId로 구독을 신청하면 pending row가
+// 생기고, 회원(어르신) 쪽 앱이 동의해야 실제 발송이 시작됩니다. 트레이너
+// CRM 연동(bomi_links)과는 완전히 별개의 동의 체계입니다 — 섞지 않습니다.
+export async function createFamilyReportRequest(crmId, guardianName, guardianPhone) {
+  const reportToken = randomBytes(24).toString('hex');
+  const rows = await restRequest('bomi_family_reports', {
+    method: 'POST',
+    headers: { Prefer: 'return=representation' },
+    body: {
+      crm_id: crmId,
+      guardian_name: guardianName || null,
+      guardian_phone: guardianPhone,
+      report_token: reportToken,
+    },
+  });
+  return rows && rows[0];
+}
+
+export async function getPendingFamilyConsent(crmId) {
+  const rows = await restRequest(
+    `bomi_family_reports?crm_id=eq.${encodeURIComponent(crmId)}&consent_status=eq.pending&order=created_at.desc&limit=1`
+  );
+  return rows && rows[0] ? rows[0] : null;
+}
+
+// memberName은 회원 본인 앱이 동의하는 시점에 자기 profile.name을 실어 보낸 것 —
+// 서버에는 어르신 이름을 따로 저장해두지 않으므로(로컬 전용 프로필 원칙),
+// 알림톡 문구에 쓸 이름을 이 시점에만 한 번 받아 저장합니다.
+export async function respondFamilyConsent(id, crmId, decision, memberName) {
+  const status = decision === 'agreed' ? 'agreed' : 'revoked';
+  return restRequest(`bomi_family_reports?id=eq.${encodeURIComponent(id)}&crm_id=eq.${encodeURIComponent(crmId)}`, {
+    method: 'PATCH',
+    body: {
+      consent_status: status,
+      consented_at: status === 'agreed' ? new Date().toISOString() : null,
+      ...(status === 'agreed' && memberName ? { member_name: memberName } : {}),
+    },
+  });
+}
+
+export async function getActiveFamilyConsent(crmId) {
+  const rows = await restRequest(
+    `bomi_family_reports?crm_id=eq.${encodeURIComponent(crmId)}&consent_status=eq.agreed&order=created_at.desc&limit=1`
+  );
+  return rows && rows[0] ? rows[0] : null;
+}
+
+export async function revokeFamilyConsentByCrmId(crmId) {
+  return restRequest(`bomi_family_reports?crm_id=eq.${encodeURIComponent(crmId)}&consent_status=eq.agreed`, {
+    method: 'PATCH',
+    body: { consent_status: 'revoked' },
+  });
+}
+
+export async function listAgreedFamilyReports() {
+  return restRequest('bomi_family_reports?consent_status=eq.agreed');
+}
+
+export async function getFamilyReportByToken(token) {
+  const rows = await restRequest(
+    `bomi_family_reports?report_token=eq.${encodeURIComponent(token)}&consent_status=eq.agreed&limit=1`
+  );
+  return rows && rows[0] ? rows[0] : null;
+}
+
+// 최근 며칠치 체크리스트 완료율·걸음수 실측치 — bomi_health_summaries(트레이너
+// CRM 동의 전용, member_id 기준)와는 독립된 저장소입니다. 가족 리포트 동의와
+// CRM 연동 동의는 서로 다른 결정이라, 한쪽만 동의해도 그쪽 데이터만 쌓입니다.
+export async function upsertFamilyHealthDaily(crmId, summary) {
+  return restRequest('bomi_family_health_daily?on_conflict=crm_id,summary_date', {
+    method: 'POST',
+    headers: { Prefer: 'resolution=merge-duplicates' },
+    body: {
+      crm_id: crmId,
+      summary_date: summary.date,
+      checklist_completed: summary.checklistCompleted ?? null,
+      checklist_total: summary.checklistTotal ?? null,
+      steps: summary.steps ?? null,
+      updated_at: new Date().toISOString(),
+    },
+  });
+}
+
+export async function listFamilyHealthDaily(crmId, sinceDate) {
+  return restRequest(
+    `bomi_family_health_daily?crm_id=eq.${encodeURIComponent(crmId)}&summary_date=gte.${sinceDate}&order=summary_date.asc`
+  );
 }
 
 // 체크리스트 위젯에 "오늘 일정"으로 같이 보여주기 위한 조회.

@@ -1,18 +1,26 @@
-// 알림/구독 관련 엔드포인트 3개를 하나로 합쳤습니다(Vercel Hobby 플랜의
+// 알림/구독 관련 엔드포인트를 하나로 합쳤습니다(Vercel Hobby 플랜의
 // 서버리스 함수 12개 한도 때문 — 2026-08-02 QA 감사에서 여유가 0개인 걸
-// 발견). ?action= 쿼리 파라미터로 구분하며, 각 액션의 동작은 예전 파일
-// (push-subscribe.js / daily-greeting.js / send-checkins.js)과 완전히
-// 동일합니다:
+// 발견, 이후로도 새 액션은 계속 기존 파일에 추가하는 원칙 유지). ?action=
+// 쿼리 파라미터로 구분합니다:
 //
-// - POST ?action=subscribe            {bomiLinkCode, subscription} → 웹 푸시 구독 등록 (보미 앱이 호출)
-// - GET  ?action=greeting              → 매일 안부인사 푸시 (스케줄러가 하루 1회 호출)
-// - GET  ?action=checkins              → 체크인/건강리포트 알림 (스케줄러가 매시 정각 호출)
+// - POST ?action=subscribe       {bomiLinkCode, subscription} → 웹 푸시 구독 등록 (보미 앱이 호출)
+// - GET  ?action=greeting         → 매일 안부인사 푸시 (스케줄러가 하루 1회 호출)
+// - GET  ?action=checkins         → 체크인/건강리포트/달력알람/가족리포트 발송 (스케줄러가 매시 정각 호출)
+// - GET  ?action=family-status&code=...           → 응답 대기 중(pending)/활성(active) 가족 리포트 동의 상태 조회 (보미 앱이 호출)
+// - POST ?action=family-consent   {bomiLinkCode, id, decision} → 동의/거절 응답
+// - POST ?action=family-revoke    {bomiLinkCode}    → 이미 동의한 가족 리포트 구독 철회
+// - POST ?action=family-request   {crmId, guardianName, guardianPhone} → 자녀가 구독 신청 (family.html이 호출)
+// - GET  ?action=family-report&token=...           → 토큰으로 상세 리포트 데이터 조회 (report.html이 호출)
 import {
   upsertPushSubscription, ensureDefaultCheckinSettings,
   listAllPushSubscriptions, listEnabledCheckinSettings, getPushSubscription,
   listPendingCalendarAlarms, markCalendarAlarmSent,
+  createFamilyReportRequest, getPendingFamilyConsent, respondFamilyConsent,
+  revokeFamilyConsentByCrmId, listAgreedFamilyReports, getFamilyReportByToken,
+  listFamilyHealthDaily,
 } from '../lib/supabaseAdmin.mjs';
 import { sendPush } from '../lib/push.mjs';
+import { sendAlimtalk } from '../lib/kakao.mjs';
 
 async function handleSubscribe(req, res) {
   if (req.method !== 'POST') {
@@ -87,6 +95,12 @@ function currentKstDateStr() {
   return kst.toISOString().slice(0, 10);
 }
 
+// 0 = 일요일. 주간 가족 리포트는 매주 일요일 20시(KST)에만 발송합니다.
+function currentKstDayOfWeek() {
+  const kst = new Date(Date.now() + 9 * 60 * 60 * 1000);
+  return kst.getUTCDay();
+}
+
 // 달력 일정 알람 — event_date가 오늘이고 alarm_enabled인데 아직 안 보낸 것 중,
 // start_time의 "시"가 지금과 같은 것만 보냅니다(체크인 알림과 같은 시 단위 매칭).
 async function sendDueCalendarAlarms(hour) {
@@ -148,10 +162,135 @@ async function handleCheckins(req, res) {
     }
   }
   const calendarResult = await sendDueCalendarAlarms(hour);
+  const familyResult = await sendDueFamilyReports(currentKstDayOfWeek(), hour);
   res.status(200).json({
     ok: true, hour, matched, sent, failed,
     calendarSent: calendarResult.sent, calendarFailed: calendarResult.failed,
+    familyReportSent: familyResult.sent, familyReportFailed: familyResult.failed,
   });
+}
+
+/* ============ 가족 리포트 (카카오 알림톡) ============ */
+
+// 회원 이름은 서버에 따로 저장해두지 않는 원칙이라(로컬 전용 프로필),
+// 동의 시점에 한 번 받아둔 member_name만 씁니다 — 없으면 "어르신"으로 대체.
+// 체크리스트/걸음수 외의 수면·식사·활동 "수치"는 실제로 측정하는 값이
+// 없어서(2026-08-02 QA 감사로 AI가 지어낸 점수를 CRM에 보내지 않기로 한
+// 원칙과 동일하게) 문구에 넣지 않습니다 — 실측치만 보여줍니다.
+function buildWeeklyFamilyVariables(row, dailyRows) {
+  const withChecklist = dailyRows.filter((r) => r.checklist_total);
+  const totalCompleted = withChecklist.reduce((sum, r) => sum + (r.checklist_completed || 0), 0);
+  const totalTarget = withChecklist.reduce((sum, r) => sum + (r.checklist_total || 0), 0);
+  const rate = totalTarget > 0 ? Math.round((totalCompleted / totalTarget) * 100) : null;
+
+  const withSteps = dailyRows.filter((r) => typeof r.steps === 'number');
+  const avgSteps = withSteps.length > 0
+    ? Math.round(withSteps.reduce((sum, r) => sum + r.steps, 0) / withSteps.length)
+    : null;
+
+  return {
+    '#{회원이름}': row.member_name || '어르신',
+    '#{자녀이름}': row.guardian_name || '자녀',
+    '#{체크리스트완료율}': rate === null ? '기록 없음' : `${rate}%`,
+    '#{평균걸음수}': avgSteps === null ? '기록 없음' : `${avgSteps.toLocaleString('ko-KR')}보`,
+    '#{링크}': `https://bomi-7sbu.vercel.app/report.html?token=${row.report_token}`,
+  };
+}
+
+async function sendDueFamilyReports(dayOfWeek, hour) {
+  // 매주 일요일(0) 20시(KST)에만 — 그 외 시간에는 매시 호출돼도 그냥 넘어감.
+  if (dayOfWeek !== 0 || hour !== 20) return { sent: 0, failed: 0 };
+  const templateId = process.env.KAKAO_WEEKLY_TEMPLATE_ID;
+  const rows = await listAgreedFamilyReports();
+  const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  let sent = 0;
+  let failed = 0;
+  for (const row of rows || []) {
+    const dailyRows = await listFamilyHealthDaily(row.crm_id, since);
+    const variables = buildWeeklyFamilyVariables(row, dailyRows || []);
+    const result = await sendAlimtalk(row.guardian_phone, templateId, variables);
+    if (result.ok) sent += 1; else failed += 1;
+  }
+  return { sent, failed };
+}
+
+async function handleFamilyStatus(req, res) {
+  if (req.method !== 'GET') { res.status(405).json({ ok: false, message: 'GET 요청만 가능해요.' }); return; }
+  const code = (req.query && req.query.code) || '';
+  if (!code) { res.status(400).json({ ok: false, message: 'code가 필요해요.' }); return; }
+  try {
+    const pending = await getPendingFamilyConsent(code);
+    const active = await getActiveFamilyConsent(code);
+    res.status(200).json({
+      ok: true,
+      pending: pending ? { id: pending.id, guardianName: pending.guardian_name } : null,
+      active: active ? { guardianName: active.guardian_name, guardianPhone: active.guardian_phone } : null,
+    });
+  } catch (e) {
+    res.status(200).json({ ok: false, message: '상태를 확인하지 못했어요.' });
+  }
+}
+
+async function handleFamilyConsent(req, res) {
+  if (req.method !== 'POST') { res.status(405).json({ ok: false, message: 'POST 요청만 가능해요.' }); return; }
+  const { bomiLinkCode, id, decision, memberName } = req.body || {};
+  if (!bomiLinkCode || !id || !decision) {
+    res.status(400).json({ ok: false, message: 'bomiLinkCode, id, decision이 필요해요.' });
+    return;
+  }
+  try {
+    await respondFamilyConsent(id, bomiLinkCode, decision, memberName);
+    res.status(200).json({ ok: true });
+  } catch (e) {
+    res.status(200).json({ ok: false, message: '처리하지 못했어요.' });
+  }
+}
+
+async function handleFamilyRevoke(req, res) {
+  if (req.method !== 'POST') { res.status(405).json({ ok: false, message: 'POST 요청만 가능해요.' }); return; }
+  const { bomiLinkCode } = req.body || {};
+  if (!bomiLinkCode) { res.status(400).json({ ok: false, message: 'bomiLinkCode가 필요해요.' }); return; }
+  try {
+    await revokeFamilyConsentByCrmId(bomiLinkCode);
+    res.status(200).json({ ok: true });
+  } catch (e) {
+    res.status(200).json({ ok: false, message: '철회하지 못했어요.' });
+  }
+}
+
+async function handleFamilyRequest(req, res) {
+  if (req.method !== 'POST') { res.status(405).json({ ok: false, message: 'POST 요청만 가능해요.' }); return; }
+  const { crmId, guardianName, guardianPhone } = req.body || {};
+  if (!crmId || !guardianPhone) {
+    res.status(400).json({ ok: false, message: 'crmId, guardianPhone이 필요해요.' });
+    return;
+  }
+  try {
+    const row = await createFamilyReportRequest(crmId, guardianName, guardianPhone);
+    res.status(200).json({ ok: true, id: row && row.id });
+  } catch (e) {
+    res.status(200).json({ ok: false, message: '신청을 저장하지 못했어요. 연동 코드를 다시 확인해 주세요.' });
+  }
+}
+
+async function handleFamilyReport(req, res) {
+  if (req.method !== 'GET') { res.status(405).json({ ok: false, message: 'GET 요청만 가능해요.' }); return; }
+  const token = (req.query && req.query.token) || '';
+  if (!token) { res.status(400).json({ ok: false, message: 'token이 필요해요.' }); return; }
+  try {
+    const row = await getFamilyReportByToken(token);
+    if (!row) { res.status(200).json({ ok: false, message: '유효하지 않은 링크예요.' }); return; }
+    const since = new Date(Date.now() - 28 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const daily = await listFamilyHealthDaily(row.crm_id, since);
+    res.status(200).json({
+      ok: true,
+      memberName: row.member_name || '어르신',
+      consentedAt: row.consented_at,
+      daily: daily || [],
+    });
+  } catch (e) {
+    res.status(200).json({ ok: false, message: '리포트를 불러오지 못했어요.' });
+  }
 }
 
 export default async function handler(req, res) {
@@ -160,7 +299,12 @@ export default async function handler(req, res) {
     if (action === 'subscribe') return await handleSubscribe(req, res);
     if (action === 'greeting') return await handleGreeting(req, res);
     if (action === 'checkins') return await handleCheckins(req, res);
-    res.status(400).json({ error: 'action 쿼리 파라미터가 필요해요 (subscribe | greeting | checkins).' });
+    if (action === 'family-status') return await handleFamilyStatus(req, res);
+    if (action === 'family-consent') return await handleFamilyConsent(req, res);
+    if (action === 'family-revoke') return await handleFamilyRevoke(req, res);
+    if (action === 'family-request') return await handleFamilyRequest(req, res);
+    if (action === 'family-report') return await handleFamilyReport(req, res);
+    res.status(400).json({ error: 'action 쿼리 파라미터가 필요해요.' });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

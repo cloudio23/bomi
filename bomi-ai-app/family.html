@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>보미 가족 리포트</title>
+<style>
+  :root{
+    --blue:#9C7A54;
+    --navy:#6F5636;
+    --navy-dark:#4E3C26;
+    --accent-soft:#F0E7D8;
+    --ink:#23201B;
+    --sub:#7A6F5F;
+    --bg:#F6F3EE;
+    --card:#FFFFFF;
+    --line:#E7E1D6;
+    --warn:#D9455A;
+  }
+  *{ box-sizing:border-box; }
+  body{
+    margin:0; font-family:"Pretendard","Apple SD Gothic Neo","Malgun Gothic",-apple-system,sans-serif;
+    background:var(--bg); color:var(--ink); min-height:100vh;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{ max-width:480px; margin:0 auto; min-height:100vh; background:var(--bg); display:flex; flex-direction:column; }
+
+  .header{ display:flex; align-items:center; gap:10px; padding:14px 14px; background:#FAF8F5; border-bottom:1px solid var(--line); position:sticky; top:0; z-index:10; }
+  .back{ width:44px; height:44px; border-radius:12px; border:none; background:none; color:var(--ink); cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .back:hover{ background:#F1EEE7; }
+  .header .title{ font-size:15px; font-weight:800; }
+
+  .hero{ padding:30px 24px 22px; }
+  .badge{ display:inline-flex; align-items:center; background:var(--accent-soft); color:var(--navy); font-weight:700; font-size:12.5px; padding:6px 14px; border-radius:999px; margin-bottom:14px; }
+  .hero h1{ font-size:23px; font-weight:800; line-height:1.4; margin:0 0 10px 0; letter-spacing:-0.3px; }
+  .hero p{ font-size:14px; line-height:1.6; margin:0; color:var(--sub); }
+
+  .card{ margin:0 20px 16px; background:var(--card); border:1px solid var(--line); border-radius:16px; padding:18px 20px; }
+  .card .lb{ font-size:13px; font-weight:800; color:var(--ink); margin-bottom:4px; }
+  .card .desc{ font-size:12.5px; color:var(--sub); line-height:1.5; }
+
+  .form{ padding:6px 20px 0; display:flex; flex-direction:column; gap:16px; }
+  .field label{ display:block; font-size:13px; font-weight:700; color:var(--ink); margin-bottom:7px; }
+  .field input{
+    width:100%; padding:14px 15px; border-radius:12px; border:1.5px solid var(--line);
+    background:#fff; font-size:15px; color:var(--ink); outline:none;
+  }
+  .field input:focus{ border-color:var(--blue); }
+  .field .hint{ font-size:11.5px; color:var(--sub); margin-top:6px; line-height:1.5; }
+
+  .bottom-cta{ margin-top:auto; padding:22px 20px 30px; background:#FAF8F5; border-top:1px solid var(--line); }
+  .cta-btn{ width:100%; padding:17px; border-radius:14px; border:none; background:var(--navy); color:#fff; font-size:16px; font-weight:800; cursor:pointer; }
+  .cta-btn:disabled{ opacity:.5; cursor:default; }
+  .cta-btn:active:not(:disabled){ opacity:.9; }
+  .privacy-note{ font-size:11.5px; color:var(--sub); text-align:center; margin-top:12px; line-height:1.6; }
+
+  .done-view{ display:none; flex:1; flex-direction:column; align-items:center; justify-content:center; padding:40px 30px; text-align:center; }
+  .done-view.show{ display:flex; }
+  .done-icon{ font-size:44px; margin-bottom:16px; }
+  .done-view h2{ font-size:19px; margin:0 0 10px; }
+  .done-view p{ font-size:14px; color:var(--sub); line-height:1.65; margin:0; max-width:32ch; }
+
+  .toast{ position:fixed; left:50%; bottom:110px; transform:translate(-50%,20px); background:#23201B; color:#fff; padding:12px 20px; border-radius:12px; font-size:14px; font-weight:600; opacity:0; pointer-events:none; transition:all .25s ease; max-width:85%; text-align:center; z-index:20; }
+  .toast.show{ opacity:1; transform:translate(-50%,0); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="header">
+    <button class="back" onclick="location.href='/'" aria-label="보미로 돌아가기">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+    </button>
+    <div class="title">가족 리포트 구독</div>
+  </div>
+
+  <div id="formView">
+    <div class="hero">
+      <div class="badge">보미 가족 리포트</div>
+      <h1>부모님 소식을<br>카카오톡으로 받아보세요</h1>
+      <p>앱 설치나 로그인 없이, 이미 쓰시는 카카오톡으로 매주 부모님의 건강 소식을 전해드려요.</p>
+    </div>
+
+    <div class="card">
+      <div class="lb">💬 매주 일요일 저녁, 카카오톡으로</div>
+      <div class="desc">체크리스트 완료율, 하루 평균 걸음수 같은 실제 기록만 보내드려요. 대화 내용 원문은 절대 포함하지 않아요.</div>
+    </div>
+
+    <div class="form">
+      <div class="field">
+        <label for="crmId">부모님 연동 코드</label>
+        <input type="text" id="crmId" placeholder="보미 앱 → 프로필 → 연동 코드에서 확인" autocomplete="off">
+        <div class="hint">부모님 휴대폰의 보미 앱 → 프로필 화면 하단 "연동 코드"에 있는 코드를 그대로 입력해 주세요.</div>
+      </div>
+      <div class="field">
+        <label for="guardianName">보호자(신청자) 이름</label>
+        <input type="text" id="guardianName" placeholder="예: 김지영" autocomplete="name">
+      </div>
+      <div class="field">
+        <label for="guardianPhone">카카오톡 알림을 받을 전화번호</label>
+        <input type="tel" id="guardianPhone" placeholder="010-1234-5678" autocomplete="tel">
+      </div>
+    </div>
+
+    <div class="bottom-cta">
+      <button class="cta-btn" id="submitBtn">구독 신청하기</button>
+      <div class="privacy-note">신청 후 부모님 앱에 동의 요청이 뜨고, 부모님이 동의하셔야 실제로 발송이 시작돼요. 동의는 부모님이 언제든 철회하실 수 있어요.</div>
+    </div>
+  </div>
+
+  <div class="done-view" id="doneView">
+    <div class="done-icon">✅</div>
+    <h2>신청이 접수됐어요</h2>
+    <p>부모님께서 보미 앱을 여시면 동의 요청이 뜨고, 동의하시면 그다음 주 일요일부터 카카오톡으로 소식을 받아보실 수 있어요.</p>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(showToast._timer);
+  showToast._timer = setTimeout(()=> t.classList.remove('show'), 2600);
+}
+
+document.getElementById('submitBtn').addEventListener('click', async ()=>{
+  const crmId = document.getElementById('crmId').value.trim();
+  const guardianName = document.getElementById('guardianName').value.trim();
+  const guardianPhone = document.getElementById('guardianPhone').value.trim();
+  if(!crmId){ showToast('부모님 연동 코드를 입력해 주세요.'); return; }
+  if(!guardianPhone){ showToast('알림을 받을 전화번호를 입력해 주세요.'); return; }
+
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = true;
+  btn.textContent = '신청 중...';
+  try{
+    const res = await fetch('/api/notifications?action=family-request', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ crmId, guardianName, guardianPhone }),
+    });
+    const data = await res.json();
+    if(!res.ok || !data.ok){
+      showToast(data.message || '신청 중 문제가 생겼어요. 연동 코드를 다시 확인해 주세요.');
+      btn.disabled = false;
+      btn.textContent = '구독 신청하기';
+      return;
+    }
+    document.getElementById('formView').style.display = 'none';
+    document.getElementById('doneView').classList.add('show');
+  }catch(e){
+    showToast('신청 중 문제가 생겼어요. 다시 시도해 주세요.');
+    btn.disabled = false;
+    btn.textContent = '구독 신청하기';
+  }
+});
+</script>
+</body>
+</html>

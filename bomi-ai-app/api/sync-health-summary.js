@@ -9,7 +9,15 @@
 // 클라이언트가 "동의했다"고 우겨도 여기서 다시 한 번 bomi_links.status를
 // 서버에서 직접 확인합니다 — 클라이언트 상태만 믿지 않는 게 RLS와 함께
 // 이중 방어선이 되도록 하는 지점입니다.
-import { findBomiLinkByCode, upsertHealthSummary } from '../lib/supabaseAdmin.mjs';
+//
+// 가족 리포트(카카오 알림톡) 동의는 이 트레이너 CRM 동의와 완전히 별개라서,
+// 같은 호출에서 독립적으로 한 번 더 확인해 동의된 경우에만 별도 저장소
+// (bomi_family_health_daily, crm_id 기준)에 같이 기록합니다 — 두 동의 중
+// 하나만 돼 있어도 그쪽 데이터만 정상적으로 쌓입니다.
+import {
+  findBomiLinkByCode, upsertHealthSummary,
+  getActiveFamilyConsent, upsertFamilyHealthDaily,
+} from '../lib/supabaseAdmin.mjs';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -25,21 +33,28 @@ export default async function handler(req, res) {
       res.status(400).json({ error: 'bomiLinkCode와 date가 필요해요.' });
       return;
     }
+
+    let crmSynced = false;
     const link = await findBomiLinkByCode(bomiLinkCode);
-    if (!link || link.status !== 'approved') {
-      // 동의 안 된 상태에서의 동기화 시도는 에러가 아니라 조용히 무시 —
-      // 클라이언트가 동의 상태를 잘못 캐싱했을 때 흔히 벌어질 수 있는 정상 경로.
-      res.status(200).json({ ok: true, synced: false, reason: 'not_consented' });
-      return;
+    if (link && link.status === 'approved') {
+      await upsertHealthSummary(link.member_id, {
+        date,
+        checklist_completed: checklistCompleted ?? null,
+        checklist_total: checklistTotal ?? null,
+        steps: steps ?? null,
+        step_goal: stepGoal ?? null,
+      });
+      crmSynced = true;
     }
-    await upsertHealthSummary(link.member_id, {
-      date,
-      checklist_completed: checklistCompleted ?? null,
-      checklist_total: checklistTotal ?? null,
-      steps: steps ?? null,
-      step_goal: stepGoal ?? null,
-    });
-    res.status(200).json({ ok: true, synced: true });
+
+    let familySynced = false;
+    const familyConsent = await getActiveFamilyConsent(bomiLinkCode);
+    if (familyConsent) {
+      await upsertFamilyHealthDaily(bomiLinkCode, { date, checklistCompleted, checklistTotal, steps });
+      familySynced = true;
+    }
+
+    res.status(200).json({ ok: true, synced: crmSynced || familySynced, crmSynced, familySynced });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
