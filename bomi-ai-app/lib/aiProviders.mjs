@@ -31,6 +31,15 @@ export async function callAI(system, messages, { maxTokens = 500 } = {}) {
   return callGemini(system, messages, maxTokens);
 }
 
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+// 무료 티어의 진짜 병목은 하루 총량이 아니라 분당 10건(RPM)이라, 어르신 여러
+// 명이 같은 순간에 몰리면 하루 목표치가 한참 남았어도 바로 429가 납니다.
+// 이건 "진짜 하루 할당량 소진"이 아니라 "그 1분"의 일시적 혼잡이라 짧게
+// 재시도하면 대부분 다음 1분 창에서 성공합니다 — provider 전환(Claude)이
+// 아니라 같은 Gemini 안에서의 재시도라 예상치 못한 과금 걱정은 없어요.
+const GEMINI_RETRY_DELAYS_MS = [1200, 2500];
+
 async function callGemini(system, messages, maxTokens) {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
@@ -41,26 +50,34 @@ async function callGemini(system, messages, maxTokens) {
     parts: [{ text: m.content }],
   }));
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
-    body: JSON.stringify({
-      ...(system ? { system_instruction: { parts: [{ text: system }] } } : {}),
-      contents,
-      // 실시간 구글 검색으로 답을 보강 (버스/지하철 경로, 최신 정보 등 정확도 향상).
-      // 예전 배포 버전(하이브리드 provider 리팩터 이전)에 있던 기능인데 리팩터
-      // 과정에서 빠졌던 걸 복원함 — thinkingBudget:0은 "생각하는" 토큰을 꺼서
-      // 답변이 중간에 잘리지 않게 하기 위함.
-      tools: [{ google_search: {} }],
-      generationConfig: { maxOutputTokens: maxTokens, thinkingConfig: { thinkingBudget: 0 } },
-    }),
+  const body = JSON.stringify({
+    ...(system ? { system_instruction: { parts: [{ text: system }] } } : {}),
+    contents,
+    // 실시간 구글 검색으로 답을 보강 (버스/지하철 경로, 최신 정보 등 정확도 향상).
+    // 예전 배포 버전(하이브리드 provider 리팩터 이전)에 있던 기능인데 리팩터
+    // 과정에서 빠졌던 걸 복원함 — thinkingBudget:0은 "생각하는" 토큰을 꺼서
+    // 답변이 중간에 잘리지 않게 하기 위함.
+    tools: [{ google_search: {} }],
+    generationConfig: { maxOutputTokens: maxTokens, thinkingConfig: { thinkingBudget: 0 } },
   });
-  const data = await response.json();
-  if (!response.ok) {
-    throw new Error(data?.error?.message || `Gemini API 호출 실패 (status ${response.status})`);
+
+  for (let attempt = 0; ; attempt++) {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+      body,
+    });
+    if (response.ok) {
+      const data = await response.json();
+      const parts = data?.candidates?.[0]?.content?.parts || [];
+      return parts.map(p => p.text || '').join('');
+    }
+    const data = await response.json().catch(() => ({}));
+    const error = new Error(data?.error?.message || `Gemini API 호출 실패 (status ${response.status})`);
+    const canRetry = response.status === 429 && attempt < GEMINI_RETRY_DELAYS_MS.length;
+    if (!canRetry) throw error;
+    await sleep(GEMINI_RETRY_DELAYS_MS[attempt]);
   }
-  const parts = data?.candidates?.[0]?.content?.parts || [];
-  return parts.map(p => p.text || '').join('');
 }
 
 async function callClaude(system, messages, maxTokens) {
