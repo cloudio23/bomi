@@ -77,6 +77,9 @@
   .dots .d.active{ background:var(--navy); }
   .ob-title{ font-size:23px; font-weight:800; color:var(--ink); line-height:1.35; margin-bottom:6px; }
   .ob-sub{ font-size:14px; color:var(--sub); margin-bottom:24px; }
+  /* 체크인 사이드 드래그(수면/기분/식사)의 점수별 코멘트 — 어르신께 더 잘
+     보이게 가운데 정렬 + 더 큼직하고 진하게. */
+  .slider-score-label{ text-align:center; font-size:calc(19px * var(--app-font-scale)); font-weight:800; color:var(--ink); margin-bottom:22px; }
   .ob-input{
     width:100%; border:1.5px solid var(--line); border-radius:14px;
     padding:16px; font-size:18px; outline:none; background:#FAF9F6; color:var(--ink);
@@ -369,6 +372,11 @@
   .stock-asof{ font-size:calc(11px * var(--app-font-scale)); color:var(--sub); margin-top:8px; }
   .stock-naver-link{ width:100%; margin-top:12px; padding:11px; border-radius:12px; border:1.5px solid var(--line); background:#fff; color:var(--navy); font-weight:700; font-size:calc(13.5px * var(--app-font-scale)); cursor:pointer; }
   .stock-naver-link:active{ background:#FAF9F6; }
+
+  /* ---------- 맛집 조건 카드 ---------- */
+  .restaurant-cat-row{ display:flex; flex-wrap:wrap; gap:8px; margin-top:16px; }
+  .restaurant-cat-btn{ padding:9px 15px; border-radius:999px; border:1.5px solid var(--line); background:#FAF9F6; color:var(--ink); font-size:calc(13.5px * var(--app-font-scale)); font-weight:700; cursor:pointer; }
+  .restaurant-cat-btn.active{ background:var(--navy); border-color:var(--navy); color:#fff; }
 
   /* ---------- 맛집 카드 ---------- */
   .restaurant-card{ background:#fff; border:1px solid var(--line); border-radius:16px; padding:15px; max-width:86%; }
@@ -2339,7 +2347,7 @@ function renderScoreSliderStep(body, title, sub, labels, onSave){
   let val = 3;
   body.innerHTML = `
     <div class="ob-title" style="margin-top:20px;">${title}</div>
-    <div class="ob-sub" id="scoreSliderLabel">${labels[val]}</div>
+    <div class="slider-score-label" id="scoreSliderLabel">${labels[val]}</div>
     <input type="range" min="0" max="5" step="1" value="${val}" id="scoreSlider" class="mood-slider">
     <button type="button" class="cal-btn-primary" id="scoreSliderSaveBtn" style="width:100%;margin-top:24px;">저장</button>
   `;
@@ -2448,7 +2456,7 @@ function renderMealStep(body, mealType){
     <button type="button" class="cal-btn-primary" id="mealPhotoSaveBtn" style="width:100%;margin-top:16px;display:none;">사진으로 저장</button>
 
     <div class="meal-score-divider"><span>사진이 없으면</span></div>
-    <div class="ob-sub" id="mealScoreLabel">${scoreLabels[score]}</div>
+    <div class="slider-score-label" id="mealScoreLabel">${scoreLabels[score]}</div>
     <input type="range" min="0" max="5" step="1" value="${score}" id="mealScoreSlider" class="mood-slider">
     <button type="button" class="cal-btn-ghost" id="mealScoreSaveBtn" style="width:100%;margin-top:14px;">점수만 저장</button>
     <div id="mealSavingNote" style="display:none;font-size:13px;color:var(--sub);margin-top:10px;text-align:center;">저장하는 중이에요...</div>
@@ -4080,15 +4088,75 @@ function startCivilFlow(){
   });
 }
 
-/* ============ 맛집 (카카오 로컬 카테고리 검색, api/location.js?action=restaurants 참고) ============ */
+/* ============ 맛집 (구글 Places API, api/location.js?action=restaurants 참고) ============ */
 // AI가 맛집을 지어내거나 오래된 정보를 말하지 않도록, 대중교통/주식처럼 AI를
-// 거치지 않고 카카오 실제 데이터를 거리순으로 그대로 카드에 보여줍니다.
-function addRestaurantListCard(results){
+// 거치지 않고 실제 데이터를 그대로 카드에 보여줍니다. 리뷰 수·거리·카테고리는
+// 검색 전에 사용자가 직접 고릅니다(addRestaurantFilterCard).
+const RESTAURANT_CATEGORIES = [
+  { key:'all', label:'상관없음' },
+  { key:'korean', label:'한식' },
+  { key:'chinese', label:'중식' },
+  { key:'japanese', label:'일식' },
+  { key:'western', label:'양식' },
+];
+
+function addRestaurantFilterCard(onConfirm){
+  const chat = document.getElementById('chat');
+  const wrap = document.createElement('div');
+  wrap.className = 'checklist-card';
+  let minReviews = 500, radiusKm = 2, category = 'all';
+  wrap.innerHTML = `
+    <div class="checklist-title">맛집 조건을 골라주세요</div>
+    <div class="ob-sub" id="rvCountLabel" style="margin-top:10px;margin-bottom:8px;">리뷰 ${minReviews}개 이상</div>
+    <input type="range" min="0" max="1000" step="50" value="${minReviews}" id="rvCountSlider" class="mood-slider">
+    <div class="ob-sub" id="rvDistLabel" style="margin-top:16px;margin-bottom:8px;">거리 ${radiusKm}km 이내</div>
+    <input type="range" min="1" max="100" step="1" value="${radiusKm}" id="rvDistSlider" class="mood-slider">
+    <div class="ob-sub" id="rvDistHint" style="font-size:12px;color:var(--sub);display:none;margin-top:4px;margin-bottom:0;">지도 특성상 50km까지만 검색할 수 있어요</div>
+    <div class="restaurant-cat-row">
+      ${RESTAURANT_CATEGORIES.map(c=>`<button type="button" class="restaurant-cat-btn${c.key==='all'?' active':''}" data-cat="${c.key}">${c.label}</button>`).join('')}
+    </div>
+    <button type="button" class="cal-btn-primary" id="rvConfirm" style="width:100%;margin-top:16px;">맛집 찾기</button>
+  `;
+  chat.appendChild(wrap);
+  chat.scrollTop = chat.scrollHeight;
+
+  const countSlider = wrap.querySelector('#rvCountSlider');
+  countSlider.addEventListener('input', ()=>{
+    minReviews = parseInt(countSlider.value, 10);
+    wrap.querySelector('#rvCountLabel').textContent = `리뷰 ${minReviews}개 이상`;
+  });
+  const distSlider = wrap.querySelector('#rvDistSlider');
+  distSlider.addEventListener('input', ()=>{
+    radiusKm = parseInt(distSlider.value, 10);
+    wrap.querySelector('#rvDistLabel').textContent = `거리 ${radiusKm}km 이내`;
+    wrap.querySelector('#rvDistHint').style.display = radiusKm > 50 ? '' : 'none';
+  });
+  wrap.querySelectorAll('.restaurant-cat-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      wrap.querySelectorAll('.restaurant-cat-btn').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      category = btn.dataset.cat;
+    });
+  });
+  wrap.querySelector('#rvConfirm').addEventListener('click', ()=>{
+    wrap.remove();
+    onConfirm({ minReviews, radiusKm, category });
+  });
+}
+
+function addRestaurantListCard(results, filters){
   const chat = document.getElementById('chat');
   const wrap = document.createElement('div');
   wrap.className = 'restaurant-card';
+  const titleParts = [];
+  if(filters){
+    titleParts.push(`리뷰 ${filters.minReviews}개 이상`);
+    titleParts.push(`${filters.radiusKm}km 이내`);
+    const catLabel = (RESTAURANT_CATEGORIES.find(c=>c.key===filters.category) || {}).label;
+    if(catLabel && catLabel !== '상관없음') titleParts.push(catLabel);
+  }
   wrap.innerHTML = `
-    <div class="restaurant-title">주변 맛집 추천 (리뷰 500개 이상)</div>
+    <div class="restaurant-title">주변 맛집 추천${titleParts.length ? ` (${titleParts.join(' · ')})` : ''}</div>
     ${results.map((r,i)=>`
       <div class="restaurant-item" data-idx="${i}">
         <div class="restaurant-name">${escapeHtml(r.name)}</div>
@@ -4115,20 +4183,23 @@ async function startRestaurantFlow(){
     addLocalBubble('주변 맛집을 찾으려면 위치 정보가 필요해요. 설정에서 위치 정보 제공을 켜주시겠어요?');
     return;
   }
-  const loadingBubble = addLocalBubble('주변 맛집을 찾고 있어요...');
-  try{
-    const response = await fetch(`/api/location?action=restaurants&lat=${loc.lat}&lng=${loc.lng}`);
-    const data = await response.json();
-    loadingBubble.remove();
-    if(!data.ok){
-      addLocalBubble(data.message || '주변에서 맛집을 찾지 못했어요.');
-      return;
+  addRestaurantFilterCard(async ({ minReviews, radiusKm, category })=>{
+    const loadingBubble = addLocalBubble('주변 맛집을 찾고 있어요...');
+    try{
+      const url = `/api/location?action=restaurants&lat=${loc.lat}&lng=${loc.lng}&minReviews=${minReviews}&radiusKm=${radiusKm}&category=${category}`;
+      const response = await fetch(url);
+      const data = await response.json();
+      loadingBubble.remove();
+      if(!data.ok){
+        addLocalBubble(data.message || '주변에서 맛집을 찾지 못했어요.');
+        return;
+      }
+      addRestaurantListCard(data.results, data.filters);
+    }catch(e){
+      loadingBubble.remove();
+      addLocalBubble('맛집을 찾는 중 문제가 생겼어요. 잠시 후 다시 시도해주시겠어요?');
     }
-    addRestaurantListCard(data.results);
-  }catch(e){
-    loadingBubble.remove();
-    addLocalBubble('맛집을 찾는 중 문제가 생겼어요. 잠시 후 다시 시도해주시겠어요?');
-  }
+  });
 }
 document.getElementById('restaurantChip').addEventListener('click', startRestaurantFlow);
 

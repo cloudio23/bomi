@@ -112,10 +112,26 @@ function haversineMeters(lat1, lng1, lat2, lng2) {
 }
 
 // 주변 맛집 추천 — 카카오/네이버 로컬 검색은 리뷰 수·평점 데이터 자체를 안 줘서
-// (확인 완료), 리뷰 500개 이상인 곳만 추리려면 구글 Places API(New)가 사실상
+// (확인 완료), 리뷰 수 조건으로 추리려면 구글 Places API(New)가 사실상
 // 유일한 선택지입니다. AI가 맛집을 지어내지 않도록 이것도 대중교통/주식처럼
 // AI를 거치지 않고 실제 데이터를 그대로 카드로 보여줍니다.
-const MIN_REVIEW_COUNT = 500;
+//
+// 리뷰 수(0~1000)·거리(1~100km)·음식 카테고리는 화면의 사이드 드래그/버튼으로
+// 사용자가 직접 고릅니다(index.html의 addRestaurantFilterCard 참고).
+const DEFAULT_MIN_REVIEWS = 500;
+const DEFAULT_RADIUS_KM = 2;
+// 구글 Places API(New) Nearby Search의 radius 필드는 최대 50,000m(50km)까지만
+// 허용됩니다 — 화면 슬라이더는 100km까지 있지만(사용자 요청), 그보다 크게
+// 보내면 API가 에러를 내서 여기서 50km로 자릅니다.
+const GOOGLE_NEARBY_MAX_RADIUS_M = 50000;
+// 구글 Places API(New)엔 "양식"에 정확히 대응하는 단일 타입이 없어서, 서양
+// 요리로 분류되는 대표 타입 몇 개를 묶어서 근사합니다.
+const CATEGORY_TYPES = {
+  korean: ['korean_restaurant'],
+  chinese: ['chinese_restaurant'],
+  japanese: ['japanese_restaurant'],
+  western: ['american_restaurant', 'italian_restaurant', 'french_restaurant', 'steak_house'],
+};
 
 async function handleRestaurants(req, res) {
   if (req.method !== 'GET') {
@@ -128,6 +144,13 @@ async function handleRestaurants(req, res) {
     res.status(400).json({ ok: false, message: '위치 정보(lat, lng)가 필요해요.' });
     return;
   }
+  const minReviewsRaw = req.query && req.query.minReviews;
+  const minReviews = minReviewsRaw === undefined ? DEFAULT_MIN_REVIEWS : Math.max(0, Number(minReviewsRaw) || 0);
+  const radiusKmRequested = Number(req.query && req.query.radiusKm) || DEFAULT_RADIUS_KM;
+  const radiusM = Math.min(Math.max(radiusKmRequested, 1) * 1000, GOOGLE_NEARBY_MAX_RADIUS_M);
+  const category = (req.query && req.query.category) || 'all';
+  const includedTypes = CATEGORY_TYPES[category] || ['restaurant'];
+
   const key = process.env.GOOGLE_PLACES_API_KEY;
   if (!key) {
     res.status(200).json({ ok: false, message: '맛집 정보를 가져오지 못했어요.' });
@@ -142,9 +165,9 @@ async function handleRestaurants(req, res) {
         'X-Goog-FieldMask': 'places.displayName,places.rating,places.userRatingCount,places.formattedAddress,places.location,places.googleMapsUri,places.primaryTypeDisplayName',
       },
       body: JSON.stringify({
-        includedTypes: ['restaurant'],
+        includedTypes,
         maxResultCount: 20,
-        locationRestriction: { circle: { center: { latitude: lat, longitude: lng }, radius: 1500.0 } },
+        locationRestriction: { circle: { center: { latitude: lat, longitude: lng }, radius: radiusM } },
         languageCode: 'ko',
         rankPreference: 'POPULARITY',
       }),
@@ -156,10 +179,10 @@ async function handleRestaurants(req, res) {
     const data = await response.json();
     const places = data.places || [];
     // 리뷰 수로 먼저 거르고, 그 안에서는 구글이 이미 인기순(POPULARITY)으로
-    // 정렬해서 준 순서를 그대로 씁니다.
-    const qualified = places.filter(p => (p.userRatingCount || 0) >= MIN_REVIEW_COUNT).slice(0, 5);
+    // 정렬해서 준 순서를 그대로 씁니다. 최대 10개까지만 노출.
+    const qualified = places.filter(p => (p.userRatingCount || 0) >= minReviews).slice(0, 10);
     if (!qualified.length) {
-      res.status(200).json({ ok: false, message: `주변에서 리뷰 ${MIN_REVIEW_COUNT}개 이상인 맛집을 찾지 못했어요.` });
+      res.status(200).json({ ok: false, message: '조건에 맞는 맛집을 찾지 못했어요. 조건을 조금 넓혀서 다시 찾아볼까요?' });
       return;
     }
     const results = qualified.map(p => ({
@@ -171,7 +194,7 @@ async function handleRestaurants(req, res) {
       distance: p.location ? haversineMeters(lat, lng, p.location.latitude, p.location.longitude) : null,
       mapsUrl: p.googleMapsUri || '',
     }));
-    res.status(200).json({ ok: true, results });
+    res.status(200).json({ ok: true, results, filters: { minReviews, radiusKm: radiusM / 1000, category } });
   } catch (e) {
     res.status(200).json({ ok: false, message: '맛집 정보를 가져오는 중 문제가 생겼어요.' });
   }
