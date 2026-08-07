@@ -185,15 +185,21 @@ async function handleRestaurants(req, res) {
       res.status(200).json({ ok: false, message: '조건에 맞는 맛집을 찾지 못했어요. 조건을 조금 넓혀서 다시 찾아볼까요?' });
       return;
     }
-    const results = qualified.map(p => ({
-      name: (p.displayName && p.displayName.text) || '',
-      category: (p.primaryTypeDisplayName && p.primaryTypeDisplayName.text) || '',
-      rating: p.rating != null ? p.rating : null,
-      reviewCount: p.userRatingCount || 0,
-      address: p.formattedAddress || '',
-      distance: p.location ? haversineMeters(lat, lng, p.location.latitude, p.location.longitude) : null,
-      mapsUrl: p.googleMapsUri || '',
-    }));
+    // 리뷰 수·평점 데이터 때문에 검색 자체는 구글 Places API를 쓰지만, 어르신께
+    // 익숙한 지도 앱은 네이버라 링크는 네이버 지도 이름 검색으로 바꿔서 보여줍니다
+    // (달력 일정의 장소 링크와 같은 방식 — index.html의 renderCalDayDetail 참고).
+    const results = qualified.map(p => {
+      const name = (p.displayName && p.displayName.text) || '';
+      return {
+        name,
+        category: (p.primaryTypeDisplayName && p.primaryTypeDisplayName.text) || '',
+        rating: p.rating != null ? p.rating : null,
+        reviewCount: p.userRatingCount || 0,
+        address: p.formattedAddress || '',
+        distance: p.location ? haversineMeters(lat, lng, p.location.latitude, p.location.longitude) : null,
+        mapsUrl: name ? `https://map.naver.com/p/search/${encodeURIComponent(name)}` : '',
+      };
+    });
     res.status(200).json({ ok: true, results, filters: { minReviews, radiusKm: radiusM / 1000, category } });
   } catch (e) {
     res.status(200).json({ ok: false, message: '맛집 정보를 가져오는 중 문제가 생겼어요.' });
