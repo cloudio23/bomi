@@ -4,6 +4,9 @@
 // - GET  ?action=today&code=...&date=YYYY-MM-DD      → 특정 날짜 일정만(체크리스트 위젯용)
 // - POST ?action=add    {bomiLinkCode, eventDate, title, startTime, endTime, alarmEnabled} → 일정 추가
 // - POST ?action=delete {bomiLinkCode, id}            → 일정 삭제
+// - POST ?action=set-native-id {bomiLinkCode, id, nativeEventId} → 안드로이드 네이티브 앱이
+//   휴대폰 기본 캘린더에도 같은 일정을 만든 뒤, 그 기기 쪽 이벤트 id를 이 행에 기록
+//   (index.html의 syncCalendarEventToNative, bomi_ai_app/lib/main.dart의 syncCalendarEvent 참고)
 //
 // 알람(푸시 알림)은 api/notifications.js의 ?action=checkins가 매시 정각 호출될
 // 때 이 테이블도 같이 확인해서 보냅니다(새 스케줄러를 따로 안 만들어도 되도록).
@@ -18,9 +21,13 @@
 //     end_time time,
 //     alarm_enabled boolean not null default false,
 //     alarm_sent boolean not null default false,
+//     native_event_id text,
 //     created_at timestamptz not null default now()
 //   )
-import { listCalendarEvents, addCalendarEvent, deleteCalendarEvent, listCalendarEventsForDate } from '../lib/supabaseAdmin.mjs';
+import {
+  listCalendarEvents, addCalendarEvent, deleteCalendarEvent,
+  listCalendarEventsForDate, setCalendarEventNativeId,
+} from '../lib/supabaseAdmin.mjs';
 
 function nextMonthPrefix(month) {
   const [y, m] = month.split('-').map(Number);
@@ -90,6 +97,21 @@ async function handleDelete(req, res) {
   }
 }
 
+async function handleSetNativeId(req, res) {
+  if (req.method !== 'POST') { res.status(405).json({ ok: false, message: 'POST 요청만 가능해요.' }); return; }
+  const { bomiLinkCode, id, nativeEventId } = req.body || {};
+  if (!bomiLinkCode || !id || !nativeEventId) {
+    res.status(400).json({ ok: false, message: 'bomiLinkCode, id, nativeEventId가 필요해요.' });
+    return;
+  }
+  try {
+    await setCalendarEventNativeId(bomiLinkCode, id, nativeEventId);
+    res.status(200).json({ ok: true });
+  } catch (e) {
+    res.status(200).json({ ok: false, message: '동기화 정보를 저장하지 못했어요.' });
+  }
+}
+
 export default async function handler(req, res) {
   try {
     const action = (req.query && req.query.action) || '';
@@ -97,7 +119,8 @@ export default async function handler(req, res) {
     if (action === 'today') return await handleToday(req, res);
     if (action === 'add') return await handleAdd(req, res);
     if (action === 'delete') return await handleDelete(req, res);
-    res.status(400).json({ error: 'action 쿼리 파라미터가 필요해요 (list | today | add | delete).' });
+    if (action === 'set-native-id') return await handleSetNativeId(req, res);
+    res.status(400).json({ error: 'action 쿼리 파라미터가 필요해요 (list | today | add | delete | set-native-id).' });
   } catch (e) {
     res.status(500).json({ ok: false, message: '요청 처리 중 문제가 생겼어요.' });
   }

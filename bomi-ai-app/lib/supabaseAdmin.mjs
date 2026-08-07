@@ -162,6 +162,16 @@ export async function deleteCalendarEvent(code, id) {
   });
 }
 
+// 안드로이드 네이티브 앱이 휴대폰 기본 캘린더에도 같은 일정을 만든 뒤, 그
+// 기기 쪽 이벤트 id를 이 행에 같이 저장해둡니다 — 나중에 이 일정을 삭제할 때
+// 기기 캘린더에서도 같은 이벤트를 지우려면 이 id가 필요합니다.
+export async function setCalendarEventNativeId(code, id, nativeEventId) {
+  return restRequest(`bomi_calendar_events?id=eq.${encodeURIComponent(id)}&bomi_link_code=eq.${encodeURIComponent(code)}`, {
+    method: 'PATCH',
+    body: { native_event_id: nativeEventId },
+  });
+}
+
 // 체크리스트 위젯에 "오늘 일정"으로 같이 보여주기 위한 조회.
 export async function listCalendarEventsForDate(code, dateStr) {
   return restRequest(

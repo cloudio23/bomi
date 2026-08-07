@@ -165,7 +165,9 @@
   .cal-day-header{ display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; }
   .cal-day-title{ font-size:calc(15px * var(--app-font-scale)); font-weight:800; color:var(--ink); }
   .cal-add-btn{ width:34px; height:34px; border-radius:50%; border:none; background:var(--navy); color:#fff; font-size:20px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; line-height:1; padding-bottom:2px; }
-  .cal-event-item{ display:flex; align-items:center; gap:10px; padding:11px 0; border-bottom:1px solid #F1EEE7; }
+  .cal-event-item{ padding:11px 0; border-bottom:1px solid #F1EEE7; }
+  .cal-event-row{ display:flex; align-items:center; gap:10px; }
+  .cal-event-ics{ display:inline-block; margin-top:6px; font-size:calc(12px * var(--app-font-scale)); color:var(--blue); font-weight:700; text-decoration:none; }
   .cal-event-item:last-child{ border-bottom:none; }
   .cal-event-time{ font-size:calc(12.5px * var(--app-font-scale)); color:var(--sub); font-weight:700; min-width:78px; }
   .cal-event-title{ flex:1; font-size:calc(14.5px * var(--app-font-scale)); color:var(--ink); }
@@ -2223,15 +2225,22 @@ function renderCalDayDetail(){
   }
   list.innerHTML = events.map(ev => `
     <div class="cal-event-item" data-id="${ev.id}">
-      <span class="cal-event-time">${ev.start_time ? calFormatTimeLabel(ev.start_time) + (ev.end_time ? ' ~ '+calFormatTimeLabel(ev.end_time) : '') : ''}</span>
-      <span class="cal-event-title">${escapeHtml(ev.title)}</span>
-      ${ev.alarm_enabled ? '<span class="cal-event-alarm">🔔</span>' : ''}
-      <button type="button" class="cal-event-del" data-id="${ev.id}" aria-label="삭제">✕</button>
+      <div class="cal-event-row">
+        <span class="cal-event-time">${ev.start_time ? calFormatTimeLabel(ev.start_time) + (ev.end_time ? ' ~ '+calFormatTimeLabel(ev.end_time) : '') : ''}</span>
+        <span class="cal-event-title">${escapeHtml(ev.title)}</span>
+        ${ev.alarm_enabled ? '<span class="cal-event-alarm">🔔</span>' : ''}
+        <button type="button" class="cal-event-del" data-id="${ev.id}" aria-label="삭제">✕</button>
+      </div>
+      ${!window.BomiNative ? `<a class="cal-event-ics" href="${buildIcsDataUri(ev.title, calSelectedDate, ev.start_time ? ev.start_time.slice(0,5) : null, ev.end_time ? ev.end_time.slice(0,5) : null)}" download="${escapeHtml(ev.title)}.ics">📅 휴대폰 캘린더에 추가</a>` : ''}
     </div>
   `).join('');
   list.querySelectorAll('.cal-event-del').forEach(delBtn=>{
     delBtn.addEventListener('click', async ()=>{
       const id = delBtn.dataset.id;
+      const ev = events.find(e=>String(e.id)===String(id));
+      if(window.BomiNative && ev && ev.native_event_id){
+        window.BomiNative.postMessage(JSON.stringify({ action:'deleteCalendarEvent', nativeEventId: ev.native_event_id }));
+      }
       await fetch('/api/calendar?action=delete', {
         method:'POST', headers:{'Content-Type':'application/json'},
         body: JSON.stringify({ bomiLinkCode: profile.crmId, id }),
@@ -2242,6 +2251,67 @@ function renderCalDayDetail(){
       refreshTodayCalEvents();
     });
   });
+}
+
+// 휴대폰 기본 캘린더 앱과 연동 — 안드로이드 네이티브 래퍼(BomiNative) 안에서는
+// 실제 기기 캘린더에 이벤트를 직접 써주고(아래 syncCalendarEventToNative,
+// main.dart의 syncCalendarEvent 브릿지 참고), 웹 단독으로 열었을 때는 기기
+// 캘린더에 쓸 방법이 자체가 없어서(4절 "통화" 기능과 같은 제약) 대신 .ics
+// 파일을 만들어 탭하면 휴대폰 기본 캘린더 앱이 "일정 추가"로 열어주는
+// 방식으로 대체합니다.
+function buildIcsDataUri(title, dateStr, startTime, endTime){
+  const pad = n=>String(n).padStart(2,'0');
+  const [y,m,d] = dateStr.split('-').map(Number);
+  let dtStart, dtEnd, allDay=false;
+  if(startTime){
+    const [sh,sm] = startTime.split(':').map(Number);
+    dtStart = `${y}${pad(m)}${pad(d)}T${pad(sh)}${pad(sm)}00`;
+    if(endTime){
+      const [eh,em] = endTime.split(':').map(Number);
+      dtEnd = `${y}${pad(m)}${pad(d)}T${pad(eh)}${pad(em)}00`;
+    } else {
+      const endDate = new Date(y, m-1, d, sh, sm);
+      endDate.setHours(endDate.getHours()+1);
+      dtEnd = `${endDate.getFullYear()}${pad(endDate.getMonth()+1)}${pad(endDate.getDate())}T${pad(endDate.getHours())}${pad(endDate.getMinutes())}00`;
+    }
+  } else {
+    allDay = true;
+    const next = new Date(y, m-1, d);
+    next.setDate(next.getDate()+1);
+    dtStart = `${y}${pad(m)}${pad(d)}`;
+    dtEnd = `${next.getFullYear()}${pad(next.getMonth()+1)}${pad(next.getDate())}`;
+  }
+  const lines = [
+    'BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Bomi AI//Calendar//KO','BEGIN:VEVENT',
+    `UID:bomi-${Date.now()}@bomi-7sbu.vercel.app`,
+    allDay ? `DTSTART;VALUE=DATE:${dtStart}` : `DTSTART;TZID=Asia/Seoul:${dtStart}`,
+    allDay ? `DTEND;VALUE=DATE:${dtEnd}` : `DTEND;TZID=Asia/Seoul:${dtEnd}`,
+    `SUMMARY:${String(title).replace(/[\r\n]/g,' ')}`,
+    'END:VEVENT','END:VCALENDAR',
+  ];
+  return 'data:text/calendar;charset=utf-8,' + encodeURIComponent(lines.join('\r\n'));
+}
+
+// 네이티브 앱 안에서는 방금 만든 일정을 휴대폰 기본 캘린더에도 똑같이
+// 만들어달라고 요청합니다. 결과(생성된 기기 캘린더 이벤트 id)는
+// bomiCalendarSyncResult 이벤트로 돌아오고, 그걸 Supabase 행에도 저장해둬야
+// 나중에 삭제할 때 같은 이벤트를 지울 수 있습니다.
+function syncCalendarEventToNative(event, dateStr, title, startTime, endTime){
+  if(!window.BomiNative || !event || !event.id) return;
+  const onResult = (e)=>{
+    window.removeEventListener('bomiCalendarSyncResult', onResult);
+    const detail = e.detail || {};
+    if(detail.ok && detail.nativeEventId && String(detail.localId) === String(event.id)){
+      fetch('/api/calendar?action=set-native-id', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ bomiLinkCode: profile.crmId, id: event.id, nativeEventId: detail.nativeEventId }),
+      }).catch(()=>{});
+    }
+  };
+  window.addEventListener('bomiCalendarSyncResult', onResult);
+  window.BomiNative.postMessage(JSON.stringify({
+    action:'syncCalendarEvent', localId:String(event.id), title, date:dateStr, startTime, endTime,
+  }));
 }
 
 async function openCalendarScreen(){
@@ -2286,10 +2356,12 @@ document.getElementById('calAddSave').addEventListener('click', async ()=>{
   const alarmEnabled = document.getElementById('calAddAlarm').checked;
   document.getElementById('calAddBackdrop').classList.remove('show');
   try{
-    await fetch('/api/calendar?action=add', {
+    const res = await fetch('/api/calendar?action=add', {
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ bomiLinkCode: profile.crmId, eventDate: calSelectedDate, title, startTime, endTime, alarmEnabled }),
     });
+    const data = await res.json();
+    if(data.ok && data.event) syncCalendarEventToNative(data.event, calSelectedDate, title, startTime, endTime);
   }catch(e){}
   await loadCalMonthEvents();
   renderCalGrid();
