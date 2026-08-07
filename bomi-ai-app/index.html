@@ -430,7 +430,7 @@
   }
   .voice-reply-text{
     flex:1; width:100%; max-width:440px; display:flex; align-items:center; justify-content:center;
-    text-align:center; overflow-y:auto; white-space:pre-line;
+    text-align:left; overflow-y:auto; white-space:pre-line;
     font-size:calc(23px * var(--app-font-scale)); font-weight:700; color:var(--ink); line-height:1.5;
   }
   .voice-orb-area{ display:flex; flex-direction:column; align-items:center; gap:16px; flex-shrink:0; padding-top:8px; }
@@ -3511,6 +3511,9 @@ function encodeWavBlob(chunks, sampleRate){
 }
 
 async function startVoiceRecording(){
+  // 답변을 읽어주는 중에 다시 녹음을 시작하면 마이크가 그 목소리를 그대로
+  // 주워 담아버릴 수 있어서, 새로 듣기 시작하기 전에 항상 먼저 멈춥니다.
+  stopVoiceSpeech();
   try{
     voiceMediaStream = await navigator.mediaDevices.getUserMedia({ audio:{ channelCount:1 } });
   }catch(e){
@@ -3584,14 +3587,67 @@ function updateVoiceOrbAmplitude(rms){
   document.getElementById('voiceOrb').style.transform = `scale(${scale})`;
 }
 
+// 답변을 실제 목소리로 읽어줍니다 — 별도 TTS 서버 없이 브라우저 내장
+// SpeechSynthesis를 씁니다(추가 비용·다운로드 없이 바로 동작). 더 자연스러운
+// 목소리가 필요하면, 이미 계정이 있는 Google Cloud에서 Text-to-Speech API를
+// 켜기만 하면 Neural2/WaveNet 같은 고급 음성을 매달 100만 자까지 무료로 쓸
+// 수 있어요(Standard 음성은 400만 자 무료) — 나중에 원하시면 그쪽으로
+// 업그레이드할 수 있습니다.
+//
+// 글자는 실제 발화 속도에 맞춰 타자기처럼 드러납니다: SpeechSynthesis의
+// onboundary 이벤트가 지금 읽고 있는 글자 위치(charIndex)를 알려줘서, 그
+// 위치까지만 화면에 보여주는 방식이라 진짜 목소리 속도와 어긋나지 않습니다.
+let voiceUtterance = null;
+function stopVoiceSpeech(){
+  if('speechSynthesis' in window) window.speechSynthesis.cancel();
+  voiceUtterance = null;
+}
+function pickKoreanVoice(){
+  if(!('speechSynthesis' in window)) return null;
+  const voices = window.speechSynthesis.getVoices();
+  return voices.find(v=>v.lang==='ko-KR') || voices.find(v=>v.lang && v.lang.toLowerCase().startsWith('ko')) || null;
+}
+// TTS 자체가 없는 브라우저를 위한 대체 — 실제 목소리 속도 정보가 없으니
+// 한국어 평균 낭독 속도에 가깝게 고정 속도로 타자기 효과만 보여줍니다.
+function fallbackTypewriter(el, text){
+  let i = 0;
+  const timer = setInterval(()=>{
+    i = Math.min(text.length, i + 2);
+    el.textContent = text.slice(0, i);
+    if(i >= text.length) clearInterval(timer);
+  }, 50);
+}
+function speakVoiceReply(text){
+  const el = document.getElementById('voiceReplyText');
+  el.textContent = '';
+  if(!('speechSynthesis' in window)){
+    fallbackTypewriter(el, text);
+    return;
+  }
+  window.speechSynthesis.cancel();
+  const utter = new SpeechSynthesisUtterance(text);
+  utter.lang = 'ko-KR';
+  utter.rate = 0.95;
+  const koVoice = pickKoreanVoice();
+  if(koVoice) utter.voice = koVoice;
+  utter.onboundary = (e)=>{
+    const end = e.charIndex + (e.charLength || 6);
+    el.textContent = text.slice(0, end);
+  };
+  utter.onend = ()=>{ el.textContent = text; voiceUtterance = null; };
+  utter.onerror = ()=>{ el.textContent = text; voiceUtterance = null; };
+  voiceUtterance = utter;
+  window.speechSynthesis.speak(utter);
+}
+
 // 답변을 마이크 모드 화면 자체에 큰 글씨로 보여줘서, 대화창으로 돌아가지
 // 않고도(영화 HER처럼) 계속 이어서 말할 수 있게 합니다. 원을 다시 누르면
 // 바로 다음 턴이 시작됩니다.
 function showVoiceReply(text){
   document.getElementById('voiceOverlay').classList.remove('processing');
-  document.getElementById('voiceReplyText').textContent = text;
   document.getElementById('voiceStatusText').textContent = '';
   document.getElementById('voiceHintText').textContent = '다시 말씀하시려면 원을 눌러주세요';
+  speakVoiceReply(text);
 }
 
 // 마이크로 들어온 문장을 처리합니다. 주식/뉴스/민원처럼 카드·목록이 필요한
@@ -3632,6 +3688,7 @@ document.getElementById('voiceOrb').addEventListener('click', ()=>{
   else startVoiceRecording(); // 답변을 본 뒤 원을 다시 누르면 바로 다음 턴 시작
 });
 document.getElementById('voiceCloseBtn').addEventListener('click', ()=>{
+  stopVoiceSpeech();
   if(isRecordingVoice) stopVoiceRecording(true); // 녹음 중 닫기는 그 문장을 버림(전송하지 않음)
   else setVoiceOverlayState('off');
 });
