@@ -3587,28 +3587,30 @@ function updateVoiceOrbAmplitude(rms){
   document.getElementById('voiceOrb').style.transform = `scale(${scale})`;
 }
 
-// 답변을 실제 목소리로 읽어줍니다 — 별도 TTS 서버 없이 브라우저 내장
-// SpeechSynthesis를 씁니다(추가 비용·다운로드 없이 바로 동작). 더 자연스러운
-// 목소리가 필요하면, 이미 계정이 있는 Google Cloud에서 Text-to-Speech API를
-// 켜기만 하면 Neural2/WaveNet 같은 고급 음성을 매달 100만 자까지 무료로 쓸
-// 수 있어요(Standard 음성은 400만 자 무료) — 나중에 원하시면 그쪽으로
-// 업그레이드할 수 있습니다.
+// 답변을 실제 목소리로 읽어줍니다. 1순위는 api/tts.js(구글 클라우드
+// Chirp3-HD 고급 음성, 무료 티어)이고, 그 호출이 실패하면(키 미설정,
+// 네트워크 문제 등) 브라우저 내장 SpeechSynthesis로 자동 대체해서 항상
+// 뭔가는 들리게 합니다.
 //
-// 글자는 실제 발화 속도에 맞춰 타자기처럼 드러납니다: SpeechSynthesis의
-// onboundary 이벤트가 지금 읽고 있는 글자 위치(charIndex)를 알려줘서, 그
-// 위치까지만 화면에 보여주는 방식이라 진짜 목소리 속도와 어긋나지 않습니다.
+// 글자는 실제 발화 속도에 맞춰 타자기처럼 드러납니다 — 구글 음성은 재생
+// 중인 오디오의 currentTime/duration 비율만큼, 브라우저 내장 음성은
+// onboundary 이벤트가 알려주는 실제 글자 위치(charIndex)만큼만 보여주는
+// 방식이라 진짜 목소리 속도와 어긋나지 않습니다.
 let voiceUtterance = null;
+let voiceAudioEl = null;
 function stopVoiceSpeech(){
   if('speechSynthesis' in window) window.speechSynthesis.cancel();
   voiceUtterance = null;
+  if(voiceAudioEl){ voiceAudioEl.pause(); voiceAudioEl.src = ''; voiceAudioEl = null; }
 }
 function pickKoreanVoice(){
   if(!('speechSynthesis' in window)) return null;
   const voices = window.speechSynthesis.getVoices();
   return voices.find(v=>v.lang==='ko-KR') || voices.find(v=>v.lang && v.lang.toLowerCase().startsWith('ko')) || null;
 }
-// TTS 자체가 없는 브라우저를 위한 대체 — 실제 목소리 속도 정보가 없으니
-// 한국어 평균 낭독 속도에 가깝게 고정 속도로 타자기 효과만 보여줍니다.
+// 구글 음성도, 브라우저 내장 음성도 둘 다 안 될 때의 마지막 대체 — 실제
+// 목소리 속도 정보가 없으니 한국어 평균 낭독 속도에 가깝게 고정 속도로
+// 타자기 효과만 보여줍니다.
 function fallbackTypewriter(el, text){
   let i = 0;
   const timer = setInterval(()=>{
@@ -3617,9 +3619,7 @@ function fallbackTypewriter(el, text){
     if(i >= text.length) clearInterval(timer);
   }, 50);
 }
-function speakVoiceReply(text){
-  const el = document.getElementById('voiceReplyText');
-  el.textContent = '';
+function speakWithBrowserTts(el, text){
   if(!('speechSynthesis' in window)){
     fallbackTypewriter(el, text);
     return;
@@ -3638,6 +3638,30 @@ function speakVoiceReply(text){
   utter.onerror = ()=>{ el.textContent = text; voiceUtterance = null; };
   voiceUtterance = utter;
   window.speechSynthesis.speak(utter);
+}
+async function speakVoiceReply(text){
+  const el = document.getElementById('voiceReplyText');
+  el.textContent = '';
+  try{
+    const res = await fetch('/api/tts', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ text }),
+    });
+    const data = await res.json();
+    if(!data.ok || !data.audioBase64) throw new Error('no audio');
+    const audio = new Audio('data:audio/mp3;base64,' + data.audioBase64);
+    voiceAudioEl = audio;
+    audio.addEventListener('timeupdate', ()=>{
+      if(!audio.duration) return;
+      const end = Math.round(text.length * Math.min(1, audio.currentTime / audio.duration));
+      el.textContent = text.slice(0, end);
+    });
+    audio.addEventListener('ended', ()=>{ el.textContent = text; voiceAudioEl = null; });
+    audio.addEventListener('error', ()=>{ speakWithBrowserTts(el, text); });
+    await audio.play();
+  }catch(e){
+    speakWithBrowserTts(el, text);
+  }
 }
 
 // 답변을 마이크 모드 화면 자체에 큰 글씨로 보여줘서, 대화창으로 돌아가지
