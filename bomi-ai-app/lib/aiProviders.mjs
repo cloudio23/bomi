@@ -33,6 +33,19 @@ export async function callAI(system, messages, { maxTokens = 500 } = {}) {
 
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
+// Google 검색 그라운딩은 실제로 트리거됐을 때 건당 $0.035(1,000건당 $35)로,
+// 일반 토큰 비용의 수십 배입니다. Gemini 2.x의 현재 google_search 툴은(예전
+// google_search_retrieval의 dynamic_retrieval_config/dynamic_threshold 같은
+// 조절 파라미터가 없어짐 — 2026-08 기준 공식 문서 확인) 모델이 알아서
+// 검색 여부를 판단하긴 하지만, 애초에 그라운딩이 필요 없는 요청(안부,
+// 체크리스트, 말벗, 사주 등)에서는 tools 자체를 아예 안 보내는 게 더
+// 확실하고 저렴합니다 — systemPrompt()가 실제로 실시간 정보를 요구하는
+// 주제로 구분해둔 것과 같은 카테고리를 그대로 반영했습니다.
+const GROUNDING_KEYWORDS = /날씨|기온|미세먼지|강수|자외선|황사|뉴스|시사|경기|경제|부동산|정책|정치|금리|물가|환율|연예|민원|주가|주식|시세|종목|코스피|코스닥/;
+function needsGrounding(text) {
+  return GROUNDING_KEYWORDS.test(text || '');
+}
+
 // 무료 티어의 진짜 병목은 하루 총량이 아니라 분당 10건(RPM)이라, 어르신 여러
 // 명이 같은 순간에 몰리면 하루 목표치가 한참 남았어도 바로 429가 납니다.
 // 이건 "진짜 하루 할당량 소진"이 아니라 "그 1분"의 일시적 혼잡이라 짧게
@@ -50,6 +63,11 @@ async function callGemini(system, messages, maxTokens) {
     parts: [{ text: m.content }],
   }));
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
+  // 날씨/뉴스/민원/주식처럼 실시간 정보가 실제로 필요한 요청에서만 그라운딩
+  // 툴을 붙입니다 — 나머지(안부, 체크리스트, 말벗, 사주 등)는 tools 없이
+  // 호출해서 불필요한 그라운딩 과금을 원천 차단합니다.
+  const lastUserText = messages.length ? messages[messages.length - 1].content : '';
+  const grounding = needsGrounding(lastUserText);
   const body = JSON.stringify({
     ...(system ? { system_instruction: { parts: [{ text: system }] } } : {}),
     contents,
@@ -57,7 +75,7 @@ async function callGemini(system, messages, maxTokens) {
     // 예전 배포 버전(하이브리드 provider 리팩터 이전)에 있던 기능인데 리팩터
     // 과정에서 빠졌던 걸 복원함 — thinkingBudget:0은 "생각하는" 토큰을 꺼서
     // 답변이 중간에 잘리지 않게 하기 위함.
-    tools: [{ google_search: {} }],
+    ...(grounding ? { tools: [{ google_search: {} }] } : {}),
     generationConfig: { maxOutputTokens: maxTokens, thinkingConfig: { thinkingBudget: 0 } },
   });
 
@@ -69,6 +87,10 @@ async function callGemini(system, messages, maxTokens) {
     });
     if (response.ok) {
       const data = await response.json();
+      // 실제 원가 추적용 — Vercel 함수 로그에서 "요청함=true인데 실제사용=false"
+      // 비율이나 이번 달 그라운딩 호출 총량을 눈으로 확인할 수 있습니다.
+      const grounded = !!(data?.candidates?.[0]?.groundingMetadata);
+      console.log(`[gemini-grounding] requested=${grounding} used=${grounded}`);
       const parts = data?.candidates?.[0]?.content?.parts || [];
       return parts.map(p => p.text || '').join('');
     }
