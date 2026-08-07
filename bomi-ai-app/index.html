@@ -122,14 +122,17 @@
     display:flex; align-items:center; gap:8px;
   }
 
-  /* ---------- 대화 가능량 게이지(피자 조각처럼 소진) ----------
+  /* ---------- 대화 가능량 게이지(배터리처럼 숫자 + 색깔 원형띠) ----------
      Gemini 무료 티어는 잔여 할당량을 실시간으로 알려주지 않아서, 저희가 직접
      오늘 요청 수를 세어(api/usage.js) 자체 목표치 대비 비율로 보여줍니다.
-     conic-gradient로 꽉 찬 원에서 쓴 만큼 12시 방향부터 시계방향으로
-     회색(빈 접시) 조각이 늘어나는 것처럼 표현합니다 — JS(updateUsageGauge)가
-     매번 background를 다시 계산해서 그립니다. */
-  .usage-gauge{ position:relative; width:26px; height:26px; background:none; border:none; padding:0; cursor:pointer; flex-shrink:0; }
-  .ug-pie{ display:block; width:26px; height:26px; border-radius:50%; box-shadow:inset 0 0 0 1px rgba(0,0,0,0.08); transition:background 0.5s ease; }
+     원형띠(SVG stroke)로 남은 비율을 두르고, 60% 이상은 진한 연두색, 20~59%는
+     노란색, 20% 미만은 빨간색으로 색이 바뀌며, 원 가운데에 배터리처럼 숫자를
+     띄웁니다 — JS(updateUsageGauge)가 매번 다시 계산해서 그립니다. */
+  .usage-gauge{ position:relative; width:34px; height:34px; background:none; border:none; padding:0; cursor:pointer; flex-shrink:0; }
+  .usage-gauge svg{ width:34px; height:34px; transform:rotate(-90deg); display:block; }
+  .ug-track{ fill:none; stroke:#EDE8DE; stroke-width:4; }
+  .ug-fill{ fill:none; stroke:#5FA83D; stroke-width:4; stroke-linecap:round; stroke-dasharray:94.25 94.25; stroke-dashoffset:0; transition:stroke-dashoffset 0.5s ease, stroke 0.5s ease; }
+  .ug-number{ position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); font-size:10px; font-weight:800; color:var(--ink); line-height:1; }
   .ug-warn{
     position:absolute; top:-3px; right:-3px; width:13px; height:13px; border-radius:50%;
     background:#D9455A; color:#fff; font-size:9px; font-weight:800;
@@ -162,8 +165,30 @@
     display:flex; align-items:center; justify-content:center; line-height:1;
   }
 
+  .chat-wrap{ flex:1; min-height:0; position:relative; display:flex; }
   .chat{ flex:1; overflow-y:auto; padding:18px 16px; display:flex; flex-direction:column; gap:16px;
     background:linear-gradient(180deg,#FAF8F5 0%,#F6F3EE 100%); touch-action:pan-y; overscroll-behavior:contain; }
+  /* ---------- "생각 중"일 때 대화창 전체가 오로라처럼 은은하게 일렁이는 효과
+     ---------- 다운로드 없이 순수 CSS(블러 처리한 radial-gradient 4개를
+     서서히 움직이고 회전시킴)로 구현 — chat-wrap의 형제 요소라서 채팅을
+     스크롤해도 화면에 계속 고정되어 보입니다. */
+  .chat-aurora{ position:absolute; inset:0; overflow:hidden; pointer-events:none; opacity:0; transition:opacity 0.5s ease; z-index:5; }
+  .chat-aurora.active{ opacity:1; }
+  .chat-aurora::before{
+    content:''; position:absolute; inset:-25%;
+    background:
+      radial-gradient(circle at 20% 25%, rgba(147,197,253,0.4), transparent 45%),
+      radial-gradient(circle at 82% 15%, rgba(255,190,220,0.35), transparent 45%),
+      radial-gradient(circle at 45% 85%, rgba(174,255,214,0.35), transparent 50%),
+      radial-gradient(circle at 85% 75%, rgba(203,182,255,0.35), transparent 45%);
+    filter: blur(38px);
+    animation: auroraDrift 7s ease-in-out infinite alternate;
+  }
+  @keyframes auroraDrift{
+    0%{ transform: translate(0,0) rotate(0deg) scale(1); }
+    50%{ transform: translate(3%,-4%) rotate(8deg) scale(1.1); }
+    100%{ transform: translate(-3%,3%) rotate(-6deg) scale(1.05); }
+  }
   .row{ display:flex; }
   .row.user{ justify-content:flex-end; }
   .bubble{ max-width:78%; padding:13px 15px; border-radius:18px; font-size:calc(16px * var(--app-font-scale)); line-height:1.55; font-weight:500; white-space:pre-line; }
@@ -192,19 +217,6 @@
     text-underline-offset:4px; text-align:left;
   }
   .option-link:hover{ color:var(--blue); }
-
-  /* ---------- 생각 중일 때 대화창 하단에 오로라처럼 일렁이는 그라디언트 바
-     (기존 팔레트 톤 사용 — 목소리 버튼의 오로라 보더와 같은 색 계열) ---------- */
-  .thinking-aurora{
-    height:16px; border-radius:999px; margin-top:2px;
-    background: linear-gradient(90deg, var(--accent-soft), var(--blue), var(--navy), var(--blue), var(--accent-soft));
-    background-size: 250% 100%;
-    animation: auroraShimmer 2s ease-in-out infinite;
-  }
-  @keyframes auroraShimmer{
-    0%{ background-position: 0% 50%; }
-    100%{ background-position: 250% 50%; }
-  }
 
   .checklist-card{ background:#fff; border:1px solid var(--line); border-radius:16px; padding:15px; max-width:86%; }
   .checklist-title{ font-size:calc(13px * var(--app-font-scale)); font-weight:800; color:var(--blue); margin-bottom:9px; }
@@ -383,7 +395,7 @@
   .toast.show{ opacity:1; transform:translate(-50%,0); }
 
   @media (prefers-reduced-motion: reduce){
-    .dock, .typebar, .cameraOverlay, .auroraBorder, .toast, .thinking-aurora{ transition:none !important; animation:none !important; }
+    .dock, .typebar, .cameraOverlay, .auroraBorder, .toast, .chat-aurora, .chat-aurora::before{ transition:none !important; animation:none !important; }
   }
 
   /* ---------- SPLASH SCREEN (앱 첫 실행 시 잠깐 노출되는 브랜드 화면 —
@@ -636,7 +648,11 @@
       <div class="brand">
         <span>보미</span>
         <button type="button" class="usage-gauge" id="usageGaugeBtn" aria-label="대화 가능량 보기">
-          <span class="ug-pie" id="ugPie"></span>
+          <svg viewBox="0 0 36 36">
+            <circle class="ug-track" cx="18" cy="18" r="15"/>
+            <circle class="ug-fill" id="ugFill" cx="18" cy="18" r="15"/>
+          </svg>
+          <span class="ug-number" id="ugNumber">100</span>
           <span class="ug-warn" id="usageWarnBadge" style="display:none;">!</span>
         </button>
       </div>
@@ -657,17 +673,17 @@
       </div>
       <div class="pinned-body" id="pinnedBody"></div>
     </div>
-    <div class="chat" id="chat"></div>
+    <div class="chat-wrap" id="chatWrap">
+      <div class="chat" id="chat"></div>
+      <div class="chat-aurora" id="chatAurora"></div>
+    </div>
     <div class="quickchips">
       <div class="chip" id="callChip">통화</div>
       <div class="chip" data-msg="오늘 날씨 어때?">날씨</div>
       <div class="chip" id="transitChip">대중교통</div>
       <div class="chip" id="restaurantChip">맛집</div>
-      <div class="chip" id="civilChip">민원</div>
-      <div class="chip" id="newsChip">뉴스</div>
-      <div class="chip" id="stockChip">주식</div>
       <div class="chip" id="sajuChip">오늘 운세</div>
-      <div class="chip" data-msg="그냥 심심해서 말 걸어봤어">말벗</div>
+      <div class="chip" id="calendarChip">달력</div>
     </div>
     <div class="inputbar" id="inputBar">
       <div class="dock" id="dockButtons">
@@ -1165,13 +1181,16 @@ function formatResetMinutes(minutes){
 
 // 꽉 찬 원(100%)에서 쓴 만큼 12시 방향부터 시계방향으로 회색 조각이 늘어나는
 // 피자 모양 — conic-gradient로 매번 다시 그립니다.
+const UG_CIRCUMFERENCE = 2 * Math.PI * 15;
 function updateUsageGauge(remainingPercent){
   const pct = Math.max(0, Math.min(100, remainingPercent));
-  const deg = (pct / 100) * 360;
-  const isLow = remainingPercent < 10;
-  const fillColor = isLow ? '#D9455A' : 'var(--blue)';
-  document.getElementById('ugPie').style.background =
-    `conic-gradient(${fillColor} 0deg, ${fillColor} ${deg}deg, #E8E3DA ${deg}deg, #E8E3DA 360deg)`;
+  const offset = UG_CIRCUMFERENCE * (1 - pct / 100);
+  const isLow = pct < 20;
+  const color = pct < 20 ? '#D9455A' : pct < 60 ? '#E8B93B' : '#5FA83D';
+  const fillEl = document.getElementById('ugFill');
+  fillEl.style.strokeDashoffset = offset;
+  fillEl.style.stroke = color;
+  document.getElementById('ugNumber').textContent = Math.round(pct);
   document.getElementById('usageWarnBadge').style.display = isLow ? 'flex' : 'none';
 }
 
@@ -2048,7 +2067,8 @@ async function regenerateReply(userText){
   try{
     const raw = await callBomi(userText);
     const { text: rawReply, options } = parseBomiReply(raw);
-    const { text: reply, code: weatherCode } = extractWeatherCode(rawReply);
+    const { text: cleanedText, code: weatherCode } = extractWeatherCode(rawReply);
+    const reply = stripMarkdown(cleanedText);
     removeTyping();
     addAssistantBlock(reply, userText, true, weatherCode);
     messages.push({role:'assistant', content:reply});
@@ -2065,11 +2085,15 @@ function addTyping(){
   const chat = document.getElementById('chat');
   const wrap = document.createElement('div');
   wrap.className = 'ai-block'; wrap.id = 'typingRow';
-  wrap.innerHTML = `<div class="ai-thinking">생각 중</div><div class="thinking-aurora"></div>`;
+  wrap.innerHTML = `<div class="ai-thinking">생각 중</div>`;
   chat.appendChild(wrap);
   chat.scrollTop = chat.scrollHeight;
+  document.getElementById('chatAurora').classList.add('active');
 }
-function removeTyping(){ const t = document.getElementById('typingRow'); if(t) t.remove(); }
+function removeTyping(){
+  const t = document.getElementById('typingRow'); if(t) t.remove();
+  document.getElementById('chatAurora').classList.remove('active');
+}
 
 // Splits the trailing "[[선택지: A | B | C]]" marker (see systemPrompt()) off
 // the model's reply so it renders as tappable suggestion links instead of literal text.
@@ -2142,6 +2166,20 @@ function extractWeatherCode(text){
   return { text: cleaned, code: match[1] };
 }
 
+// systemPrompt에서 마크다운을 쓰지 말라고 지시했지만(다른 지시들처럼) AI가 가끔
+// 안 지켜서, 화면엔 마크다운이 안 그려지니까(그냥 텍스트) **별표**나 목록 기호가
+// 글자 그대로 보이는 문제가 있었습니다. 화면에 보이기 직전에 한 번 더 걸러냅니다.
+function stripMarkdown(text){
+  if(!text) return text;
+  return text
+    .replace(/\*\*(.+?)\*\*/g, '$1')
+    .replace(/__(.+?)__/g, '$1')
+    .replace(/(^|[^\w*])\*([^\s*][^*]*?)\*(?!\w)/g, '$1$2')
+    .replace(/`([^`]+)`/g, '$1')
+    .replace(/^\s{0,3}#{1,6}\s+/gm, '')
+    .replace(/^\s*[-*]\s+/gm, '• ')
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
+}
 
 /* ============ 사주 업그레이드: 음/양력·생일(월/일)·태어난 시간(12시진) 수집 + 운 선택 메뉴 ============ */
 // 프로필엔 출생연도(profile.birthYear)만 있어서(온보딩이 연도만 물어봄), 정확한
@@ -2635,8 +2673,6 @@ function startStockFlow(){
     }
   });
 }
-document.getElementById('stockChip').addEventListener('click', startStockFlow);
-
 /* ============ 뉴스 (시사/경제/연예 선택지 → AI 검색 답변, systemPrompt 참고) ============ */
 function startNewsFlow(){
   addLocalBubble('어떤 소식이 궁금하세요?');
@@ -2645,7 +2681,6 @@ function startNewsFlow(){
     sendMessage(prompts[choice] || choice);
   });
 }
-document.getElementById('newsChip').addEventListener('click', startNewsFlow);
 
 /* ============ 민원/행정 서비스 (AI 검색 답변, systemPrompt의 "민원: " 규칙 참고) ============ */
 // 실제 절차·서류 안내는 AI가 검색해서 답하되, "민원: " 접두사로 보내서
@@ -2656,7 +2691,6 @@ function startCivilFlow(){
     sendMessage(`민원: ${query}`);
   });
 }
-document.getElementById('civilChip').addEventListener('click', startCivilFlow);
 
 /* ============ 맛집 (카카오 로컬 카테고리 검색, api/location.js?action=restaurants 참고) ============ */
 // AI가 맛집을 지어내거나 오래된 정보를 말하지 않도록, 대중교통/주식처럼 AI를
@@ -2962,7 +2996,8 @@ async function sendMessage(text){
   try{
     const raw = await callBomi(text);
     const { text: rawReply, options } = parseBomiReply(raw);
-    const { text: reply, code: weatherCode } = extractWeatherCode(rawReply);
+    const { text: cleanedText, code: weatherCode } = extractWeatherCode(rawReply);
+    const reply = stripMarkdown(cleanedText);
     removeTyping();
     addAssistantBlock(reply, text, true, weatherCode);
     messages.push({role:'assistant', content:reply});
@@ -2976,13 +3011,40 @@ async function sendMessage(text){
   document.getElementById('sendBtn').disabled = false;
   refreshUsageGauge();
 }
+// 주식/뉴스/민원은 서제스천칩에서는 뺐지만, 채팅으로 직접 물어보면 여전히
+// 전용 카드/흐름으로 연결되어야 해서(일반 AI 잡담으로 흘려보내지 않도록)
+// 사용자가 직접 입력한 텍스트(타이핑·음성)가 처음 들어오는 지점에서만 이
+// 라우팅을 검사합니다 — 각 흐름이 내부적으로 sendMessage에 보내는 후속
+// 메시지("민원: ...", "요즘 시사 뉴스 뭐가 있어?" 등)까지 다시 걸리면 무한히
+// 되돌아가므로, sendMessage 자체가 아니라 이 진입점에서만 확인합니다.
+function routeUserInput(text){
+  const trimmed = (text || '').trim();
+  if(!trimmed) return true;
+  if(/주식|증권\s*시세|주가/.test(trimmed)){
+    startStockFlow();
+    return true;
+  }
+  if(!trimmed.startsWith('민원:') && /민원/.test(trimmed)){
+    startCivilFlow();
+    return true;
+  }
+  if(trimmed === '뉴스' || /뉴스\s*(뭐|있|알려|궁금)/.test(trimmed)){
+    startNewsFlow();
+    return true;
+  }
+  return false;
+}
+function handleUserInput(text){
+  if(routeUserInput(text)) return;
+  sendMessage(text);
+}
 document.getElementById('sendBtn').addEventListener('click', ()=>{
   const input = document.getElementById('msgInput');
   const text = input.value; input.value = '';
-  sendMessage(text);
+  handleUserInput(text);
 });
 document.getElementById('msgInput').addEventListener('keydown', (e)=>{
-  if(e.key==='Enter'){ const text = e.target.value; e.target.value=''; sendMessage(text); }
+  if(e.key==='Enter'){ const text = e.target.value; e.target.value=''; handleUserInput(text); }
 });
 document.querySelectorAll('.chip[data-msg]').forEach(chip=>{
   chip.addEventListener('click', ()=> sendMessage(chip.dataset.msg));
@@ -3108,7 +3170,7 @@ async function stopVoiceRecording(){
     });
     const data = await response.json();
     if(data.ok && data.text && data.text.trim()){
-      sendMessage(data.text.trim());
+      handleUserInput(data.text.trim());
     } else {
       showToast(data.message || '음성을 이해하지 못했어요. 다시 말씀해 주시겠어요?');
     }
