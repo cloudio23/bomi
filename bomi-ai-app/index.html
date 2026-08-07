@@ -147,6 +147,46 @@
   .usage-modal-detail{ font-size:calc(14px * var(--app-font-scale)); color:var(--ink); margin-bottom:4px; line-height:1.5; }
   .usage-modal-reset{ font-size:calc(13px * var(--app-font-scale)); color:var(--sub); margin-bottom:20px; }
   .usage-modal-close{ width:100%; padding:12px; border-radius:12px; border:none; background:var(--navy); color:#fff; font-weight:700; font-size:calc(14px * var(--app-font-scale)); cursor:pointer; }
+
+  /* ---------- 달력 ---------- */
+  .cal-month-nav{ display:flex; align-items:center; justify-content:space-between; padding:4px 2px 14px; }
+  .cal-month-label{ font-size:calc(17px * var(--app-font-scale)); font-weight:800; color:var(--ink); }
+  .cal-nav-btn{ width:38px; height:38px; border-radius:50%; border:none; background:#F1EEE7; color:var(--ink); font-size:20px; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+  .cal-weekdays{ display:grid; grid-template-columns:repeat(7,1fr); text-align:center; font-size:calc(12px * var(--app-font-scale)); color:var(--sub); font-weight:700; padding-bottom:6px; }
+  .cal-grid{ display:grid; grid-template-columns:repeat(7,1fr); gap:2px; }
+  .cal-day{ aspect-ratio:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; border-radius:12px; cursor:pointer; font-size:calc(14px * var(--app-font-scale)); color:var(--ink); position:relative; background:none; border:none; font-family:inherit; }
+  .cal-day.other-month{ color:#D8D0C1; }
+  .cal-day.today{ box-shadow:inset 0 0 0 1.5px var(--navy); font-weight:800; }
+  .cal-day.selected{ background:var(--navy); color:#fff; }
+  .cal-day-dot{ width:5px; height:5px; border-radius:50%; background:var(--blue); visibility:hidden; }
+  .cal-day-dot.show{ visibility:visible; }
+  .cal-day.selected .cal-day-dot{ background:#fff; }
+  .cal-day-detail{ margin-top:18px; border-top:1px solid var(--line); padding-top:14px; }
+  .cal-day-header{ display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; }
+  .cal-day-title{ font-size:calc(15px * var(--app-font-scale)); font-weight:800; color:var(--ink); }
+  .cal-add-btn{ width:34px; height:34px; border-radius:50%; border:none; background:var(--navy); color:#fff; font-size:20px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; line-height:1; padding-bottom:2px; }
+  .cal-event-item{ display:flex; align-items:center; gap:10px; padding:11px 0; border-bottom:1px solid #F1EEE7; }
+  .cal-event-item:last-child{ border-bottom:none; }
+  .cal-event-time{ font-size:calc(12.5px * var(--app-font-scale)); color:var(--sub); font-weight:700; min-width:78px; }
+  .cal-event-title{ flex:1; font-size:calc(14.5px * var(--app-font-scale)); color:var(--ink); }
+  .cal-event-alarm{ font-size:14px; color:var(--sub); flex-shrink:0; }
+  .cal-event-del{ width:26px; height:26px; border-radius:50%; border:none; background:#FFF1F1; color:#D9455A; font-size:13px; cursor:pointer; flex-shrink:0; }
+  .cal-empty{ font-size:calc(13px * var(--app-font-scale)); color:var(--sub); padding:10px 0; }
+
+  .cal-add-modal{ max-width:320px; text-align:left; }
+  .cal-input{ width:100%; border:1px solid var(--line); border-radius:10px; padding:11px; font-size:calc(15px * var(--app-font-scale)); background:#FAF9F6; color:var(--ink); margin-bottom:12px; box-sizing:border-box; }
+  .cal-time-row{ display:flex; gap:10px; margin-bottom:14px; }
+  .cal-time-field{ flex:1; }
+  .cal-time-field label{ display:block; font-size:calc(12px * var(--app-font-scale)); color:var(--sub); margin-bottom:4px; }
+  .cal-time-field input{ width:100%; border:1px solid var(--line); border-radius:10px; padding:9px; font-size:calc(14px * var(--app-font-scale)); background:#FAF9F6; color:var(--ink); box-sizing:border-box; }
+  .cal-alarm-row{ display:flex; align-items:center; justify-content:space-between; margin-bottom:18px; font-size:calc(14px * var(--app-font-scale)); color:var(--ink); }
+  .cal-btn-row{ display:flex; gap:8px; }
+  .cal-btn-ghost{ flex:1; padding:12px; border-radius:12px; border:1.5px solid var(--line); background:#fff; color:var(--sub); font-weight:700; font-size:calc(14px * var(--app-font-scale)); cursor:pointer; }
+  .cal-btn-primary{ flex:1; padding:12px; border-radius:12px; border:none; background:var(--navy); color:#fff; font-weight:700; font-size:calc(14px * var(--app-font-scale)); cursor:pointer; }
+
+  /* 체크리스트 위젯 안의 "오늘 일정" 한 줄 표시 */
+  .pinned-cal-item{ display:flex; align-items:center; gap:8px; padding:8px 0; border-bottom:1px solid #F1EEE7; font-size:calc(15px * var(--app-font-scale)); color:var(--ink); }
+  .pinned-cal-time{ color:var(--sub); font-size:calc(12.5px * var(--app-font-scale)); font-weight:700; min-width:44px; }
   .iconbtn{
     position:relative;
     background:transparent; border:none; color:var(--sub); width:56px; height:56px;
@@ -884,6 +924,57 @@
           <div class="lb">목표 걸음수</div>
           <input type="number" id="stepGoalInput" min="1000" step="500" inputmode="numeric">
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== CALENDAR ===== -->
+  <div class="screen" id="calendarScreen">
+    <div class="subheader">
+      <button class="backbtn" id="calendarBack">←</button>
+      <div class="title">달력</div>
+    </div>
+    <div class="scroll">
+      <div class="cal-month-nav">
+        <button type="button" class="cal-nav-btn" id="calPrevMonth">‹</button>
+        <div class="cal-month-label" id="calMonthLabel"></div>
+        <button type="button" class="cal-nav-btn" id="calNextMonth">›</button>
+      </div>
+      <div class="cal-weekdays">
+        <span>일</span><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span>토</span>
+      </div>
+      <div class="cal-grid" id="calGrid"></div>
+      <div class="cal-day-detail">
+        <div class="cal-day-header">
+          <div class="cal-day-title" id="calDayTitle"></div>
+          <button type="button" class="cal-add-btn" id="calAddBtn" aria-label="일정 추가">+</button>
+        </div>
+        <div class="cal-event-list" id="calEventList"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="usage-modal-backdrop" id="calAddBackdrop">
+    <div class="usage-modal cal-add-modal">
+      <div class="usage-modal-title">일정 추가</div>
+      <input type="text" id="calAddTitle" class="cal-input" placeholder="할 일을 입력하세요">
+      <div class="cal-time-row">
+        <div class="cal-time-field">
+          <label>시작</label>
+          <input type="time" id="calAddStart">
+        </div>
+        <div class="cal-time-field">
+          <label>종료</label>
+          <input type="time" id="calAddEnd">
+        </div>
+      </div>
+      <div class="cal-alarm-row">
+        <span>알림 받기</span>
+        <label class="switch"><input type="checkbox" id="calAddAlarm"><span class="slider"></span></label>
+      </div>
+      <div class="cal-btn-row">
+        <button type="button" id="calAddCancel" class="cal-btn-ghost">취소</button>
+        <button type="button" id="calAddSave" class="cal-btn-primary">저장</button>
       </div>
     </div>
   </div>
@@ -1734,6 +1825,15 @@ function maybeShowReportFromNotification(){
   }
 }
 
+// 달력 알람(sw.js의 notificationclick → /?calendar=1)을 탭해서 들어온 경우,
+// 곧바로 달력 화면을 보여줍니다.
+function maybeShowCalendarFromNotification(){
+  if(location.search.includes('calendar=1')){
+    openCalendarScreen();
+    history.replaceState(null, '', location.pathname);
+  }
+}
+
 async function respondToConsent(decision){
   try{
     await fetch('/api/link?action=consent', {
@@ -1826,7 +1926,8 @@ function renderPinnedChecklist(){
   const wrap = document.getElementById('pinnedChecklist');
   const btn = document.getElementById('checklistBtn');
   const hasSteps = stepsEnabled && todaySteps !== null && todaySteps !== undefined;
-  if(!checklistEnabled || (checklistItems.length === 0 && !hasSteps)){
+  const hasCalEvents = todayCalEvents.length > 0;
+  if(!checklistEnabled || (checklistItems.length === 0 && !hasSteps && !hasCalEvents)){
     btn.style.display = 'none';
     wrap.classList.remove('open');
     return;
@@ -1840,6 +1941,14 @@ function renderPinnedChecklist(){
 
   const body = document.getElementById('pinnedBody');
   body.innerHTML = '';
+
+  todayCalEvents.forEach(ev=>{
+    const row = document.createElement('div');
+    row.className = 'pinned-cal-item';
+    const timeLabel = ev.start_time ? String(ev.start_time).slice(0,5) : '';
+    row.innerHTML = `${timeLabel ? `<span class="pinned-cal-time">${timeLabel}</span>` : ''}<span class="label">${escapeHtml(ev.title)}</span>`;
+    body.appendChild(row);
+  });
 
   if(hasSteps){
     const level = activityLevelFromSteps(todaySteps, stepGoal);
@@ -1873,6 +1982,180 @@ function renderPinnedChecklist(){
 document.getElementById('checklistBtn').addEventListener('click', ()=>{
   pinnedExpanded = !pinnedExpanded;
   renderPinnedChecklist();
+});
+
+/* ============ 달력 (일정 추가/알람, api/calendar.js 참고) ============ */
+// 오늘 일정은 대화창 상단 체크리스트 위젯에도 같이 보여줘서(renderPinnedChecklist
+// 참고) 어르신이 잊지 않게 합니다. 서버(Supabase)에 저장해서, 알림 스케줄러가
+// (api/notifications.js의 checkins가 매시 정각) 같은 데이터를 읽어 알람을 보냅니다.
+let todayCalEvents = [];
+let calCurrentMonth = new Date();
+let calSelectedDate = calDateStr(new Date());
+let calMonthEvents = {}; // { 'YYYY-MM-DD': [event, ...] }
+
+function calDateStr(date){
+  const y = date.getFullYear(), m = String(date.getMonth()+1).padStart(2,'0'), d = String(date.getDate()).padStart(2,'0');
+  return `${y}-${m}-${d}`;
+}
+function calMonthStr(date){
+  return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}`;
+}
+function calFormatTimeLabel(t){
+  if(!t) return '';
+  const [h,m] = t.slice(0,5).split(':').map(Number);
+  const period = h < 12 ? '오전' : '오후';
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  return `${period} ${h12}시${m ? ' '+m+'분' : ''}`;
+}
+
+async function refreshTodayCalEvents(){
+  if(!profile || !profile.crmId) return;
+  try{
+    const res = await fetch(`/api/calendar?action=today&code=${encodeURIComponent(profile.crmId)}&date=${calDateStr(new Date())}`);
+    const data = await res.json();
+    todayCalEvents = (data.ok && data.events) || [];
+  }catch(e){ todayCalEvents = []; }
+  renderPinnedChecklist();
+}
+
+async function loadCalMonthEvents(){
+  calMonthEvents = {};
+  if(!profile || !profile.crmId) return;
+  try{
+    const res = await fetch(`/api/calendar?action=list&code=${encodeURIComponent(profile.crmId)}&month=${calMonthStr(calCurrentMonth)}`);
+    const data = await res.json();
+    if(data.ok){
+      (data.events||[]).forEach(ev=>{
+        if(!calMonthEvents[ev.event_date]) calMonthEvents[ev.event_date] = [];
+        calMonthEvents[ev.event_date].push(ev);
+      });
+    }
+  }catch(e){}
+}
+
+function renderCalGrid(){
+  document.getElementById('calMonthLabel').textContent = `${calCurrentMonth.getFullYear()}년 ${calCurrentMonth.getMonth()+1}월`;
+  const grid = document.getElementById('calGrid');
+  grid.innerHTML = '';
+  const year = calCurrentMonth.getFullYear(), month = calCurrentMonth.getMonth();
+  const firstDay = new Date(year, month, 1);
+  const startOffset = firstDay.getDay(); // 0=일
+  const daysInMonth = new Date(year, month+1, 0).getDate();
+  const daysInPrevMonth = new Date(year, month, 0).getDate();
+  const todayStr = calDateStr(new Date());
+
+  const cells = [];
+  for(let i=startOffset-1;i>=0;i--) cells.push({ day: daysInPrevMonth-i, otherMonth:true, dateObj:new Date(year, month-1, daysInPrevMonth-i) });
+  for(let d=1; d<=daysInMonth; d++) cells.push({ day:d, otherMonth:false, dateObj:new Date(year, month, d) });
+  while(cells.length % 7 !== 0) {
+    const nextIdx = cells.length - (startOffset + daysInMonth) + 1;
+    cells.push({ day: nextIdx, otherMonth:true, dateObj:new Date(year, month+1, nextIdx) });
+  }
+
+  cells.forEach(cell=>{
+    const dateStr = calDateStr(cell.dateObj);
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'cal-day' + (cell.otherMonth ? ' other-month' : '') + (dateStr===todayStr ? ' today' : '') + (dateStr===calSelectedDate ? ' selected' : '');
+    const hasEvent = !!(calMonthEvents[dateStr] && calMonthEvents[dateStr].length);
+    btn.innerHTML = `<span>${cell.day}</span><span class="cal-day-dot${hasEvent?' show':''}"></span>`;
+    btn.addEventListener('click', ()=>{
+      calSelectedDate = dateStr;
+      if(cell.otherMonth){
+        calCurrentMonth = new Date(cell.dateObj.getFullYear(), cell.dateObj.getMonth(), 1);
+        loadCalMonthEvents().then(()=>{ renderCalGrid(); renderCalDayDetail(); });
+      } else {
+        renderCalGrid();
+        renderCalDayDetail();
+      }
+    });
+    grid.appendChild(btn);
+  });
+}
+
+function renderCalDayDetail(){
+  const d = new Date(calSelectedDate + 'T00:00:00');
+  document.getElementById('calDayTitle').textContent = `${d.getMonth()+1}월 ${d.getDate()}일`;
+  const list = document.getElementById('calEventList');
+  const events = calMonthEvents[calSelectedDate] || [];
+  if(!events.length){
+    list.innerHTML = `<div class="cal-empty">등록된 일정이 없어요.</div>`;
+    return;
+  }
+  list.innerHTML = events.map(ev => `
+    <div class="cal-event-item" data-id="${ev.id}">
+      <span class="cal-event-time">${ev.start_time ? calFormatTimeLabel(ev.start_time) + (ev.end_time ? ' ~ '+calFormatTimeLabel(ev.end_time) : '') : ''}</span>
+      <span class="cal-event-title">${escapeHtml(ev.title)}</span>
+      ${ev.alarm_enabled ? '<span class="cal-event-alarm">🔔</span>' : ''}
+      <button type="button" class="cal-event-del" data-id="${ev.id}" aria-label="삭제">✕</button>
+    </div>
+  `).join('');
+  list.querySelectorAll('.cal-event-del').forEach(delBtn=>{
+    delBtn.addEventListener('click', async ()=>{
+      const id = delBtn.dataset.id;
+      await fetch('/api/calendar?action=delete', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ bomiLinkCode: profile.crmId, id }),
+      }).catch(()=>{});
+      await loadCalMonthEvents();
+      renderCalGrid();
+      renderCalDayDetail();
+      refreshTodayCalEvents();
+    });
+  });
+}
+
+async function openCalendarScreen(){
+  calCurrentMonth = new Date(calSelectedDate + 'T00:00:00');
+  showScreen('calendarScreen');
+  await loadCalMonthEvents();
+  renderCalGrid();
+  renderCalDayDetail();
+}
+document.getElementById('calendarChip').addEventListener('click', openCalendarScreen);
+document.getElementById('calendarBack').addEventListener('click', ()=> showScreen('chatScreen'));
+document.getElementById('calPrevMonth').addEventListener('click', async ()=>{
+  calCurrentMonth = new Date(calCurrentMonth.getFullYear(), calCurrentMonth.getMonth()-1, 1);
+  await loadCalMonthEvents();
+  renderCalGrid();
+});
+document.getElementById('calNextMonth').addEventListener('click', async ()=>{
+  calCurrentMonth = new Date(calCurrentMonth.getFullYear(), calCurrentMonth.getMonth()+1, 1);
+  await loadCalMonthEvents();
+  renderCalGrid();
+});
+
+document.getElementById('calAddBtn').addEventListener('click', ()=>{
+  document.getElementById('calAddTitle').value = '';
+  document.getElementById('calAddStart').value = '';
+  document.getElementById('calAddEnd').value = '';
+  document.getElementById('calAddAlarm').checked = false;
+  document.getElementById('calAddBackdrop').classList.add('show');
+  setTimeout(()=>document.getElementById('calAddTitle').focus(), 50);
+});
+document.getElementById('calAddCancel').addEventListener('click', ()=>{
+  document.getElementById('calAddBackdrop').classList.remove('show');
+});
+document.getElementById('calAddBackdrop').addEventListener('click', (e)=>{
+  if(e.target.id === 'calAddBackdrop') e.currentTarget.classList.remove('show');
+});
+document.getElementById('calAddSave').addEventListener('click', async ()=>{
+  const title = document.getElementById('calAddTitle').value.trim();
+  if(!title) return;
+  const startTime = document.getElementById('calAddStart').value || null;
+  const endTime = document.getElementById('calAddEnd').value || null;
+  const alarmEnabled = document.getElementById('calAddAlarm').checked;
+  document.getElementById('calAddBackdrop').classList.remove('show');
+  try{
+    await fetch('/api/calendar?action=add', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ bomiLinkCode: profile.crmId, eventDate: calSelectedDate, title, startTime, endTime, alarmEnabled }),
+    });
+  }catch(e){}
+  await loadCalMonthEvents();
+  renderCalGrid();
+  renderCalDayDetail();
+  refreshTodayCalEvents();
 });
 
 /* ============ CHECKLIST SETTINGS (프로필 → "체크리스트 관리" 버튼으로 여는 별도 화면) ============ */
@@ -3229,6 +3512,7 @@ async function startApp(isNew){
     });
   }
   renderPinnedChecklist();
+  refreshTodayCalEvents();
   syncHealthSummaryIfConsented();
 }
 
@@ -3280,6 +3564,7 @@ function hideSplash(){
     startApp(false);
     maybeShowConsentScreen();
     maybeShowReportFromNotification();
+    maybeShowCalendarFromNotification();
   } else {
     renderObStep();
   }

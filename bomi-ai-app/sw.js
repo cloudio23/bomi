@@ -27,6 +27,7 @@ self.addEventListener('notificationclick', (e) => {
   const notifType = e.notification.data && e.notification.data.type;
   const targetUrl = notifType === 'link_request' ? '/?consent=1'
     : notifType === 'health_report_ready' ? '/?report=1'
+    : notifType === 'calendar_event' ? '/?calendar=1'
     : '/';
   e.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {

@@ -10,6 +10,7 @@
 import {
   upsertPushSubscription, ensureDefaultCheckinSettings,
   listAllPushSubscriptions, listEnabledCheckinSettings, getPushSubscription,
+  listPendingCalendarAlarms, markCalendarAlarmSent,
 } from '../lib/supabaseAdmin.mjs';
 import { sendPush } from '../lib/push.mjs';
 
@@ -81,6 +82,39 @@ function currentKstHour() {
   return kst.getUTCHours();
 }
 
+function currentKstDateStr() {
+  const kst = new Date(Date.now() + 9 * 60 * 60 * 1000);
+  return kst.toISOString().slice(0, 10);
+}
+
+// 달력 일정 알람 — event_date가 오늘이고 alarm_enabled인데 아직 안 보낸 것 중,
+// start_time의 "시"가 지금과 같은 것만 보냅니다(체크인 알림과 같은 시 단위 매칭).
+async function sendDueCalendarAlarms(hour) {
+  const today = currentKstDateStr();
+  const pending = await listPendingCalendarAlarms(today);
+  let sent = 0;
+  let failed = 0;
+  for (const ev of pending || []) {
+    const evHour = ev.start_time ? parseInt(String(ev.start_time).split(':')[0], 10) : null;
+    if (evHour !== hour) continue;
+    const sub = await getPushSubscription(ev.bomi_link_code);
+    if (sub) {
+      try {
+        await sendPush(sub.subscription, {
+          type: 'calendar_event',
+          title: '보미 달력 알림',
+          body: ev.title + (ev.start_time ? ` (${String(ev.start_time).slice(0, 5)})` : ''),
+        });
+        sent += 1;
+      } catch (e) {
+        failed += 1;
+      }
+    }
+    await markCalendarAlarmSent(ev.id).catch(() => {});
+  }
+  return { sent, failed };
+}
+
 // 시간 비교를 "시(hour)" 단위로만 하는 이유: 스케줄러가 정시(0분)에만
 // 호출하므로 분 단위까지 맞출 필요가 없고, 회원이 설정 화면에서 분 단위로
 // 입력해도 그 시각이 속한 시간에 보내집니다(예: 10:30으로 설정해도 10시
@@ -113,7 +147,11 @@ async function handleCheckins(req, res) {
       }
     }
   }
-  res.status(200).json({ ok: true, hour, matched, sent, failed });
+  const calendarResult = await sendDueCalendarAlarms(hour);
+  res.status(200).json({
+    ok: true, hour, matched, sent, failed,
+    calendarSent: calendarResult.sent, calendarFailed: calendarResult.failed,
+  });
 }
 
 export default async function handler(req, res) {

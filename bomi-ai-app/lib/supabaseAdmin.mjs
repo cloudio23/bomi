@@ -131,3 +131,53 @@ export async function incrementDailyUsage(dateKey) {
 export async function listEnabledCheckinSettings() {
   return restRequest('bomi_checkin_settings?or=(enabled.eq.true,report_enabled.eq.true)');
 }
+
+// 달력 — 한 달치 일정 조회(월 화면 렌더링용). endDateExclusive는 다음 달 1일.
+export async function listCalendarEvents(code, startDate, endDateExclusive) {
+  return restRequest(
+    `bomi_calendar_events?bomi_link_code=eq.${encodeURIComponent(code)}` +
+    `&event_date=gte.${startDate}&event_date=lt.${endDateExclusive}` +
+    `&order=event_date.asc,start_time.asc.nullslast`
+  );
+}
+
+export async function addCalendarEvent(code, event) {
+  return restRequest('bomi_calendar_events', {
+    method: 'POST',
+    headers: { Prefer: 'return=representation' },
+    body: {
+      bomi_link_code: code,
+      event_date: event.eventDate,
+      title: event.title,
+      start_time: event.startTime || null,
+      end_time: event.endTime || null,
+      alarm_enabled: !!event.alarmEnabled,
+    },
+  });
+}
+
+export async function deleteCalendarEvent(code, id) {
+  return restRequest(`bomi_calendar_events?id=eq.${encodeURIComponent(id)}&bomi_link_code=eq.${encodeURIComponent(code)}`, {
+    method: 'DELETE',
+  });
+}
+
+// 체크리스트 위젯에 "오늘 일정"으로 같이 보여주기 위한 조회.
+export async function listCalendarEventsForDate(code, dateStr) {
+  return restRequest(
+    `bomi_calendar_events?bomi_link_code=eq.${encodeURIComponent(code)}&event_date=eq.${dateStr}&order=start_time.asc.nullslast`
+  );
+}
+
+// 알림 스케줄러(매시 정각)가 오늘 날짜의 알람 켜진 일정 중 아직 안 보낸 것만
+// 전체 사용자 기준으로 가져갑니다 — 시(hour) 비교는 notifications.js에서 처리.
+export async function listPendingCalendarAlarms(dateStr) {
+  return restRequest(`bomi_calendar_events?event_date=eq.${dateStr}&alarm_enabled=eq.true&alarm_sent=eq.false`);
+}
+
+export async function markCalendarAlarmSent(id) {
+  return restRequest(`bomi_calendar_events?id=eq.${encodeURIComponent(id)}`, {
+    method: 'PATCH',
+    body: { alarm_sent: true },
+  });
+}
