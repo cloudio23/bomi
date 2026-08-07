@@ -590,6 +590,16 @@
   .nav-card .desc{ font-size:calc(12px * var(--app-font-scale)); color:var(--sub); margin-top:2px; }
   .nav-card .arrow{ color:var(--sub); font-size:20px; flex-shrink:0; margin-left:10px; }
 
+  /* ---------- 건강 안부 문자: 항목별 켜고 끄기 + 시간 설정 화면 ---------- */
+  .hn-cat-card{ background:#fff; border:1px solid var(--line); border-radius:16px; margin-bottom:14px; overflow:hidden; }
+  .hn-cat-btn{ width:100%; display:flex; align-items:center; justify-content:space-between; background:none; border:none; padding:16px; cursor:pointer; text-align:left; font-family:inherit; }
+  .hn-cat-btn .lb{ font-size:calc(14px * var(--app-font-scale)); font-weight:700; color:var(--ink); }
+  .hn-cat-btn .arrow{ color:var(--sub); font-size:12px; flex-shrink:0; margin-left:10px; }
+  .hn-detail{ padding:0 16px 16px; border-top:1px solid #F1EEE7; }
+  .hn-meal-row{ padding:12px 0; border-bottom:1px solid #F1EEE7; }
+  .hn-meal-row:last-child{ border-bottom:none; }
+  .hn-hint{ font-size:calc(11.5px * var(--app-font-scale)); color:var(--sub); margin-top:8px; line-height:1.5; }
+
   /* ---------- 글씨 크기 선택(5단계) — 안드로이드 설정 화면처럼 미리보기 문구
      위에 두고, 그 아래 가로 슬라이더를 드래그해서 5단계로 조절 ---------- */
   .tsize-preview-box{
@@ -940,32 +950,11 @@
           <div><div class="lb">실시간 알림(푸시)</div><div class="desc">앱을 안 열어도 보미가 안부를 물어보거나 연동 요청을 알려드려요</div></div>
           <label class="switch"><input type="checkbox" id="togglePush"><span class="slider"></span></label>
         </div>
-        <div id="pushStatusNote" style="font-size:11px;color:var(--sub);margin:-6px 0 10px 0;"></div>
-        <div class="toggle-item">
-          <div><div class="lb">건강리포트 알림</div><div class="desc">리포트 생성 시 알려드려요</div></div>
-          <label class="switch"><input type="checkbox" id="toggleReport"><span class="slider"></span></label>
-        </div>
-        <div class="toggle-item">
-          <div><div class="lb">건강 안부 문자</div><div class="desc">정해진 시간에 보미가 먼저 안부를 물어봐요</div></div>
-          <label class="switch"><input type="checkbox" id="toggleProactive"><span class="slider"></span></label>
-        </div>
-        <div style="padding:0 0 12px 0;border-bottom:1px solid #F1EEE7;">
-          <button type="button" id="checkinTimesToggleBtn" style="background:none;border:none;color:var(--blue);font-size:12px;font-weight:700;cursor:pointer;padding:0;">시간 설정 ▾</button>
-          <div id="checkinTimesPanel" style="display:none;margin-top:12px;">
-            <div class="ob-field-label" style="margin-top:0;">건강리포트 알림</div>
-            <input class="ob-input" type="time" id="checkinReportTime" style="padding:10px;font-size:15px;">
-            <div class="ob-field-label">수면 안부</div>
-            <input class="ob-input" type="time" id="checkinSleepTime" style="padding:10px;font-size:15px;">
-            <div class="ob-field-label">식사 안부</div>
-            <input class="ob-input" type="time" id="checkinMealTime" style="padding:10px;font-size:15px;">
-            <div class="ob-field-label">활동 안부</div>
-            <input class="ob-input" type="time" id="checkinActivityTime" style="padding:10px;font-size:15px;">
-            <div class="ob-field-label">기분·컨디션 안부</div>
-            <input class="ob-input" type="time" id="checkinMoodTime" style="padding:10px;font-size:15px;">
-            <button class="cl-add" id="saveCheckinTimesBtn" style="margin-top:10px;">저장</button>
-            <div id="checkinTimesSaveStatus" style="font-size:11px;color:var(--sub);margin-top:6px;"></div>
-          </div>
-        </div>
+        <div id="pushStatusNote" style="font-size:11px;color:var(--sub);margin:-6px 0 0 0;"></div>
+      </div>
+      <div class="nav-card" id="openHealthNotifBtn">
+        <div><div class="lb">건강 안부 문자</div><div class="desc">건강리포트·수면·식사·활동·기분 알림을 항목별로 켜고 시간을 정해요</div></div>
+        <div class="arrow">›</div>
       </div>
 
       <div class="section-label">연동 코드</div>
@@ -1023,6 +1012,80 @@
         <button type="button" id="ecAddCancel" class="cal-btn-ghost">취소</button>
         <button type="button" id="ecAddSave" class="cal-btn-primary">저장</button>
       </div>
+    </div>
+  </div>
+
+  <!-- ===== 건강 안부 문자 (프로필에서 버튼으로 진입, 이 화면만 표시) ===== -->
+  <div class="screen" id="healthNotifScreen">
+    <div class="subheader">
+      <button class="backbtn" id="healthNotifBack">←</button>
+      <div class="title">건강 안부 문자</div>
+    </div>
+    <div class="scroll">
+      <div class="tip-box" style="margin-top:0;">💡 항목을 눌러서 켜고 끄거나 시간을 정할 수 있어요.</div>
+
+      <div class="hn-cat-card">
+        <button type="button" class="hn-cat-btn" data-cat="report"><span class="lb">건강리포트 알림</span><span class="arrow">▾</span></button>
+        <div class="hn-detail" id="hn-detail-report" style="display:none;">
+          <div class="toggle-item"><div><div class="lb">알림 받기</div></div><label class="switch"><input type="checkbox" id="hnReportEnabled"><span class="slider"></span></label></div>
+          <div class="ob-field-label" style="margin-top:0;">알림 시간</div>
+          <input class="ob-input" type="time" id="hnReportTime" style="padding:10px;font-size:15px;">
+        </div>
+      </div>
+
+      <div class="hn-cat-card">
+        <button type="button" class="hn-cat-btn" data-cat="sleep"><span class="lb">수면 안부</span><span class="arrow">▾</span></button>
+        <div class="hn-detail" id="hn-detail-sleep" style="display:none;">
+          <div class="toggle-item"><div><div class="lb">알림 받기</div></div><label class="switch"><input type="checkbox" id="hnSleepEnabled"><span class="slider"></span></label></div>
+          <div class="ob-field-label" style="margin-top:0;">알림 시간</div>
+          <input class="ob-input" type="time" id="hnSleepTime" style="padding:10px;font-size:15px;">
+        </div>
+      </div>
+
+      <div class="hn-cat-card">
+        <button type="button" class="hn-cat-btn" data-cat="meal"><span class="lb">식사 안부</span><span class="arrow">▾</span></button>
+        <div class="hn-detail" id="hn-detail-meal" style="display:none;">
+          <div class="hn-meal-row">
+            <div class="toggle-item"><div><div class="lb">아침</div></div><label class="switch"><input type="checkbox" id="hnBreakfastEnabled"><span class="slider"></span></label></div>
+            <input class="ob-input" type="time" id="hnBreakfastTime" style="padding:10px;font-size:15px;">
+          </div>
+          <div class="hn-meal-row">
+            <div class="toggle-item"><div><div class="lb">점심</div></div><label class="switch"><input type="checkbox" id="hnLunchEnabled"><span class="slider"></span></label></div>
+            <input class="ob-input" type="time" id="hnLunchTime" style="padding:10px;font-size:15px;">
+          </div>
+          <div class="hn-meal-row">
+            <div class="toggle-item"><div><div class="lb">저녁</div></div><label class="switch"><input type="checkbox" id="hnDinnerEnabled"><span class="slider"></span></label></div>
+            <input class="ob-input" type="time" id="hnDinnerTime" style="padding:10px;font-size:15px;">
+          </div>
+          <div class="hn-hint">안 드시는 끼니는 꺼두시면 그 알림만 안 와요.</div>
+        </div>
+      </div>
+
+      <div class="hn-cat-card">
+        <button type="button" class="hn-cat-btn" data-cat="activity"><span class="lb">활동 안부</span><span class="arrow">▾</span></button>
+        <div class="hn-detail" id="hn-detail-activity" style="display:none;">
+          <div class="ob-field-label" style="margin-top:0;">기록 방식</div>
+          <select id="hnActivityMode" class="cal-lead-select" style="width:100%;padding:10px;">
+            <option value="auto">자동 (걸음수 연동)</option>
+            <option value="manual">수기입력</option>
+          </select>
+          <div class="ob-field-label">시간</div>
+          <input class="ob-input" type="time" id="hnActivityTime" style="padding:10px;font-size:15px;">
+          <div class="hn-hint" id="hnActivityHint"></div>
+        </div>
+      </div>
+
+      <div class="hn-cat-card">
+        <button type="button" class="hn-cat-btn" data-cat="mood"><span class="lb">기분 안부</span><span class="arrow">▾</span></button>
+        <div class="hn-detail" id="hn-detail-mood" style="display:none;">
+          <div class="toggle-item"><div><div class="lb">알림 받기</div></div><label class="switch"><input type="checkbox" id="hnMoodEnabled"><span class="slider"></span></label></div>
+          <div class="ob-field-label" style="margin-top:0;">알림 시간</div>
+          <input class="ob-input" type="time" id="hnMoodTime" style="padding:10px;font-size:15px;">
+        </div>
+      </div>
+
+      <button type="button" class="cal-btn-primary" id="hnSaveBtn" style="width:100%;margin-top:8px;">저장</button>
+      <div id="hnSaveStatus" style="font-size:12px;color:var(--sub);margin-top:8px;text-align:center;"></div>
     </div>
   </div>
 
@@ -1498,21 +1561,28 @@ document.getElementById('obNext').addEventListener('click', async ()=>{
       });
     }catch(e){}
   }
-  // 기상/취침/끼니 시간을 저장 — 이걸로 수면 체크인(기상+1시간)과 끼니별
-  // 식사 체크인 알림 시각이 정해집니다. 실패해도 온보딩 자체는 막지 않고,
-  // 나중에 설정 화면에서 다시 조정할 수 있어요.
+  // 기상/취침/끼니 시간을 저장 — 수면 안부는 기상시간+1시간을 초깃값으로
+  // 한 번만 계산해서 넣어두고(이후엔 설정 화면에서 그 시간을 직접 자유롭게
+  // 조정), 끼니별 알림 시각도 함께 저장합니다. 활동 안부는 네이티브 앱(걸음수
+  // 연동)에서 가입했으면 자동으로, 웹으로 가입했으면 수기입력으로 기본값을
+  // 잡아두고 나중에 설정에서 언제든 바꿀 수 있어요. 실패해도 온보딩 자체는
+  // 막지 않습니다.
   try{
     const mealTimeFields = {};
     const labels = ['breakfastTime','lunchTime','dinnerTime'];
     if(obData.mealCount === 1){ mealTimeFields.breakfastTime = obData.mealTimes[0]; }
     else if(obData.mealCount === 2){ mealTimeFields.breakfastTime = obData.mealTimes[0]; mealTimeFields.dinnerTime = obData.mealTimes[1]; }
     else { obData.mealTimes.slice(0,3).forEach((t,i)=>{ mealTimeFields[labels[i]] = t; }); }
+    const [wh, wm] = obData.wakeTime.split(':').map(Number);
+    const sleepTime = `${String((wh+1)%24).padStart(2,'0')}:${String(wm).padStart(2,'0')}`;
     await fetch('/api/checkin-settings', {
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({
         bomiLinkCode: profile.crmId,
         wakeTime: obData.wakeTime,
         mealCount: obData.mealCount,
+        sleepTime,
+        activityMode: window.BomiNative ? 'auto' : 'manual',
         ...mealTimeFields,
       }),
     });
@@ -1813,33 +1883,8 @@ function renderProfile(){
   document.getElementById('crmId').textContent = profile.crmId;
   document.getElementById('toggleLocation').checked = !!profile.locationConsent;
   document.getElementById('togglePush').checked = !!notifSettings.push;
-  document.getElementById('toggleReport').checked = notifSettings.report;
   renderTextSizeSelection();
-  loadCheckinSettingsUI();
 }
-document.getElementById('toggleReport').addEventListener('change', async (e)=>{
-  const reportEnabled = e.target.checked;
-  notifSettings.report = reportEnabled;
-  await storeSet('notif-settings', notifSettings);
-  if(reportEnabled && !notifSettings.push){
-    const result = await enablePush();
-    if(result.ok){ notifSettings.push = true; await storeSet('notif-settings', notifSettings); document.getElementById('togglePush').checked = true; }
-  }
-  try{
-    await fetch('/api/checkin-settings', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({
-        bomiLinkCode: profile.crmId, reportEnabled,
-        enabled: (checkinSettingsCache && checkinSettingsCache.enabled) ?? true,
-        reportTime: (checkinSettingsCache && checkinSettingsCache.report_time) || '21:00',
-        sleepTime: (checkinSettingsCache && checkinSettingsCache.sleep_time) || '10:00',
-        mealTime: (checkinSettingsCache && checkinSettingsCache.meal_time) || '19:00',
-        activityTime: (checkinSettingsCache && checkinSettingsCache.activity_time) || '17:00',
-        moodTime: (checkinSettingsCache && checkinSettingsCache.mood_time) || '20:00',
-      }),
-    });
-  }catch(err){ /* 다음에 설정 화면 열 때 다시 시도하게 됨 */ }
-});
 
 /* ============ 글씨 크기 설정 ============ */
 // 채팅 본문·선택지·서제스천 칩뿐 아니라 프로필/설정 화면의 라벨·값·토글
@@ -1882,77 +1927,89 @@ document.getElementById('textSizeSlider').addEventListener('input', async (e)=>{
   applyTextScale();
 });
 
-/* ============ 건강 안부 문자 (시간 설정 가능) ============ */
-// 실제 발송 여부/시간은 서버(bomi_checkin_settings, api/notifications.js의
-// ?action=checkins 크론)가 갖고 있으므로 여기선 항상 서버 값을 불러와서
-// 화면에 반영합니다.
-let checkinSettingsCache = null;
+/* ============ 건강 안부 문자 (프로필 → "건강 안부 문자" 버튼으로 여는 별도 화면) ============ */
+// 건강리포트/수면/아침/점심/저녁/기분은 서로 독립적으로 켜고 끄고 시간을
+// 정할 수 있고(예: 아침·점심은 끄고 저녁만 받기), 활동은 자동(걸음수 연동)
+// 또는 수기입력 중 고를 수 있습니다. 실제 발송 여부/시간은 서버
+// (bomi_checkin_settings, api/notifications.js의 ?action=checkins 크론)가
+// 갖고 있으므로 화면을 열 때마다 서버 값을 불러와 반영하고, "저장" 한 번에
+// 전체를 같이 보냅니다.
+document.getElementById('openHealthNotifBtn').addEventListener('click', ()=>{
+  loadHealthNotifSettings();
+  showScreen('healthNotifScreen');
+});
+document.getElementById('healthNotifBack').addEventListener('click', ()=> showScreen('profileScreen'));
 
-async function loadCheckinSettingsUI(){
+// 카테고리 버튼을 누르면 그 상세(토글+시간)가 펼쳐지고 펼쳐진 채로 다른 걸
+// 눌러도 접히지 않습니다(항목이 5개뿐이라 아코디언처럼 하나만 열리게 강제할
+// 필요는 없다고 판단).
+document.querySelectorAll('.hn-cat-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    const detail = document.getElementById('hn-detail-' + btn.dataset.cat);
+    detail.style.display = detail.style.display === 'none' ? 'block' : 'none';
+  });
+});
+
+async function loadHealthNotifSettings(){
   if(!profile) return;
   try{
     const res = await fetch('/api/checkin-settings?code=' + encodeURIComponent(profile.crmId));
     const s = await res.json();
-    checkinSettingsCache = s;
-    document.getElementById('toggleProactive').checked = !!s.enabled;
-    document.getElementById('toggleReport').checked = s.report_enabled === undefined ? true : !!s.report_enabled;
-    document.getElementById('checkinReportTime').value = s.report_time || '21:00';
-    document.getElementById('checkinSleepTime').value = s.sleep_time || '10:00';
-    document.getElementById('checkinMealTime').value = s.meal_time || '19:00';
-    document.getElementById('checkinActivityTime').value = s.activity_time || '17:00';
-    document.getElementById('checkinMoodTime').value = s.mood_time || '20:00';
+    document.getElementById('hnReportEnabled').checked = s.report_enabled === undefined ? true : !!s.report_enabled;
+    document.getElementById('hnReportTime').value = s.report_time || '21:00';
+    document.getElementById('hnSleepEnabled').checked = s.sleep_enabled === undefined ? true : !!s.sleep_enabled;
+    document.getElementById('hnSleepTime').value = s.sleep_time || '10:00';
+    document.getElementById('hnBreakfastEnabled').checked = s.breakfast_enabled === undefined ? true : !!s.breakfast_enabled;
+    document.getElementById('hnBreakfastTime').value = s.breakfast_time || '08:00';
+    document.getElementById('hnLunchEnabled').checked = s.lunch_enabled === undefined ? true : !!s.lunch_enabled;
+    document.getElementById('hnLunchTime').value = s.lunch_time || '12:30';
+    document.getElementById('hnDinnerEnabled').checked = s.dinner_enabled === undefined ? true : !!s.dinner_enabled;
+    document.getElementById('hnDinnerTime').value = s.dinner_time || '18:30';
+    document.getElementById('hnActivityMode').value = s.activity_mode === 'manual' ? 'manual' : 'auto';
+    document.getElementById('hnActivityTime').value = s.activity_time || '20:00';
+    document.getElementById('hnMoodEnabled').checked = s.mood_enabled === undefined ? true : !!s.mood_enabled;
+    document.getElementById('hnMoodTime').value = s.mood_time || '20:00';
+    updateActivityModeHint();
   }catch(e){ /* 서버 연결 안 되면 화면 기본값 그대로 둠 */ }
 }
 
-document.getElementById('checkinTimesToggleBtn').addEventListener('click', ()=>{
-  const panel = document.getElementById('checkinTimesPanel');
-  const willShow = panel.style.display === 'none';
-  panel.style.display = willShow ? 'block' : 'none';
-});
+function updateActivityModeHint(){
+  const isManual = document.getElementById('hnActivityMode').value === 'manual';
+  document.getElementById('hnActivityHint').textContent = isManual
+    ? '이 시간에 오늘 활동량을 직접 알려달라고 알려드려요.'
+    : (window.BomiNative
+        ? '걸음수가 자동으로 연동돼요. 이 시간까지 걸어다니신 걸음수가 리포트에 반영돼요.'
+        : '연동된 걸음수가 없으면 활동량이 비어있을 수 있어요. 그런 경우엔 수기입력을 권해드려요.');
+}
+document.getElementById('hnActivityMode').addEventListener('change', updateActivityModeHint);
 
-document.getElementById('toggleProactive').addEventListener('change', async (e)=>{
-  const enabled = e.target.checked;
-  if(enabled && !notifSettings.push){
-    const result = await enablePush();
-    if(result.ok){ notifSettings.push = true; await storeSet('notif-settings', notifSettings); document.getElementById('togglePush').checked = true; }
-  }
-  try{
-    await fetch('/api/checkin-settings', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({
-        bomiLinkCode: profile.crmId, enabled,
-        reportEnabled: (checkinSettingsCache && checkinSettingsCache.report_enabled) ?? true,
-        reportTime: (checkinSettingsCache && checkinSettingsCache.report_time) || '21:00',
-        sleepTime: (checkinSettingsCache && checkinSettingsCache.sleep_time) || '10:00',
-        mealTime: (checkinSettingsCache && checkinSettingsCache.meal_time) || '19:00',
-        activityTime: (checkinSettingsCache && checkinSettingsCache.activity_time) || '17:00',
-        moodTime: (checkinSettingsCache && checkinSettingsCache.mood_time) || '20:00',
-      }),
-    });
-  }catch(err){ /* 다음에 설정 화면 열 때 다시 시도하게 됨 */ }
-});
-
-document.getElementById('saveCheckinTimesBtn').addEventListener('click', async ()=>{
-  const status = document.getElementById('checkinTimesSaveStatus');
+document.getElementById('hnSaveBtn').addEventListener('click', async ()=>{
+  const status = document.getElementById('hnSaveStatus');
   const payload = {
     bomiLinkCode: profile.crmId,
-    enabled: document.getElementById('toggleProactive').checked,
-    reportEnabled: document.getElementById('toggleReport').checked,
-    reportTime: document.getElementById('checkinReportTime').value || '21:00',
-    sleepTime: document.getElementById('checkinSleepTime').value || '10:00',
-    mealTime: document.getElementById('checkinMealTime').value || '19:00',
-    activityTime: document.getElementById('checkinActivityTime').value || '17:00',
-    moodTime: document.getElementById('checkinMoodTime').value || '20:00',
+    reportEnabled: document.getElementById('hnReportEnabled').checked,
+    reportTime: document.getElementById('hnReportTime').value || '21:00',
+    sleepEnabled: document.getElementById('hnSleepEnabled').checked,
+    sleepTime: document.getElementById('hnSleepTime').value || '10:00',
+    breakfastEnabled: document.getElementById('hnBreakfastEnabled').checked,
+    breakfastTime: document.getElementById('hnBreakfastTime').value || '08:00',
+    lunchEnabled: document.getElementById('hnLunchEnabled').checked,
+    lunchTime: document.getElementById('hnLunchTime').value || '12:30',
+    dinnerEnabled: document.getElementById('hnDinnerEnabled').checked,
+    dinnerTime: document.getElementById('hnDinnerTime').value || '18:30',
+    activityMode: document.getElementById('hnActivityMode').value,
+    activityTime: document.getElementById('hnActivityTime').value || '20:00',
+    moodEnabled: document.getElementById('hnMoodEnabled').checked,
+    moodTime: document.getElementById('hnMoodTime').value || '20:00',
   };
   try{
+    if(!notifSettings.push){
+      const result = await enablePush();
+      if(result.ok){ notifSettings.push = true; await storeSet('notif-settings', notifSettings); document.getElementById('togglePush').checked = true; }
+    }
     await fetch('/api/checkin-settings', {
       method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload),
     });
-    checkinSettingsCache = {
-      enabled: payload.enabled, report_enabled: payload.reportEnabled, report_time: payload.reportTime,
-      sleep_time: payload.sleepTime, meal_time: payload.mealTime,
-      activity_time: payload.activityTime, mood_time: payload.moodTime,
-    };
     status.textContent = '저장했어요.';
     status.style.color = 'var(--blue)';
   }catch(e){

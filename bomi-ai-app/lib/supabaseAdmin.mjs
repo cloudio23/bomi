@@ -126,11 +126,14 @@ export async function incrementDailyUsage(dateKey) {
   return next;
 }
 
-// 안부 문자(enabled)와 건강리포트 알림(report_enabled)은 서로 독립적으로 켜고 끌
-// 수 있어서, 둘 중 하나라도 켜진 행을 가져온 다음 send-checkins.js가 항목별로
-// 각자의 enabled 플래그를 다시 확인합니다.
+// 건강리포트/수면/아침/점심/저녁/기분이 각각 독립적으로 켜고 꺼지고, 활동은
+// activity_mode='manual'일 때만 알림 대상이라서, 이 중 하나라도 켜진 행을
+// 넉넉하게 가져온 다음 notifications.js의 buildDueNotifications가 항목별로
+// 각자의 플래그+시간을 다시 정확히 확인합니다(여긴 대략적인 사전 필터).
 export async function listEnabledCheckinSettings() {
-  return restRequest('bomi_checkin_settings?or=(enabled.eq.true,report_enabled.eq.true)');
+  return restRequest(
+    'bomi_checkin_settings?or=(report_enabled.eq.true,sleep_enabled.eq.true,breakfast_enabled.eq.true,lunch_enabled.eq.true,dinner_enabled.eq.true,mood_enabled.eq.true,activity_mode.eq.manual)'
+  );
 }
 
 // 달력 — 한 달치 일정 조회(월 화면 렌더링용). endDateExclusive는 다음 달 1일.

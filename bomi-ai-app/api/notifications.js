@@ -77,57 +77,40 @@ function hourOf(timeStr) {
   if (!timeStr) return null;
   return parseInt(String(timeStr).split(':')[0], 10);
 }
-// "HH:MM"에 시간을 더해 24시간 안에서 감쌉니다 — 기상시간이 23시대여도
-// 다음날로 안 넘어가고 자정 근처에서 정상적으로 순환하게.
-function addHours(timeStr, hours) {
-  const [h, m] = timeStr.split(':').map(Number);
-  const total = ((h + hours) * 60 + m) % (24 * 60);
-  const wrapped = (total + 24 * 60) % (24 * 60);
-  return `${String(Math.floor(wrapped / 60)).padStart(2, '0')}:${String(wrapped % 60).padStart(2, '0')}`;
-}
-
 // 각 알림은 타입별로 눌렀을 때 sw.js가 여는 화면이 다릅니다(checkin_*는
 // 해당 구조화 입력 화면으로 바로, health_report_ready는 리포트 화면으로).
-// 수면은 기상시간+1시간에(온보딩에서 기상시간을 안 받은 예전 계정은 예전처럼
-// 고정 sleep_time), 식사는 끼니별 시간에(끼니 시간을 하나도 안 받았으면
-// 예전처럼 고정 meal_time 한 번) 보냅니다 — 하위호환 경로.
+// 건강리포트/수면/아침/점심/저녁/기분은 서로 완전히 독립적으로 켜고 끄고
+// 시간을 정할 수 있어요("아침·점심은 끄고 저녁만 알림 받기" 같은 조합이
+// 가능하도록). 활동은 activity_mode가 'manual'일 때만 알림을 보내고,
+// 'auto'(걸음수 연동)면 조용히 실측치에 맡기고 알림을 보내지 않습니다.
 function buildDueNotifications(settings, hour) {
   const due = [];
-  if (settings.enabled) {
-    const sleepHour = settings.wake_time ? hourOf(addHours(settings.wake_time, 1)) : hourOf(settings.sleep_time);
-    if (sleepHour === hour) {
-      due.push({ type: 'checkin_sleep', title: '보미가 안부를 물어요', body: '간밤에 잘 주무셨어요? 오늘 컨디션이 궁금해요.' });
-    }
 
-    const mealSlots = [
-      { field: 'breakfast_time', label: '아침', meta: 'breakfast' },
-      { field: 'lunch_time', label: '점심', meta: 'lunch' },
-      { field: 'dinner_time', label: '저녁', meta: 'dinner' },
-    ].filter((m) => settings[m.field]);
-    if (mealSlots.length) {
-      for (const m of mealSlots) {
-        if (hourOf(settings[m.field]) === hour) {
-          due.push({
-            type: 'checkin_meal', meta: m.meta,
-            title: '보미가 안부를 물어요',
-            body: `식사시간이네요! (${m.label}) 식사 사진을 찍어서 올려주시면 건강리포트 생성에 큰 도움이 됩니다!`,
-          });
-        }
-      }
-    } else if (hourOf(settings.meal_time) === hour) {
+  if (settings.sleep_enabled !== false && hourOf(settings.sleep_time) === hour) {
+    due.push({ type: 'checkin_sleep', title: '보미가 안부를 물어요', body: '간밤에 잘 주무셨어요? 오늘 컨디션이 궁금해요.' });
+  }
+
+  const mealSlots = [
+    { field: 'breakfast_time', enabledField: 'breakfast_enabled', label: '아침', meta: 'breakfast' },
+    { field: 'lunch_time', enabledField: 'lunch_enabled', label: '점심', meta: 'lunch' },
+    { field: 'dinner_time', enabledField: 'dinner_enabled', label: '저녁', meta: 'dinner' },
+  ];
+  for (const m of mealSlots) {
+    if (settings[m.enabledField] === false) continue;
+    if (settings[m.field] && hourOf(settings[m.field]) === hour) {
       due.push({
-        type: 'checkin_meal', meta: 'meal',
+        type: 'checkin_meal', meta: m.meta,
         title: '보미가 안부를 물어요',
-        body: '오늘 식사는 잘 챙기셨나요? 사진이나 말로 들려주시면 리포트에 도움이 돼요.',
+        body: `식사시간이네요! (${m.label}) 식사 사진을 찍어서 올려주시면 건강리포트 생성에 큰 도움이 됩니다!`,
       });
     }
+  }
 
-    if (hourOf(settings.activity_time) === hour) {
-      due.push({ type: 'checkin_activity', title: '보미가 안부를 물어요', body: '오늘은 어떤 운동이나 활동을 하셨을까요?' });
-    }
-    if (hourOf(settings.mood_time) === hour) {
-      due.push({ type: 'checkin_mood', title: '보미가 안부를 물어요', body: '지금 기분은 어떠세요? 살짝 알려주시겠어요?' });
-    }
+  if (settings.activity_mode === 'manual' && hourOf(settings.activity_time) === hour) {
+    due.push({ type: 'checkin_activity', title: '보미가 안부를 물어요', body: '오늘은 어떤 운동이나 활동을 하셨을까요?' });
+  }
+  if (settings.mood_enabled !== false && hourOf(settings.mood_time) === hour) {
+    due.push({ type: 'checkin_mood', title: '보미가 안부를 물어요', body: '지금 기분은 어떠세요? 살짝 알려주시겠어요?' });
   }
   if (settings.report_enabled && hourOf(settings.report_time) === hour) {
     due.push({ type: 'health_report_ready', title: '오늘의 건강리포트가 나왔어요', body: '광고를 보거나 구독하면 바로 확인하실 수 있어요.' });
