@@ -105,6 +105,40 @@ export async function ensureDefaultCheckinSettings(code) {
   });
 }
 
+// 프리미엄(9,900원, 본인 결제) / 프리미엄 케어(19,900원, 자녀가 대신 결제 —
+// 프리미엄 기능 + 카카오톡 가족 리포트) 구독 상태. 아직 사업자 등록 전이라
+// 앱스토어/플레이스토어 인앱결제(프리미엄), PG 웹결제(프리미엄 케어) 모두
+// 실제 연동은 없고 — 이 테이블은 나중에 그 결제 웹훅이 채울 자리를 미리
+// 만들어둔 것입니다. 지금은 Supabase 테이블 편집기에서 수동으로 행을 넣어
+// 테스트하거나 특정 회원을 무료로 프리미엄 처리할 때만 씁니다.
+export async function getSubscription(code) {
+  const rows = await restRequest(
+    `bomi_subscriptions?bomi_link_code=eq.${encodeURIComponent(code)}&limit=1`
+  );
+  return rows && rows[0] ? rows[0] : null;
+}
+
+// Claude(유료 모델)로 라우팅된 대화 턴 수를 월 단위로 셉니다 — 월 9,900원
+// 구독료 안에서 감당 가능한 수준(약 5,000원/월 근사치)으로 상한을 두기 위함
+// (api/chat.js의 resolvePaidTier 참고). PostgREST에는 원자적 증가(increment)가
+// 없어서 읽은 값 +1을 그대로 덮어쓰는 방식이라, 동시에 여러 요청이 겹치면
+// 카운트가 살짝 어긋날 수 있지만 — 개인 회원이 1분 안에 여러 대화를 동시에
+// 보낼 일은 거의 없어 이 정도 오차는 감수합니다.
+export async function getPremiumUsage(code, yearMonth) {
+  const rows = await restRequest(
+    `bomi_premium_usage?bomi_link_code=eq.${encodeURIComponent(code)}&year_month=eq.${encodeURIComponent(yearMonth)}&limit=1`
+  );
+  return rows && rows[0] ? rows[0].claude_turns : 0;
+}
+
+export async function incrementPremiumUsage(code, yearMonth, currentCount) {
+  return restRequest('bomi_premium_usage?on_conflict=bomi_link_code,year_month', {
+    method: 'POST',
+    headers: { Prefer: 'resolution=merge-duplicates' },
+    body: { bomi_link_code: code, year_month: yearMonth, claude_turns: currentCount + 1 },
+  });
+}
+
 // 헤더의 "대화 가능량" 원형게이지용 — Gemini 무료 티어는 남은 할당량을 실시간
 // 조회하는 방법이 없어서(초과하면 그제서야 에러), 저희가 직접 오늘 요청 수를
 // 세어 자체 설정한 하루 목표치(api/usage.js의 DAILY_CHAT_BUDGET)와 비교합니다.

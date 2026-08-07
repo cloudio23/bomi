@@ -60,11 +60,18 @@
   .feature-body .ft-desc{ font-size:13.5px; color:var(--sub); line-height:1.55; }
 
   /* ---------- PRICE ---------- */
-  .price-card{ margin:22px 20px 8px; background:linear-gradient(155deg, var(--navy) 0%, var(--navy-dark) 100%); color:#fff; border-radius:20px; padding:26px 24px; text-align:center; }
-  .price-card .p-trial{ font-size:12.5px; font-weight:700; opacity:.8; letter-spacing:0.3px; margin-bottom:8px; text-transform:uppercase; }
-  .price-card .p-amount{ font-size:32px; font-weight:800; letter-spacing:-0.5px; }
-  .price-card .p-amount span{ font-size:14px; font-weight:600; opacity:.8; }
-  .price-card .p-note{ font-size:12.5px; opacity:.7; margin-top:10px; line-height:1.6; }
+  .price-card{ margin:22px 20px 0; background:linear-gradient(155deg, var(--navy) 0%, var(--navy-dark) 100%); color:#fff; border-radius:20px; padding:24px 24px 22px; }
+  .price-card.care{ background:linear-gradient(155deg, #6B5A8E 0%, #453A63 100%); margin-top:14px; }
+  .price-card .p-head{ display:flex; align-items:baseline; justify-content:space-between; gap:8px; margin-bottom:4px; }
+  .price-card .p-name{ font-size:15px; font-weight:800; }
+  .price-card .p-trial{ font-size:11.5px; font-weight:700; opacity:.85; letter-spacing:0.3px; text-transform:uppercase; background:rgba(255,255,255,0.14); padding:3px 9px; border-radius:999px; }
+  .price-card .p-amount{ font-size:28px; font-weight:800; letter-spacing:-0.5px; margin-top:6px; }
+  .price-card .p-amount span{ font-size:13px; font-weight:600; opacity:.8; }
+  .price-card .p-desc{ font-size:13px; opacity:.85; margin-top:8px; line-height:1.55; }
+  .price-card .p-note{ font-size:12px; opacity:.65; margin-top:10px; line-height:1.6; }
+  .price-card .p-btn{ width:100%; padding:14px; border-radius:12px; border:1px solid rgba(255,255,255,0.35); background:rgba(255,255,255,0.12); color:#fff; font-size:14.5px; font-weight:700; cursor:pointer; margin-top:14px; }
+  .price-card .p-btn:active{ opacity:.85; }
+  .price-card .p-btn.solid{ background:#fff; color:var(--navy-dark); border:none; }
 
   /* ---------- BOTTOM CTA ---------- */
   .bottom-cta{ margin-top:auto; padding:18px 20px 30px; background:#FAF8F5; border-top:1px solid var(--line); }
@@ -92,7 +99,7 @@
     <div class="hero-content">
       <div class="badge">3일 무료체험</div>
       <h1>보미 프리미엄으로<br>더 똑똑하고 세심하게</h1>
-      <p>무료 모델보다 더 자세하고 빠른 답변, 그리고 아래 기능들을 이용하실 수 있어요.</p>
+      <p>무료 모델보다 더 자세하고 빠른 답변, 그리고 아래 기능들을 이용하실 수 있어요. 자녀분이 대신 구독해드릴 수도 있어요.</p>
     </div>
   </div>
 
@@ -143,15 +150,35 @@
     </div>
   </div>
 
+  <div class="section-head" style="padding-top:22px;">
+    <div class="eyebrow">PRICING</div>
+    <h2>구독 방식을 골라주세요</h2>
+  </div>
+
   <div class="price-card">
-    <div class="p-trial">첫 3일은 무료</div>
-    <div class="p-amount">월 4,900원</div>
-    <div class="p-note">체험 기간 중에는 요금이 청구되지 않아요.<br>체험이 끝나면 계속 구독하실지 다시 안내해드려요.</div>
+    <div class="p-head">
+      <div class="p-name">프리미엄</div>
+      <div class="p-trial">첫 3일 무료</div>
+    </div>
+    <div class="p-amount">월 9,900원</div>
+    <div class="p-desc">본인이 직접 구독 — 위 프리미엄 기능 전체를 이용하실 수 있어요.</div>
+    <div class="p-note">체험 기간 중에는 요금이 청구되지 않아요. 체험이 끝나면 계속 구독하실지 다시 안내해드려요.<br>정식 결제는 앱스토어·플레이스토어 출시 후 그 안에서 진행될 예정이에요.</div>
+    <button class="p-btn solid" id="trialBtn">3일 무료체험 시작하기</button>
+    <button class="p-btn" id="subscribeNowBtn">체험 없이 바로 구독하기</button>
+  </div>
+
+  <div class="price-card care">
+    <div class="p-head">
+      <div class="p-name">프리미엄 케어</div>
+    </div>
+    <div class="p-amount">월 19,900원</div>
+    <div class="p-desc">자녀분이 대신 결제 — 프리미엄 기능 전체에 더해, 부모님의 수면·식사·활동·기분 건강 리포트를 카카오톡으로 매주 받아보실 수 있어요.</div>
+    <div class="p-note">웹페이지에서 카드 결제로 진행될 예정이에요(자녀분 명의). 사업자 등록 완료 후 순차 오픈됩니다.</div>
+    <button class="p-btn" id="careBtn">프리미엄 케어 알아보기</button>
   </div>
 
   <div class="bottom-cta">
-    <button class="cta-btn" id="trialBtn">3일 무료체험 시작하기</button>
-    <div class="cta-sub"><a id="subscribeNowLink">체험 없이 바로 구독하기</a></div>
+    <button class="cta-btn" onclick="location.href='/'">보미로 돌아가기</button>
   </div>
 </div>
 <div class="toast" id="toast"></div>
@@ -165,10 +192,11 @@ function showToast(msg){
   showToast._timer = setTimeout(()=> t.classList.remove('show'), 2600);
 }
 
-// 아직 실제 결제 연동 전이라(계정/PG 미보유), 3일 무료체험은 결제 없이도
-// 그 자체로는 진짜로 제공할 수 있어서 실제로 켜줍니다. 반면 "구독하기"는
-// 돈이 실제로 오가야 하는데 결제 수단이 없어서, 정직하게 "준비 중"이라고
-// 안내합니다(실제로 결제된 것처럼 속이지 않음).
+// 아직 실제 결제 연동 전이라(사업자 등록 필요), 3일 무료체험은 결제 없이도
+// 그 자체로는 진짜로 제공할 수 있어서 실제로 켜줍니다. 반면 정식 구독(프리미엄의
+// 앱스토어/플레이스토어 인앱결제, 프리미엄 케어의 웹 PG결제)은 돈이 실제로
+// 오가야 하는데 아직 그 경로가 없어서, 정직하게 "준비 중"이라고만 안내합니다
+// (실제로 결제된 것처럼 속이지 않음).
 // index.html의 storeGet/storeSet과 똑같은 방식(JSON.stringify로 저장, 접두사
 // 없이 같은 키)으로 써야 앱 쪽에서 storeGet('is-premium')으로 정확히 읽혀요.
 document.getElementById('trialBtn').addEventListener('click', ()=>{
@@ -183,8 +211,11 @@ document.getElementById('trialBtn').addEventListener('click', ()=>{
     showToast('체험을 시작하지 못했어요. 다시 시도해 주세요.');
   }
 });
-document.getElementById('subscribeNowLink').addEventListener('click', ()=>{
-  showToast('구독 서비스는 곧 시작할 예정이에요! 조금만 기다려주세요.');
+document.getElementById('subscribeNowBtn').addEventListener('click', ()=>{
+  showToast('앱스토어·플레이스토어 출시 후 구독하실 수 있어요. 조금만 기다려주세요!');
+});
+document.getElementById('careBtn').addEventListener('click', ()=>{
+  showToast('프리미엄 케어는 준비 중이에요. 오픈되면 자녀분께 안내드릴게요!');
 });
 </script>
 </body>

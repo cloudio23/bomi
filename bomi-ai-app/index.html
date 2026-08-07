@@ -4272,8 +4272,8 @@ class RateLimitError extends Error {}
 // 페이지로만 연결됩니다(실제 결제창처럼 속이지 않음).
 function showRateLimitUpsell(){
   addLocalBubble('지금 무료 모델 사용량이 많아서 답변이 늦어지고 있어요. 조금 더 기다리시거나, 구독하시면 복잡한 질문도 더 빠르고 자세하게 답해드릴 수 있어요.');
-  addChoiceButtons(['월 구독 4,900원 하러 가기', '프리미엄 모델 기능에 대하여', '무료 모델 이용할게요'], (choice)=>{
-    if(choice === '월 구독 4,900원 하러 가기' || choice === '프리미엄 모델 기능에 대하여'){
+  addChoiceButtons(['월 구독 9,900원 하러 가기', '프리미엄 모델 기능에 대하여', '무료 모델 이용할게요'], (choice)=>{
+    if(choice === '월 구독 9,900원 하러 가기' || choice === '프리미엄 모델 기능에 대하여'){
       location.href = '/premium.html';
     }
   });

@@ -8,8 +8,40 @@ import { callAI, analyzeMealPhoto } from '../lib/aiProviders.mjs';
 import { calculateBaziPillars, describeBaziPillarsKorean } from '../lib/bazi.mjs';
 import { convertLunarToSolar } from '../lib/lunarConvert.mjs';
 import { reverseGeocode } from '../lib/transit.mjs';
-import { incrementDailyUsage, addMealLog } from '../lib/supabaseAdmin.mjs';
+import { incrementDailyUsage, addMealLog, getSubscription, getPremiumUsage, incrementPremiumUsage } from '../lib/supabaseAdmin.mjs';
 import { todayKeyKST } from '../lib/usage.mjs';
+
+// 프리미엄(9,900원)/프리미엄 케어(19,900원) 구독자는 Claude로 라우팅합니다.
+// 월 상한은 9,900원 구독료 안에서 감당 가능한 수준(약 5,000원/월)의 근사치 —
+// Claude Sonnet 5 기준 대화 1턴을 입력 약 700토큰+출력 약 500토큰으로 잡고
+// 계산한 대략치라, 실제 사용량 데이터가 쌓이면 조정이 필요합니다.
+const PREMIUM_MONTHLY_TURN_CAP = Number(process.env.PREMIUM_MONTHLY_TURN_CAP || 300);
+
+function currentYearMonthKST() {
+  const kst = new Date(Date.now() + 9 * 60 * 60 * 1000);
+  return `${kst.getUTCFullYear()}-${String(kst.getUTCMonth() + 1).padStart(2, '0')}`;
+}
+
+// bomi_subscriptions는 아직 실제 결제 연동(사업자 등록 필요) 전이라 비어있거나
+// 수동으로만 채워집니다 — 지금은 라우팅 경로만 만들어두는 단계입니다.
+async function resolvePaidTier(bomiLinkCode) {
+  if (!bomiLinkCode) return false;
+  try {
+    const sub = await getSubscription(bomiLinkCode);
+    const isActiveSubscriber = sub
+      && (sub.tier === 'premium' || sub.tier === 'premium_care')
+      && (sub.status === 'trial' || sub.status === 'active')
+      && (!sub.expires_at || new Date(sub.expires_at) > new Date());
+    if (!isActiveSubscriber) return false;
+    const yearMonth = currentYearMonthKST();
+    const usedTurns = await getPremiumUsage(bomiLinkCode, yearMonth);
+    if (usedTurns >= PREMIUM_MONTHLY_TURN_CAP) return false; // 이번 달 한도 소진 — 무료 모델로 조용히 전환
+    await incrementPremiumUsage(bomiLinkCode, yearMonth, usedTurns);
+    return true;
+  } catch (e) {
+    return false; // 구독 조회 실패 시 무료 모델로 안전하게 대체
+  }
+}
 
 const MAX_MEAL_PHOTO_BASE64_LEN = 4_000_000; // 대략 3MB 원본 — 클라이언트가 미리 리사이즈해서 보냄
 
@@ -105,7 +137,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { system, messages, sajuBirth, location, mealLog } = req.body || {};
+    const { system, messages, sajuBirth, location, mealLog, bomiLinkCode } = req.body || {};
     if (mealLog) {
       await handleMealLog(req, res, mealLog);
       return;
@@ -116,7 +148,8 @@ export default async function handler(req, res) {
     }
 
     const fullSystem = (system || '') + await buildSajuContext(sajuBirth) + await buildLocationContext(location);
-    const reply = await callAI(fullSystem, messages, { maxTokens: 500 });
+    const usePaid = await resolvePaidTier(bomiLinkCode);
+    const reply = await callAI(fullSystem, messages, { maxTokens: 500, usePaid });
     // 헤더의 "대화 가능량" 게이지용 사용량 집계 — 실패해도 채팅 응답 자체를
     // 막으면 안 되므로 별도로 잡아서 무시합니다(fire-and-forget).
     incrementDailyUsage(todayKeyKST()).catch(() => {});

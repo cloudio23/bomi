@@ -23,9 +23,19 @@ export function currentProvider() {
   return (process.env.AI_PROVIDER || 'gemini').toLowerCase();
 }
 
-export async function callAI(system, messages, { maxTokens = 500 } = {}) {
+// usePaid는 AI_PROVIDER 전역 스위치와는 다른 별개의 경로입니다 — 위 주석의
+// "예상치 못한 과금을 막기 위해 자동 폴백하지 않는다"는 원칙은 에러가 났을 때
+// 조용히 Claude로 넘어가는 것을 막기 위한 것이고, usePaid는 그거와 달리
+// api/chat.js가 "이 회원은 프리미엄/프리미엄 케어 구독자이고 이번 달 한도
+// 안에 있다"를 미리 확인한 뒤 호출 전에 명시적으로 요청하는 값이라 같은
+// 위험이 없습니다. ANTHROPIC_API_KEY가 아직 없으면(사업자 등록 전이라 실제
+// 결제 연동 전) 조용히 Gemini로 대체됩니다.
+export async function callAI(system, messages, { maxTokens = 500, usePaid = false } = {}) {
   const provider = currentProvider();
   if (provider === 'anthropic' || provider === 'claude') {
+    return callClaude(system, messages, maxTokens);
+  }
+  if (usePaid && process.env.ANTHROPIC_API_KEY) {
     return callClaude(system, messages, maxTokens);
   }
   return callGemini(system, messages, maxTokens);
