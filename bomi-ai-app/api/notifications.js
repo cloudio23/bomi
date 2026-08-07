@@ -17,7 +17,7 @@ import {
   listPendingCalendarAlarms, markCalendarAlarmSent,
   createFamilyReportRequest, getPendingFamilyConsent, respondFamilyConsent,
   revokeFamilyConsentByCrmId, listAgreedFamilyReports, getFamilyReportByToken,
-  listFamilyHealthDaily, listEngagementDaily,
+  listDailyCheckins,
 } from '../lib/supabaseAdmin.mjs';
 import { sendPush } from '../lib/push.mjs';
 import { sendAlimtalk } from '../lib/kakao.mjs';
@@ -73,17 +73,67 @@ async function handleGreeting(req, res) {
   res.status(200).json({ ok: true, total: (subs || []).length, sent, failed });
 }
 
-// 각 항목은 자기만의 enabled 플래그(enabledField)를 가져서, 안부 문자 전체를
-// 꺼도 건강리포트 알림만 따로 켜둘 수 있습니다(반대도 가능). 건강리포트는
-// type이 달라서(health_report_ready) sw.js가 알림을 탭했을 때 채팅이 아니라
-// 리포트 화면(광고/구독 게이트)으로 바로 이동시킵니다.
-const NOTIF_FIELDS = [
-  { timeField: 'sleep_time', enabledField: 'enabled', type: 'checkin', title: '보미가 안부를 물어요', body: '간밤에 잘 주무셨어요? 오늘 컨디션이 궁금해요.' },
-  { timeField: 'meal_time', enabledField: 'enabled', type: 'checkin', title: '보미가 안부를 물어요', body: '오늘 식사는 잘 챙기셨나요? 어떠셨는지 들려주세요.' },
-  { timeField: 'activity_time', enabledField: 'enabled', type: 'checkin', title: '보미가 안부를 물어요', body: '오늘은 어떤 운동이나 활동을 하셨을까요?' },
-  { timeField: 'mood_time', enabledField: 'enabled', type: 'checkin', title: '보미가 안부를 물어요', body: '평안한 하루 보내고 계신가요? 지금 기분이나 컨디션은 어떠세요?' },
-  { timeField: 'report_time', enabledField: 'report_enabled', type: 'health_report_ready', title: '오늘의 건강리포트가 나왔어요', body: '광고를 보거나 구독하면 바로 확인하실 수 있어요.' },
-];
+function hourOf(timeStr) {
+  if (!timeStr) return null;
+  return parseInt(String(timeStr).split(':')[0], 10);
+}
+// "HH:MM"에 시간을 더해 24시간 안에서 감쌉니다 — 기상시간이 23시대여도
+// 다음날로 안 넘어가고 자정 근처에서 정상적으로 순환하게.
+function addHours(timeStr, hours) {
+  const [h, m] = timeStr.split(':').map(Number);
+  const total = ((h + hours) * 60 + m) % (24 * 60);
+  const wrapped = (total + 24 * 60) % (24 * 60);
+  return `${String(Math.floor(wrapped / 60)).padStart(2, '0')}:${String(wrapped % 60).padStart(2, '0')}`;
+}
+
+// 각 알림은 타입별로 눌렀을 때 sw.js가 여는 화면이 다릅니다(checkin_*는
+// 해당 구조화 입력 화면으로 바로, health_report_ready는 리포트 화면으로).
+// 수면은 기상시간+1시간에(온보딩에서 기상시간을 안 받은 예전 계정은 예전처럼
+// 고정 sleep_time), 식사는 끼니별 시간에(끼니 시간을 하나도 안 받았으면
+// 예전처럼 고정 meal_time 한 번) 보냅니다 — 하위호환 경로.
+function buildDueNotifications(settings, hour) {
+  const due = [];
+  if (settings.enabled) {
+    const sleepHour = settings.wake_time ? hourOf(addHours(settings.wake_time, 1)) : hourOf(settings.sleep_time);
+    if (sleepHour === hour) {
+      due.push({ type: 'checkin_sleep', title: '보미가 안부를 물어요', body: '간밤에 잘 주무셨어요? 오늘 컨디션이 궁금해요.' });
+    }
+
+    const mealSlots = [
+      { field: 'breakfast_time', label: '아침', meta: 'breakfast' },
+      { field: 'lunch_time', label: '점심', meta: 'lunch' },
+      { field: 'dinner_time', label: '저녁', meta: 'dinner' },
+    ].filter((m) => settings[m.field]);
+    if (mealSlots.length) {
+      for (const m of mealSlots) {
+        if (hourOf(settings[m.field]) === hour) {
+          due.push({
+            type: 'checkin_meal', meta: m.meta,
+            title: '보미가 안부를 물어요',
+            body: `식사시간이네요! (${m.label}) 식사 사진을 찍어서 올려주시면 건강리포트 생성에 큰 도움이 됩니다!`,
+          });
+        }
+      }
+    } else if (hourOf(settings.meal_time) === hour) {
+      due.push({
+        type: 'checkin_meal', meta: 'meal',
+        title: '보미가 안부를 물어요',
+        body: '오늘 식사는 잘 챙기셨나요? 사진이나 말로 들려주시면 리포트에 도움이 돼요.',
+      });
+    }
+
+    if (hourOf(settings.activity_time) === hour) {
+      due.push({ type: 'checkin_activity', title: '보미가 안부를 물어요', body: '오늘은 어떤 운동이나 활동을 하셨을까요?' });
+    }
+    if (hourOf(settings.mood_time) === hour) {
+      due.push({ type: 'checkin_mood', title: '보미가 안부를 물어요', body: '지금 기분은 어떠세요? 살짝 알려주시겠어요?' });
+    }
+  }
+  if (settings.report_enabled && hourOf(settings.report_time) === hour) {
+    due.push({ type: 'health_report_ready', title: '오늘의 건강리포트가 나왔어요', body: '광고를 보거나 구독하면 바로 확인하실 수 있어요.' });
+  }
+  return due;
+}
 
 function currentKstHour() {
   const kst = new Date(Date.now() + 9 * 60 * 60 * 1000); // UTC → KST
@@ -145,15 +195,13 @@ async function handleCheckins(req, res) {
   let matched = 0;
 
   for (const s of settingsList || []) {
-    for (const field of NOTIF_FIELDS) {
-      if (!s[field.enabledField]) continue;
-      const configuredHour = parseInt((s[field.timeField] || '').split(':')[0], 10);
-      if (configuredHour !== hour) continue;
+    const due = buildDueNotifications(s, hour);
+    for (const notif of due) {
       matched += 1;
       const sub = await getPushSubscription(s.bomi_link_code);
       if (!sub) continue;
       try {
-        await sendPush(sub.subscription, { type: field.type, title: field.title, body: field.body });
+        await sendPush(sub.subscription, notif);
         sent += 1;
       } catch (e) {
         // 만료/취소된 구독은 정상적인 상황 — 전체 배치를 막지 않고 건너뜀.
@@ -175,15 +223,13 @@ async function handleCheckins(req, res) {
 // 회원 이름은 서버에 따로 저장해두지 않는 원칙이라(로컬 전용 프로필),
 // 동의 시점에 한 번 받아둔 member_name만 씁니다 — 없으면 "어르신"으로 대체.
 // 체크리스트 완료율은 뺐습니다 — 체크리스트 항목은 회원이 자유롭게 정하는
-// 개인 할일이라 가족이 보기엔 큰 의미가 없고, 대신 "안부 응답 일수"(보미와
-// 수면·식사·활동·기분 이야기를 실제로 나눈 날 수, 원문은 절대 포함 안 함)가
-// "요즘 어떻게 지내시는지" 더 잘 보여줍니다. 걸음수는 그대로 실측치만 사용.
-function buildWeeklyFamilyVariables(row, engagementRows, healthRows) {
-  const respondedDays = engagementRows.filter((r) =>
-    r.sleep_mentioned || r.meal_mentioned || r.activity_mentioned || r.mood_mentioned
-  ).length;
+// 개인 할일이라 가족이 보기엔 큰 의미가 없고, 대신 "안부 응답 일수"(칩/푸시로
+// 실제 수면·걸음수·기분 체크인에 답한 날 수, bomi_daily_checkin — 원문은
+// 절대 포함 안 함)가 "요즘 어떻게 지내시는지" 더 잘 보여줍니다.
+function buildWeeklyFamilyVariables(row, checkinRows) {
+  const respondedDays = checkinRows.length; // 항목 하나라도 답한 날만 행이 생김
 
-  const withSteps = healthRows.filter((r) => typeof r.steps === 'number');
+  const withSteps = checkinRows.filter((r) => typeof r.steps === 'number');
   const avgSteps = withSteps.length > 0
     ? Math.round(withSteps.reduce((sum, r) => sum + r.steps, 0) / withSteps.length)
     : null;
@@ -206,11 +252,8 @@ async function sendDueFamilyReports(dayOfWeek, hour) {
   let sent = 0;
   let failed = 0;
   for (const row of rows || []) {
-    const [engagementRows, healthRows] = await Promise.all([
-      listEngagementDaily(row.crm_id, since),
-      listFamilyHealthDaily(row.crm_id, since),
-    ]);
-    const variables = buildWeeklyFamilyVariables(row, engagementRows || [], healthRows || []);
+    const checkinRows = await listDailyCheckins(row.crm_id, since);
+    const variables = buildWeeklyFamilyVariables(row, checkinRows || []);
     const result = await sendAlimtalk(row.guardian_phone, templateId, variables);
     if (result.ok) sent += 1; else failed += 1;
   }
@@ -284,16 +327,12 @@ async function handleFamilyReport(req, res) {
     const row = await getFamilyReportByToken(token);
     if (!row) { res.status(200).json({ ok: false, message: '유효하지 않은 링크예요.' }); return; }
     const since = new Date(Date.now() - 28 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-    const [daily, engagement] = await Promise.all([
-      listFamilyHealthDaily(row.crm_id, since),
-      listEngagementDaily(row.crm_id, since),
-    ]);
+    const checkins = await listDailyCheckins(row.crm_id, since);
     res.status(200).json({
       ok: true,
       memberName: row.member_name || '어르신',
       consentedAt: row.consented_at,
-      daily: daily || [],
-      engagement: engagement || [],
+      checkins: checkins || [],
     });
   } catch (e) {
     res.status(200).json({ ok: false, message: '리포트를 불러오지 못했어요.' });

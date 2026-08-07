@@ -101,6 +101,22 @@
     display:flex; gap:10px; background:var(--accent-soft); border-radius:12px; padding:12px 14px;
     margin-top:14px; font-size:13px; color:var(--navy); line-height:1.5;
   }
+  .stepper-val{ font-size:26px; font-weight:800; color:var(--ink); min-width:100px; text-align:center; }
+  .mood-slider{ width:100%; margin-top:22px; accent-color:var(--navy); height:34px; }
+  .meal-photo-btn-row{ display:flex; gap:8px; margin-top:16px; }
+  .meal-photo-btn-row .cal-btn-ghost{ flex:1; }
+  .meal-score-divider{ display:flex; align-items:center; gap:10px; margin:26px 0 14px; color:var(--sub); font-size:12.5px; font-weight:700; }
+  .meal-score-divider::before, .meal-score-divider::after{ content:''; flex:1; height:1px; background:var(--line); }
+
+  .checkin-status-row{ display:flex; align-items:center; gap:14px; padding:16px 4px; border-bottom:1px solid #F1EEE7; cursor:pointer; }
+  .checkin-status-row.auto{ cursor:default; }
+  .checkin-status-row:last-of-type{ border-bottom:none; }
+  .checkin-status-icon{ font-size:24px; flex-shrink:0; }
+  .checkin-status-info{ flex:1; }
+  .checkin-status-label{ font-size:15px; font-weight:700; color:var(--ink); }
+  .checkin-status-detail{ font-size:12.5px; color:var(--sub); margin-top:2px; }
+  .checkin-status-badge{ font-size:12px; font-weight:700; color:var(--warn); background:#FFF1F1; padding:5px 10px; border-radius:999px; flex-shrink:0; }
+  .checkin-status-badge.filled{ color:#4F8F34; background:#E7F0DD; }
   .ob-footer{ margin-top:auto; display:flex; gap:10px; padding-top:24px; }
   .btn{
     flex:1; border:none; border-radius:14px; padding:16px; font-size:16px; font-weight:700;
@@ -1077,6 +1093,24 @@
     </div>
   </div>
 
+  <!-- ===== 오늘 체크인 상태 대시보드("건강리포트" 칩이 여는 화면) ===== -->
+  <div class="screen" id="checkinStatusScreen">
+    <div class="subheader">
+      <button class="backbtn" id="checkinStatusBack">←</button>
+      <div class="title">오늘 건강 체크인</div>
+    </div>
+    <div class="scroll" id="checkinStatusBody"></div>
+  </div>
+
+  <!-- ===== 오늘 체크인 입력(수면/식사/기분 항목별 입력 화면) ===== -->
+  <div class="screen" id="checkinFlowScreen">
+    <div class="subheader">
+      <button class="backbtn" id="checkinFlowBack">←</button>
+      <div class="title">오늘 체크인</div>
+    </div>
+    <div class="scroll" id="checkinFlowBody"></div>
+  </div>
+
   <!-- ===== REPORT ===== -->
   <div class="screen" id="reportScreen">
     <div class="subheader">
@@ -1193,7 +1227,7 @@ const DEFAULT_CHECKLIST_ITEMS = [
   { id:'lunch',  label:'오후 01:00 점심 식사' },
   { id:'walk',   label:'오후 04:00 산책 30분' },
 ];
-const TOTAL_STEPS = 7;
+const TOTAL_STEPS = 8;
 // 이 값은 공개되는 게 정상입니다(그래서 이름이 public) — 서버 쪽 VAPID_PRIVATE_KEY와
 // 반드시 한 쌍으로 발급된 값을 써야 합니다.
 const VAPID_PUBLIC_KEY = 'BEHe-CLJT7Y5q8Vk3aGKf1fqq-rkXGeKyN1Xbe-zG5QIhQalylfW7g8rRm3pm4QJBVqCPK8CUCvAxE8T5Fl4G8U';
@@ -1213,7 +1247,7 @@ let stepGoal = 6000;            // 설정에서 입력하는 목표 걸음수
 let stepsEnabled = true;        // 목표 걸음수 화면에서 켜고 끄는 걸음수 표시 여부
 let pinnedExpanded = false;
 let obStep = 1;
-let obData = { name:'', birthYear:'', gender:'', height:'', weight:'', interests:[], locationConsent:null, emergencyContacts:[] };
+let obData = { name:'', birthYear:'', gender:'', height:'', weight:'', wakeTime:'07:00', bedTime:'22:00', mealCount:3, mealTimes:['08:00','12:30','18:30'], interests:[], locationConsent:null, emergencyContacts:[] };
 
 /* ============ STORAGE HELPERS (real browser localStorage) ============ */
 function todayKey(prefix){ const d=new Date(); return `${prefix}:${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}`; }
@@ -1302,6 +1336,50 @@ function renderObStep(){
     check();
   }
   else if(obStep === 5){
+    const mealLabels = obData.mealCount === 1 ? ['식사'] : obData.mealCount === 2 ? ['아침','저녁'] : ['아침','점심','저녁'];
+    area.innerHTML = `
+      <div class="ob-title">평소 생활 습관을 알려주세요</div>
+      <div class="ob-sub">이걸 바탕으로 딱 맞는 시간에 안부를 여쭤볼게요</div>
+      <div class="ob-field-label" style="margin-top:0;">기상 시간</div>
+      <input class="ob-input" type="time" id="inWakeTime" value="${obData.wakeTime}">
+      <div class="ob-field-label">취침 시간</div>
+      <input class="ob-input" type="time" id="inBedTime" value="${obData.bedTime}">
+      <div class="ob-field-label">하루 몇 끼 드세요?</div>
+      <div class="gender-row" id="mealCountRow">
+        <div class="gender-card ${obData.mealCount===1?'selected':''}" data-count="1"><span class="lb">1끼</span></div>
+        <div class="gender-card ${obData.mealCount===2?'selected':''}" data-count="2"><span class="lb">2끼</span></div>
+        <div class="gender-card ${obData.mealCount===3?'selected':''}" data-count="3"><span class="lb">3끼</span></div>
+      </div>
+      <div id="mealTimesArea">
+        ${mealLabels.map((label,i)=>`
+          <div class="ob-field-label">${label} 시간</div>
+          <input class="ob-input meal-time-input" type="time" data-idx="${i}" value="${obData.mealTimes[i]||''}">
+        `).join('')}
+      </div>
+      <div class="tip-box">💡 끼니 시간에 맞춰 "식사 사진을 올려주세요"라고 먼저 여쭤볼게요. 언제든 설정에서 바꾸실 수 있어요.</div>
+    `;
+    const wakeEl = document.getElementById('inWakeTime'), bedEl = document.getElementById('inBedTime');
+    const checkValid = ()=>{
+      const timesFilled = obData.mealTimes.slice(0, obData.mealCount).every(t=>!!t);
+      nextBtn.disabled = !(wakeEl.value && bedEl.value && timesFilled);
+    };
+    wakeEl.addEventListener('input', ()=>{ obData.wakeTime = wakeEl.value; checkValid(); });
+    bedEl.addEventListener('input', ()=>{ obData.bedTime = bedEl.value; checkValid(); });
+    document.querySelectorAll('#mealCountRow .gender-card').forEach(c=>{
+      c.addEventListener('click', ()=>{
+        obData.mealCount = parseInt(c.dataset.count, 10);
+        renderObStep();
+      });
+    });
+    document.querySelectorAll('.meal-time-input').forEach(inp=>{
+      inp.addEventListener('input', ()=>{
+        obData.mealTimes[parseInt(inp.dataset.idx,10)] = inp.value;
+        checkValid();
+      });
+    });
+    checkValid();
+  }
+  else if(obStep === 6){
     area.innerHTML = `
       <div class="ob-title">어떤 것에 관심이 있으세요?</div>
       <div class="ob-sub">취미나 즐겨하는 활동을 자유롭게 적어주세요</div>
@@ -1315,7 +1393,7 @@ function renderObStep(){
     });
     nextBtn.disabled = obData.interests.length === 0;
   }
-  else if(obStep === 6){
+  else if(obStep === 7){
     area.innerHTML = `
       <div class="ob-title">위치 정보를 확인해도 될까요?</div>
       <div class="ob-sub">오늘 날씨나 교통 정보를 알려드릴 때 필요해요. 나중에 설정에서 언제든 바꾸실 수 있어요.</div>
@@ -1339,7 +1417,7 @@ function renderObStep(){
     });
     nextBtn.disabled = obData.locationConsent === null;
   }
-  else if(obStep === 7){
+  else if(obStep === 8){
     area.innerHTML = `
       <div class="ob-title">보이스피싱이 의심될 때<br>알려드릴 분이 있나요?</div>
       <div class="ob-sub">등록해두시면 "보이스피싱 의심" 버튼을 눌렀을 때 바로 문자로 알려드려요. 지금 건너뛰고 나중에 설정에서 추가하셔도 괜찮아요.</div>
@@ -1405,6 +1483,25 @@ document.getElementById('obNext').addEventListener('click', async ()=>{
       });
     }catch(e){}
   }
+  // 기상/취침/끼니 시간을 저장 — 이걸로 수면 체크인(기상+1시간)과 끼니별
+  // 식사 체크인 알림 시각이 정해집니다. 실패해도 온보딩 자체는 막지 않고,
+  // 나중에 설정 화면에서 다시 조정할 수 있어요.
+  try{
+    const mealTimeFields = {};
+    const labels = ['breakfastTime','lunchTime','dinnerTime'];
+    if(obData.mealCount === 1){ mealTimeFields.breakfastTime = obData.mealTimes[0]; }
+    else if(obData.mealCount === 2){ mealTimeFields.breakfastTime = obData.mealTimes[0]; mealTimeFields.dinnerTime = obData.mealTimes[1]; }
+    else { obData.mealTimes.slice(0,3).forEach((t,i)=>{ mealTimeFields[labels[i]] = t; }); }
+    await fetch('/api/checkin-settings', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        bomiLinkCode: profile.crmId,
+        wakeTime: obData.wakeTime,
+        mealCount: obData.mealCount,
+        ...mealTimeFields,
+      }),
+    });
+  }catch(e){}
   startApp(true);
 });
 
@@ -1524,8 +1621,7 @@ document.getElementById('reportCta').addEventListener('click', ()=>{
   renderReportOrGate();
 });
 document.getElementById('reportChip').addEventListener('click', ()=>{
-  showScreen('reportScreen');
-  renderReportOrGate();
+  showCheckinStatusScreen();
 });
 document.getElementById('watchAdBtn').addEventListener('click', ()=>{
   const gate = document.getElementById('reportGate');
@@ -2085,59 +2181,350 @@ async function respondToConsent(decision){
 document.getElementById('consentApproveBtn').addEventListener('click', ()=> respondToConsent('approved'));
 document.getElementById('consentDeclineBtn').addEventListener('click', ()=> respondToConsent('declined'));
 
-/* ============ REPORT SCREEN ============ */
-// 예전엔 매일 날짜 기반 시드로 만든 가짜 난수 점수였어요(사용자가 실제로
-// 뭘 했는지와 전혀 무관). 이제는 보미와의 대화에서 수면/식사/활동/기분
-// 이야기를 실제로 꺼냈는지(api/chat.js가 원문 없이 불리언만 기록)를
-// 근거로 삼습니다. 매일·매끼 다 기록할 순 없으니 최근 14일의 "추이"로
-// 판단하고, 그 안에서도 최근 7일에 더 큰 가중치를 둡니다. 특정 항목의
-// 언급이 너무 적으면 점수를 지어내지 않고 "데이터 부족"으로 표시하고,
-// 전체적으로 나눈 이야기 자체가 거의 없으면 리포트 대신 격려 메시지를
-// 보여줍니다.
-const ENGAGEMENT_WINDOW_DAYS = 14;
-const MIN_DIMENSION_RESPONSES = 2; // 이 이상 언급이 있어야 그 항목 점수를 냄
-const MIN_TOTAL_ENGAGED_DAYS = 3;  // 전체적으로 이만큼도 없으면 리포트 대신 격려 메시지
+/* ============ 오늘 체크인(건강리포트 칩/푸시 → 구조화 입력) ============ */
+// "건강리포트" 칩을 누르면 오늘 수면/식사/활동/기분이 채워졌는지 보여주는
+// 대시보드(checkinStatusScreen)가 먼저 뜨고, 빈 항목이나 다시 채우고 싶은
+// 항목을 누르면 이 화면(checkinFlowScreen)이 열립니다. 푸시 알림을 탭하면
+// 대시보드 없이 곧바로 해당 항목으로 옵니다. 활동량은 걸음수가 자동으로
+// 채워지므로 여기서 직접 입력받지 않습니다. 큐에 담긴 항목을 하나씩 보여주고
+// 저장한 뒤 다음으로 넘어갑니다(대화 중 키워드 감지 방식은 폐기).
+let checkinQueue = [];
+let checkinReturnTo = 'checkinStatusScreen';
 
-async function fetchEngagementDaily(){
+function checkinLabel(kind){
+  return kind==='sleep' ? '수면' : kind==='mood' ? '기분' : '식사';
+}
+
+async function checkinAlreadyAnswered(kind, mealType){
   try{
-    const res = await fetch(`/api/sync-health-summary?code=${encodeURIComponent(profile.crmId)}&days=${ENGAGEMENT_WINDOW_DAYS}`);
+    const res = await fetch(`/api/sync-health-summary?action=daily-checkin&code=${encodeURIComponent(profile.crmId)}&date=${calDateStr(new Date())}`);
     const data = await res.json();
-    return (data.ok && data.engagement) || [];
-  }catch(e){ return []; }
+    if(!data.ok) return false;
+    const c = data.checkin;
+    const meals = data.meals || [];
+    if(kind==='sleep') return !!(c && c.sleep_score!=null);
+    if(kind==='mood') return !!(c && c.mood_score!=null);
+    if(kind==='meal') return mealType ? meals.some(m=>m.meal_type===mealType) : meals.length>0;
+  }catch(e){}
+  return false;
 }
 
-function scoreDimension(rows, key){
-  const flags = rows.map(r => !!r[key]);
-  const respondedDays = flags.filter(Boolean).length;
-  if(respondedDays < MIN_DIMENSION_RESPONSES){
-    return { insufficient:true, respondedDays };
+// items: [{kind:'sleep'|'meal'|'mood', mealType?}]. skipConfirm이면(상태
+// 대시보드에서 눌러서 들어온 경우 — 이미 채워진 값을 보고 눌렀으니 다시
+// 물어볼 필요 없음) 덮어쓰기 확인 없이 바로 입력 화면을 엽니다. 푸시로
+// 들어온 경우에만 "이미 답하셨는데 다시 하시겠어요?"를 확인합니다.
+async function startCheckinFlow(items, opts={}){
+  const { skipConfirm=false, returnTo='checkinStatusScreen' } = opts;
+  checkinReturnTo = returnTo;
+  const filtered = [];
+  for(const item of items){
+    if(!skipConfirm){
+      const already = await checkinAlreadyAnswered(item.kind, item.mealType);
+      if(already && !confirm(`오늘 ${checkinLabel(item.kind)} 체크인에 이미 답하셨어요. 다시 입력해서 덮어쓸까요?`)){
+        continue;
+      }
+    }
+    filtered.push(item);
   }
-  const recent = flags.slice(-7);
-  const older = flags.slice(0, -7);
-  const recentRate = recent.length ? recent.filter(Boolean).length / recent.length : 0;
-  const olderRate = older.length ? older.filter(Boolean).length / older.length : recentRate;
-  const rate = older.length ? recentRate*0.7 + olderRate*0.3 : recentRate;
-  const score = Math.min(100, Math.round(55 + rate*40));
-  return { insufficient:false, score, respondedDays };
+  if(filtered.length === 0) return;
+  checkinQueue = filtered;
+  showScreen('checkinFlowScreen');
+  renderCheckinStep();
 }
 
-async function computeScores(){
-  const rows = await fetchEngagementDaily();
-  const sleep = scoreDimension(rows, 'sleep_mentioned');
-  const nutri = scoreDimension(rows, 'meal_mentioned');
-  const act = scoreDimension(rows, 'activity_mentioned');
-  const mental = scoreDimension(rows, 'mood_mentioned');
-  const available = [sleep, nutri, act, mental].filter(d => !d.insufficient);
-  const overall = available.length
-    ? Math.round(available.reduce((s,d)=>s+d.score,0) / available.length)
-    : null;
-  return { totalEngagedDays: rows.length, sleep, nutri, act, mental, overall };
+function renderCheckinStep(){
+  if(checkinQueue.length === 0){
+    showToast('체크인 감사해요!');
+    if(checkinReturnTo === 'reportScreen'){ showScreen('reportScreen'); renderReportOrGate(); }
+    else showCheckinStatusScreen();
+    return;
+  }
+  const item = checkinQueue[0];
+  const body = document.getElementById('checkinFlowBody');
+  if(item.kind === 'sleep') renderSleepStep(body);
+  else if(item.kind === 'mood') renderMoodStep(body);
+  else if(item.kind === 'meal') renderMealStep(body, item.mealType);
+}
+function advanceCheckin(){
+  checkinQueue.shift();
+  renderCheckinStep();
+}
+document.getElementById('checkinFlowBack').addEventListener('click', ()=>{
+  checkinQueue = [];
+  if(checkinReturnTo === 'reportScreen') showScreen('chatScreen');
+  else showCheckinStatusScreen();
+});
+
+// 수면·기분은 같은 형태(0~5 사이드 드래그)로 간략하게 받습니다.
+function renderScoreSliderStep(body, title, sub, labels, onSave){
+  let val = 3;
+  body.innerHTML = `
+    <div class="ob-title" style="margin-top:20px;">${title}</div>
+    <div class="ob-sub" id="scoreSliderLabel">${labels[val]}</div>
+    <input type="range" min="0" max="5" step="1" value="${val}" id="scoreSlider" class="mood-slider">
+    <button type="button" class="cal-btn-primary" id="scoreSliderSaveBtn" style="width:100%;margin-top:24px;">저장</button>
+  `;
+  if(sub) document.getElementById('scoreSliderLabel').insertAdjacentHTML('beforebegin', `<div class="ob-sub">${sub}</div>`);
+  const slider = document.getElementById('scoreSlider');
+  slider.addEventListener('input', ()=>{ val = parseInt(slider.value,10); document.getElementById('scoreSliderLabel').textContent = labels[val]; });
+  document.getElementById('scoreSliderSaveBtn').addEventListener('click', async ()=>{
+    await onSave(val);
+    advanceCheckin();
+  });
 }
 
-async function renderReport(){
+function renderSleepStep(body){
+  const labels = ['많이 못 잤어요','못 잔 편이에요','보통이에요','잘 잔 편이에요','잘 잤어요','아주 푹 잤어요'];
+  renderScoreSliderStep(body, '간밤에 잘 주무셨어요?', null, labels, async (val)=>{
+    try{
+      await fetch('/api/sync-health-summary?action=daily-checkin', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ bomiLinkCode: profile.crmId, date: calDateStr(new Date()), sleepScore: val }),
+      });
+    }catch(e){}
+  });
+}
+
+function renderMoodStep(body){
+  const labels = ['많이 안좋아요','안좋아요','보통이에요','괜찮아요','좋아요','아주 좋아요'];
+  renderScoreSliderStep(body, '지금 기분이 어떠세요?', null, labels, async (val)=>{
+    try{
+      await fetch('/api/sync-health-summary?action=daily-checkin', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ bomiLinkCode: profile.crmId, date: calDateStr(new Date()), moodScore: val }),
+      });
+    }catch(e){}
+  });
+}
+
+// 사진은 캔버스로 리사이즈(최대 900px)·JPEG 압축한 뒤 base64로 서버에
+// 보냅니다 — 별도 오브젝트 스토리지 없이 DB 텍스트 컬럼에 저장하는 구조라
+// 원본 그대로 보내면 너무 커집니다.
+function compressImageToBase64(file){
+  return new Promise((resolve, reject)=>{
+    const reader = new FileReader();
+    reader.onload = ()=>{
+      const img = new Image();
+      img.onload = ()=>{
+        const maxDim = 900;
+        let { width, height } = img;
+        if(width > maxDim || height > maxDim){
+          const scale = maxDim / Math.max(width, height);
+          width = Math.round(width*scale); height = Math.round(height*scale);
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width; canvas.height = height;
+        canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.75);
+        resolve({ base64: dataUrl.split(',')[1], mime: 'image/jpeg' });
+      };
+      img.onerror = reject;
+      img.src = reader.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+// 식사는 카메라로 바로 촬영하거나 갤러리에서 이미 찍어둔 사진을 고를 수
+// 있고(두 버튼을 따로 둬서 OS 기본 선택창에 기대지 않고 뭘 눌러야 할지
+// 명확하게), 사진을 못 찍었을 때는 수면/기분과 같은 0~5 슬라이더로 대신
+// 남길 수 있습니다.
+function renderMealStep(body, mealType){
+  const label = mealType==='breakfast' ? '아침' : mealType==='lunch' ? '점심' : mealType==='dinner' ? '저녁' : '오늘';
+  const scoreLabels = ['많이 부실했어요','부실한 편이에요','보통이에요','괜찮게 드셨어요','잘 챙겨 드셨어요','아주 골고루 드셨어요'];
+  let score = 3;
+  body.innerHTML = `
+    <div class="ob-title" style="margin-top:20px;">${label} 식사를 기록해 주세요</div>
+    <div class="ob-sub">사진으로 남기시면 가장 정확해요</div>
+    <input type="file" accept="image/*" capture="environment" id="mealCameraInput" style="display:none;">
+    <input type="file" accept="image/*" id="mealGalleryInput" style="display:none;">
+    <div class="meal-photo-btn-row">
+      <button type="button" class="cal-btn-ghost" id="mealCameraBtn">📷 지금 촬영하기</button>
+      <button type="button" class="cal-btn-ghost" id="mealGalleryBtn">🖼️ 갤러리에서 선택</button>
+    </div>
+    <img id="mealPhotoPreview" style="display:none;width:100%;border-radius:12px;margin-top:12px;" alt="선택한 식사 사진">
+    <button type="button" class="cal-btn-primary" id="mealPhotoSaveBtn" style="width:100%;margin-top:16px;display:none;">사진으로 저장</button>
+
+    <div class="meal-score-divider"><span>사진이 없으면</span></div>
+    <div class="ob-sub" id="mealScoreLabel">${scoreLabels[score]}</div>
+    <input type="range" min="0" max="5" step="1" value="${score}" id="mealScoreSlider" class="mood-slider">
+    <button type="button" class="cal-btn-ghost" id="mealScoreSaveBtn" style="width:100%;margin-top:14px;">점수만 저장</button>
+    <div id="mealSavingNote" style="display:none;font-size:13px;color:var(--sub);margin-top:10px;text-align:center;">저장하는 중이에요...</div>
+  `;
+  let photoBase64 = null, photoMime = null;
+
+  const handlePhotoFile = async (file)=>{
+    if(!file) return;
+    try{
+      const compressed = await compressImageToBase64(file);
+      photoBase64 = compressed.base64;
+      photoMime = compressed.mime;
+      const preview = document.getElementById('mealPhotoPreview');
+      preview.src = `data:${photoMime};base64,${photoBase64}`;
+      preview.style.display = '';
+      document.getElementById('mealPhotoSaveBtn').style.display = '';
+    }catch(err){
+      showToast('사진을 처리하지 못했어요. 다시 시도해 주세요.');
+    }
+  };
+  document.getElementById('mealCameraBtn').addEventListener('click', ()=> document.getElementById('mealCameraInput').click());
+  document.getElementById('mealGalleryBtn').addEventListener('click', ()=> document.getElementById('mealGalleryInput').click());
+  document.getElementById('mealCameraInput').addEventListener('change', (e)=> handlePhotoFile(e.target.files[0]));
+  document.getElementById('mealGalleryInput').addEventListener('change', (e)=> handlePhotoFile(e.target.files[0]));
+
+  const saveMeal = async (payload)=>{
+    document.getElementById('mealSavingNote').style.display = '';
+    try{
+      await fetch('/api/chat', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ mealLog: {
+          bomiLinkCode: profile.crmId,
+          date: calDateStr(new Date()),
+          mealType: mealType || 'meal',
+          ...payload,
+        }}),
+      });
+    }catch(e){}
+    advanceCheckin();
+  };
+  document.getElementById('mealPhotoSaveBtn').addEventListener('click', ()=>{
+    document.getElementById('mealPhotoSaveBtn').disabled = true;
+    saveMeal({ photoBase64, mimeType: photoMime });
+  });
+  const scoreSlider = document.getElementById('mealScoreSlider');
+  scoreSlider.addEventListener('input', ()=>{ score = parseInt(scoreSlider.value,10); document.getElementById('mealScoreLabel').textContent = scoreLabels[score]; });
+  document.getElementById('mealScoreSaveBtn').addEventListener('click', ()=>{
+    document.getElementById('mealScoreSaveBtn').disabled = true;
+    saveMeal({ mealScore: score });
+  });
+}
+
+// 건강리포트 알림 푸시(sw.js → /?checkin=sleep|meal|mood[&mealType=...])를
+// 탭해서 들어온 경우, 대시보드 없이 곧바로 해당 체크인 화면을 엽니다.
+function maybeShowCheckinFromNotification(){
+  const params = new URLSearchParams(location.search);
+  const checkin = params.get('checkin');
+  if(!checkin) return;
+  const mealType = params.get('mealType') || 'meal';
+  history.replaceState(null, '', location.pathname);
+  if(checkin === 'sleep') startCheckinFlow([{ kind:'sleep' }]);
+  else if(checkin === 'mood') startCheckinFlow([{ kind:'mood' }]);
+  else if(checkin === 'meal') startCheckinFlow([{ kind:'meal', mealType }]);
+}
+
+/* ============ 오늘 체크인 상태 대시보드("건강리포트" 칩이 여는 화면) ============ */
+// 오늘 수면/식사/활동량/기분이 채워졌는지 한눈에 보여주고, 항목을 누르면
+// (활동량 제외 — 걸음수 자동) 채우거나 고칠 수 있게 합니다.
+async function showCheckinStatusScreen(){
+  showScreen('checkinStatusScreen');
+  await renderCheckinStatus();
+}
+async function renderCheckinStatus(){
+  const body = document.getElementById('checkinStatusBody');
+  body.innerHTML = `<div class="cl-empty">불러오는 중이에요...</div>`;
+  let checkin = null, meals = [];
+  try{
+    const res = await fetch(`/api/sync-health-summary?action=daily-checkin&code=${encodeURIComponent(profile.crmId)}&date=${calDateStr(new Date())}`);
+    const data = await res.json();
+    if(data.ok){ checkin = data.checkin; meals = data.meals || []; }
+  }catch(e){}
+
+  const mealFilled = meals.length > 0;
+  const mealDetail = mealFilled ? (meals.some(m=>m.photo_data_uri) ? '사진으로 기록됨' : `${meals[0].meal_score ?? '-'}/5로 기록됨`) : '';
+  const rows = [
+    { kind:'sleep', icon:'🌙', label:'수면', filled: !!(checkin && checkin.sleep_score!=null), detail: checkin && checkin.sleep_score!=null ? `${checkin.sleep_score}/5로 기록됨` : '' },
+    { kind:'meal', icon:'🍚', label:'식사', filled: mealFilled, detail: mealDetail },
+    { kind:'activity', icon:'🚶', label:'활동량', filled: !!(checkin && checkin.steps!=null), detail: checkin && checkin.steps!=null ? `${checkin.steps.toLocaleString('ko-KR')}보 (자동)` : '아직 기록 없음' },
+    { kind:'mood', icon:'😊', label:'기분', filled: !!(checkin && checkin.mood_score!=null), detail: checkin && checkin.mood_score!=null ? `${checkin.mood_score}/5로 기록됨` : '' },
+  ];
+
+  body.innerHTML = `
+    <div class="tip-box" style="margin-top:14px;">💡 항목을 누르면 채우거나 다시 입력할 수 있어요.</div>
+    ${rows.map(r=>`
+      <div class="checkin-status-row${r.kind==='activity' ? ' auto' : ''}" data-kind="${r.kind}">
+        <div class="checkin-status-icon">${r.icon}</div>
+        <div class="checkin-status-info">
+          <div class="checkin-status-label">${r.label}</div>
+          <div class="checkin-status-detail">${r.filled ? r.detail : '아직 기록이 없어요'}</div>
+        </div>
+        <div class="checkin-status-badge ${r.filled?'filled':''}">${r.filled ? '✓' : (r.kind==='activity' ? '' : '미입력')}</div>
+      </div>
+    `).join('')}
+    <button type="button" class="cal-btn-primary" id="checkinStatusReportBtn" style="width:100%;margin-top:22px;">건강리포트 보기</button>
+  `;
+  body.querySelectorAll('.checkin-status-row').forEach(row=>{
+    row.addEventListener('click', ()=>{
+      const kind = row.dataset.kind;
+      if(kind === 'activity'){ showToast('활동량은 걸음수로 자동 기록돼요.'); return; }
+      startCheckinFlow([{ kind }], { skipConfirm:true, returnTo:'checkinStatusScreen' });
+    });
+  });
+  document.getElementById('checkinStatusReportBtn').addEventListener('click', ()=>{
+    showScreen('reportScreen');
+    renderReportOrGate();
+  });
+}
+document.getElementById('checkinStatusBack').addEventListener('click', ()=> showScreen('chatScreen'));
+
+/* ============ REPORT SCREEN (일간/주간/월간) ============ */
+// 일간(1일)·주간(7일)·월간(28일) 모두 같은 원자료(bomi_daily_checkin의
+// 수면시간/걸음수/기분점수 + bomi_meal_logs)를 기간만 다르게 집계해서
+// 만듭니다 — 주간은 최근 7일치 일간 기록의 평균, 월간은 최근 28일치의
+// 평균이라 "일간을 바탕으로 주간을, 주간을 바탕으로 월간을" 만드는 셈입니다.
+// 예전(대화 키워드 감지/랜덤 점수) 방식은 폐기했습니다.
+let currentReportPeriod = 'daily';
+const PERIOD_WINDOW_DAYS = { daily: 1, weekly: 7, monthly: 28 };
+
+function minResponsesFor(windowDays){ return Math.max(1, Math.ceil(windowDays * 0.2)); }
+function scoreFrom5(avgScore){ return Math.round((avgScore/5)*100); }
+function activityScoreFromSteps(avgSteps){ return Math.max(20, Math.min(100, Math.round((avgSteps/6000)*100))); }
+function engagementScore(respondedDays, windowDays){ return Math.round(55 + Math.min(1, respondedDays/windowDays)*40); }
+
+async function fetchReportWindow(period){
+  const windowDays = PERIOD_WINDOW_DAYS[period] || 1;
+  try{
+    const res = await fetch(`/api/sync-health-summary?action=report&code=${encodeURIComponent(profile.crmId)}&period=${period}`);
+    const data = await res.json();
+    if(!data.ok) return { checkins:[], meals:[], windowDays };
+    return { checkins: data.checkins||[], meals: data.meals||[], windowDays: data.windowDays||windowDays };
+  }catch(e){ return { checkins:[], meals:[], windowDays }; }
+}
+
+function summarizeDimension(values, windowDays, scoreFn){
+  if(values.length < minResponsesFor(windowDays)) return { insufficient:true, respondedDays: values.length };
+  const avg = values.reduce((s,v)=>s+v,0)/values.length;
+  return { insufficient:false, score: scoreFn(avg), respondedDays: values.length, avg };
+}
+
+async function computeScores(period){
+  const { checkins, meals, windowDays } = await fetchReportWindow(period);
+  const sleepVals = checkins.filter(c=>c.sleep_score!=null).map(c=>Number(c.sleep_score));
+  const stepVals = checkins.filter(c=>c.steps!=null).map(c=>Number(c.steps));
+  const moodVals = checkins.filter(c=>c.mood_score!=null).map(c=>Number(c.mood_score));
+  const mealDays = new Set(meals.map(m=>m.log_date)).size;
+
+  const sleep = summarizeDimension(sleepVals, windowDays, scoreFrom5);
+  const act = summarizeDimension(stepVals, windowDays, activityScoreFromSteps);
+  const mental = summarizeDimension(moodVals, windowDays, scoreFrom5);
+  const nutri = mealDays < minResponsesFor(windowDays)
+    ? { insufficient:true, respondedDays: mealDays }
+    : { insufficient:false, score: engagementScore(mealDays, windowDays), respondedDays: mealDays };
+
+  const available = [sleep, nutri, act, mental].filter(d=>!d.insufficient);
+  const overall = available.length ? Math.round(available.reduce((s,d)=>s+d.score,0)/available.length) : null;
+  const totalEngagedDays = new Set([...checkins.map(c=>c.checkin_date), ...meals.map(m=>m.log_date)]).size;
+  return { totalEngagedDays, windowDays, sleep, nutri, act, mental, overall };
+}
+
+async function renderReport(period){
+  currentReportPeriod = period || currentReportPeriod;
+  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active', t.dataset.tab===currentReportPeriod));
+
   const now = new Date();
-  document.getElementById('rDate').textContent = `${now.getFullYear()}.${String(now.getMonth()+1).padStart(2,'0')}.${String(now.getDate()).padStart(2,'0')}`;
-  document.getElementById('rDay').textContent = ['일','월','화','수','목','금','토'][now.getDay()] + '요일';
+  const periodLabel = currentReportPeriod==='weekly' ? '이번 주' : currentReportPeriod==='monthly' ? '이번 달' : `${now.getFullYear()}.${String(now.getMonth()+1).padStart(2,'0')}.${String(now.getDate()).padStart(2,'0')}`;
+  document.getElementById('rDate').textContent = periodLabel;
+  document.getElementById('rDay').textContent = currentReportPeriod==='daily' ? (['일','월','화','수','목','금','토'][now.getDay()] + '요일') : '';
 
   let recordDays = 1;
   try{
@@ -2145,16 +2532,16 @@ async function renderReport(){
   }catch(e){}
   document.getElementById('recordDaysBadge').textContent = `${recordDays}일 기록됨`;
 
-  const { totalEngagedDays, sleep, nutri, act, mental, overall } = await computeScores();
+  const { totalEngagedDays, windowDays, sleep, nutri, act, mental, overall } = await computeScores(currentReportPeriod);
   const insufficientBlock = document.getElementById('reportInsufficientBlock');
   const scoredBlock = document.getElementById('reportScoredBlock');
 
-  if(overall === null || totalEngagedDays < MIN_TOTAL_ENGAGED_DAYS){
+  if(overall === null || totalEngagedDays < minResponsesFor(windowDays)){
     scoredBlock.style.display = 'none';
     insufficientBlock.classList.add('show');
     document.getElementById('reportInsufficientDesc').textContent = totalEngagedDays === 0
-      ? '아직 수면·식사·활동·기분 이야기를 나눈 기록이 없어요. 보미에게 요즘 어떻게 지내시는지 편하게 들려주시면 그때부터 리포트를 만들어드릴 수 있어요.'
-      : '지금까지 나눈 이야기가 아직 적어서 정확한 리포트를 만들기 어려워요. 며칠만 더 이야기를 들려주시면 훨씬 정확해져요.';
+      ? '아직 체크인 기록이 없어요. "건강리포트" 칩을 눌러서 오늘 수면·식사·활동·기분을 알려주시면 그때부터 리포트를 만들어드릴 수 있어요.'
+      : '지금까지 쌓인 기록이 아직 적어서 정확한 리포트를 만들기 어려워요. 며칠 더 체크인해 주시면 훨씬 정확해져요.';
     return;
   }
   insufficientBlock.classList.remove('show');
@@ -2165,17 +2552,17 @@ async function renderReport(){
   ring.style.background = `conic-gradient(var(--navy) ${overall}%, #EFEBE3 ${overall}%)`;
   document.getElementById('scoreCap').textContent = overall>=80 ? '컨디션이 아주 좋아요' : overall>=60 ? '무난한 상태예요' : '조금 더 챙겨볼까요';
 
-  setMetric('sleep', sleep, '수면');
-  setMetric('nutri', nutri, '식사');
-  setMetric('act', act, '활동');
-  setMetric('mental', mental, '기분');
+  setMetric('sleep', sleep, '수면', v=>`평균 ${v.toFixed(1)}/5`);
+  setMetric('nutri', nutri, '식사', null, `${windowDays}일 중 ${nutri.respondedDays||0}일 기록`);
+  setMetric('act', act, '활동', v=>`평균 ${Math.round(v).toLocaleString('ko-KR')}보`);
+  setMetric('mental', mental, '기분', v=>`평균 ${v.toFixed(1)}/5`);
 
   const age = new Date().getFullYear() - profile.birthYear;
   const b = bmiInfo();
   document.getElementById('sourceNote').innerHTML =
-    `<b style="color:var(--ink)">데이터 출처</b><br>최근 ${ENGAGEMENT_WINDOW_DAYS}일간 보미와 나눈 대화에서 수면·식사·활동·기분 이야기를 실제로 꺼내신 빈도를 바탕으로 산출된 <b>추정치</b>예요(의학적 진단이 아니에요). 만 ${age}세 · ${profile.gender} 기준 · BMI ${b.bmi} (${b.cat}).`;
+    `<b style="color:var(--ink)">데이터 출처</b><br>${windowDays}일간 직접 체크인하신 수면시간·걸음수·기분·식사 기록을 바탕으로 산출된 <b>추정치</b>예요(의학적 진단이 아니에요). 만 ${age}세 · ${profile.gender} 기준 · BMI ${b.bmi} (${b.cat}).`;
 }
-function setMetric(key, dim, label){
+function setMetric(key, dim, label, valueFormatter, overrideSub){
   const scoreEl = document.getElementById(key+'Score');
   const barEl = document.getElementById(key+'Bar');
   const subEl = document.getElementById(key+'Sub');
@@ -2183,7 +2570,7 @@ function setMetric(key, dim, label){
     scoreEl.textContent = '데이터 부족';
     barEl.style.width = '6%';
     barEl.classList.add('insufficient');
-    subEl.textContent = `최근 ${ENGAGEMENT_WINDOW_DAYS}일 중 ${label} 이야기가 ${dim.respondedDays}번뿐이라 판단이 어려워요`;
+    subEl.textContent = `기록이 ${dim.respondedDays}번뿐이라 판단이 어려워요`;
     subEl.classList.add('insufficient');
     return;
   }
@@ -2191,8 +2578,11 @@ function setMetric(key, dim, label){
   subEl.classList.remove('insufficient');
   scoreEl.textContent = dim.score + '/100';
   barEl.style.width = dim.score + '%';
-  subEl.textContent = `최근 ${ENGAGEMENT_WINDOW_DAYS}일 중 ${dim.respondedDays}일 ${label} 이야기를 나눴어요`;
+  subEl.textContent = overrideSub || (valueFormatter ? valueFormatter(dim.avg) : '');
 }
+document.querySelectorAll('.tab').forEach(t=>{
+  t.addEventListener('click', ()=> renderReport(t.dataset.tab));
+});
 document.getElementById('dPrev').addEventListener('click', ()=>{});
 document.getElementById('dNext').addEventListener('click', ()=>{});
 
@@ -2219,6 +2609,14 @@ window.addEventListener('bomiStepsUpdate', async (e)=>{
   todaySteps = (e.detail && typeof e.detail.steps === 'number') ? e.detail.steps : null;
   await storeSet(todayKey('steps'), todaySteps);
   renderPinnedChecklist();
+  // "활동량은 도보계산이 되니 패스" — 사용자가 따로 입력할 필요 없이, 걸음수가
+  // 갱신될 때마다 오늘 체크인에 조용히 자동 반영합니다.
+  if(todaySteps !== null && profile && profile.crmId){
+    fetch('/api/sync-health-summary?action=daily-checkin', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ bomiLinkCode: profile.crmId, date: calDateStr(new Date()), steps: todaySteps }),
+    }).catch(()=>{});
+  }
 });
 
 /* ============ PINNED CHECKLIST (chat header bar) ============ */
@@ -4282,6 +4680,7 @@ function hideSplash(){
     maybeShowFamilyConsentScreen();
     maybeShowReportFromNotification();
     maybeShowCalendarFromNotification();
+    maybeShowCheckinFromNotification();
   } else {
     renderObStep();
   }

@@ -262,36 +262,66 @@ export async function listFamilyHealthDaily(crmId, sinceDate) {
   );
 }
 
-// 건강리포트(일간 화면 + 가족 주간 리포트)를 실제 참여 신호로 만들기 위한
-// 저장소 — 원문 대화 내용은 절대 저장하지 않고, 그날 수면/식사/활동/기분
-// 이야기를 "언급했는지" 여부만 불리언으로 남깁니다. 같은 날 여러 메시지가
-// 오면 한 번이라도 언급됐으면 true로 유지(OR 누적)합니다.
-export async function markEngagementSignals(crmId, dateStr, detected) {
-  const existingRows = await restRequest(
-    `bomi_engagement_daily?crm_id=eq.${encodeURIComponent(crmId)}&summary_date=eq.${dateStr}&limit=1`
-  );
-  const prev = existingRows && existingRows[0] ? existingRows[0] : {};
-  const merged = {
-    sleep_mentioned: !!(prev.sleep_mentioned || detected.sleep),
-    meal_mentioned: !!(prev.meal_mentioned || detected.meal),
-    activity_mentioned: !!(prev.activity_mentioned || detected.activity),
-    mood_mentioned: !!(prev.mood_mentioned || detected.mood),
-  };
-  // 아무 신호도 없으면 굳이 행을 만들지 않습니다 — 빈 행이 "그날 앱을 열긴
-  // 열었다"는 잘못된 참여 신호로 오인되면 안 되니까요.
-  if (!merged.sleep_mentioned && !merged.meal_mentioned && !merged.activity_mentioned && !merged.mood_mentioned) {
-    return null;
-  }
-  return restRequest('bomi_engagement_daily?on_conflict=crm_id,summary_date', {
+// 건강리포트의 메인 데이터 — 대화 중 키워드 감지 방식(bomi_engagement_daily)은
+// 폐기하고, 칩/푸시로 직접 물어본 구조화된 답변(수면·기분 0~5 슬라이더,
+// 걸음수는 실측 자동 기록)을 씁니다. 하루 안에 여러 항목이 서로 다른
+// 시점에 채워질 수 있어서(예: 기상 1시간 뒤엔 수면만, 오후엔 기분만) 보낸
+// 필드만 부분 upsert합니다.
+export async function upsertDailyCheckin(crmId, dateStr, values) {
+  const body = { crm_id: crmId, checkin_date: dateStr, updated_at: new Date().toISOString() };
+  if (values.sleepScore !== undefined) body.sleep_score = values.sleepScore;
+  if (values.steps !== undefined) body.steps = values.steps;
+  if (values.moodScore !== undefined) body.mood_score = values.moodScore;
+  return restRequest('bomi_daily_checkin?on_conflict=crm_id,checkin_date', {
     method: 'POST',
     headers: { Prefer: 'resolution=merge-duplicates' },
-    body: { crm_id: crmId, summary_date: dateStr, ...merged, updated_at: new Date().toISOString() },
+    body,
   });
 }
 
-export async function listEngagementDaily(crmId, sinceDate) {
+export async function getDailyCheckin(crmId, dateStr) {
+  const rows = await restRequest(
+    `bomi_daily_checkin?crm_id=eq.${encodeURIComponent(crmId)}&checkin_date=eq.${dateStr}&limit=1`
+  );
+  return rows && rows[0] ? rows[0] : null;
+}
+
+export async function listDailyCheckins(crmId, sinceDate) {
   return restRequest(
-    `bomi_engagement_daily?crm_id=eq.${encodeURIComponent(crmId)}&summary_date=gte.${sinceDate}&order=summary_date.asc`
+    `bomi_daily_checkin?crm_id=eq.${encodeURIComponent(crmId)}&checkin_date=gte.${sinceDate}&order=checkin_date.asc`
+  );
+}
+
+// 식사 기록 — 끼니(아침/점심/저녁)당 한 행. 사진(base64 data URI, 별도
+// 오브젝트 스토리지 없이 텍스트 컬럼에 압축된 이미지를 그대로 저장 — 소규모
+// 트래픽 전제)이 기본이고, 사진을 못 찍었을 때는 meal_score(0~5)로 대신
+// 남길 수 있습니다.
+export async function addMealLog(crmId, dateStr, mealType, entry) {
+  const rows = await restRequest('bomi_meal_logs', {
+    method: 'POST',
+    headers: { Prefer: 'return=representation' },
+    body: {
+      crm_id: crmId,
+      log_date: dateStr,
+      meal_type: mealType,
+      description: entry.description || null,
+      photo_data_uri: entry.photoDataUri || null,
+      ai_analysis: entry.aiAnalysis || null,
+      meal_score: entry.mealScore !== undefined ? entry.mealScore : null,
+    },
+  });
+  return rows && rows[0];
+}
+
+export async function listMealLogsForDate(crmId, dateStr) {
+  return restRequest(
+    `bomi_meal_logs?crm_id=eq.${encodeURIComponent(crmId)}&log_date=eq.${dateStr}&order=logged_at.asc`
+  );
+}
+
+export async function listMealLogs(crmId, sinceDate) {
+  return restRequest(
+    `bomi_meal_logs?crm_id=eq.${encodeURIComponent(crmId)}&log_date=gte.${sinceDate}&order=log_date.asc,logged_at.asc`
   );
 }
 

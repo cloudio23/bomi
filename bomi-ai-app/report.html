@@ -71,7 +71,7 @@ function renderBars(rows, key, formatter){
     const h = v === null ? 3 : Math.max(4, Math.round((v / max) * 56));
     return `<div class="bar${v !== null ? ' has-data' : ''}" style="height:${h}px" title="${v !== null ? formatter(v) : '기록 없음'}"></div>`;
   }).join('');
-  const labels = last14.map((r,i) => (i % 3 === 0 ? String(Number(r.summary_date.slice(8,10))) : '')).map(l=>`<span>${l}</span>`).join('');
+  const labels = last14.map((r,i) => (i % 3 === 0 ? String(Number(r.checkin_date.slice(8,10))) : '')).map(l=>`<span>${l}</span>`).join('');
   return `<div class="bars">${bars}</div><div class="bar-labels">${labels}</div>`;
 }
 
@@ -93,15 +93,12 @@ async function load(){
     }
     document.getElementById('titleText').textContent = `${data.memberName}님의 소식`;
 
-    const daily = data.daily || [];
-    const engagement = data.engagement || [];
-    const engagedDays = engagement.filter(r =>
-      r.sleep_mentioned || r.meal_mentioned || r.activity_mentioned || r.mood_mentioned
-    ).length;
-    const withSteps = daily.filter(r => typeof r.steps === 'number');
+    const checkins = data.checkins || [];
+    const engagedDays = checkins.length; // 하루에 하나라도 답한 날만 행이 생김
+    const withSteps = checkins.filter(r => typeof r.steps === 'number');
     const avgSteps = withSteps.length > 0 ? Math.round(withSteps.reduce((s,r)=>s+r.steps,0)/withSteps.length) : null;
 
-    if(daily.length === 0 && engagement.length === 0){
+    if(checkins.length === 0){
       content.innerHTML = '<div class="empty-note">아직 쌓인 기록이 없어요. 다음 주에 다시 확인해 주세요.</div>' + footerNote();
       return;
     }
@@ -121,7 +118,7 @@ async function load(){
         <h2>최근 2주 걸음수 추이</h2>
         <div class="trend-card">
           <div class="trend-row">
-            ${renderBars(daily, 'steps', v => v.toLocaleString('ko-KR')+'보')}
+            ${renderBars(checkins, 'steps', v => v.toLocaleString('ko-KR')+'보')}
           </div>
         </div>
       </div>

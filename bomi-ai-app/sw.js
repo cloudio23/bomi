@@ -8,26 +8,33 @@ self.addEventListener('fetch', (e) => {
 // 서버(api/link.js의 ?action=notify, api/notifications.js의 ?action=greeting)가 보낸 푸시를 받아서
 // 배너로 띄웁니다. 앱이 닫혀있어도(카톡처럼) 동작하는 게 이 부분의 핵심입니다.
 self.addEventListener('push', (e) => {
-  let data = { title: '보미', body: '', type: '' };
+  let data = { title: '보미', body: '', type: '', meta: null };
   try { data = { ...data, ...e.data.json() }; } catch (err) { /* 페이로드 없는 ping은 무시 */ }
   e.waitUntil(
     self.registration.showNotification(data.title || '보미', {
       body: data.body || '',
       icon: '/icon-192.png',
       badge: '/icon-192.png',
-      data: { type: data.type || '' },
+      data: { type: data.type || '', meta: data.meta || null },
     })
   );
 });
 
-// 알림을 탭하면 앱을 열되, 연동 요청 알림이면 동의 화면으로 바로 가도록
-// 쿼리 파라미터를 붙여서 index.html이 로드 직후 바로 확인할 수 있게 합니다.
+// 알림을 탭하면 앱을 열되, 연동 요청/건강리포트/달력/구조화 체크인 알림이면
+// 해당 화면으로 바로 가도록 쿼리 파라미터를 붙여서 index.html이 로드 직후
+// 바로 처리할 수 있게 합니다. checkin_meal은 meta에 끼니(breakfast/lunch/dinner)를
+// 함께 실어 보내 정확히 그 끼니 입력 화면으로 바로 열립니다.
 self.addEventListener('notificationclick', (e) => {
   e.notification.close();
   const notifType = e.notification.data && e.notification.data.type;
+  const notifMeta = e.notification.data && e.notification.data.meta;
   const targetUrl = notifType === 'link_request' ? '/?consent=1'
     : notifType === 'health_report_ready' ? '/?report=1'
     : notifType === 'calendar_event' ? '/?calendar=1'
+    : notifType === 'checkin_sleep' ? '/?checkin=sleep'
+    : notifType === 'checkin_meal' ? `/?checkin=meal&mealType=${encodeURIComponent(notifMeta || '')}`
+    : notifType === 'checkin_activity' ? '/?checkin=activity'
+    : notifType === 'checkin_mood' ? '/?checkin=mood'
     : '/';
   e.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {

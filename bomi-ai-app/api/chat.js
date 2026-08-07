@@ -4,29 +4,53 @@
 // 실제 AI 호출 로직은 ../lib/aiProviders.mjs에 있습니다. 기본은 Gemini
 // 무료 티어이고, AI_PROVIDER=anthropic 환경변수로 Claude로 수동 전환할 수
 // 있어요 (자동 폴백 아님 — 예상치 못한 과금을 막기 위한 의도적 설계).
-import { callAI } from '../lib/aiProviders.mjs';
+import { callAI, analyzeMealPhoto } from '../lib/aiProviders.mjs';
 import { calculateBaziPillars, describeBaziPillarsKorean } from '../lib/bazi.mjs';
 import { convertLunarToSolar } from '../lib/lunarConvert.mjs';
 import { reverseGeocode } from '../lib/transit.mjs';
-import { incrementDailyUsage, markEngagementSignals } from '../lib/supabaseAdmin.mjs';
+import { incrementDailyUsage, addMealLog } from '../lib/supabaseAdmin.mjs';
 import { todayKeyKST } from '../lib/usage.mjs';
 
-// 건강리포트(일간 화면 + 가족 주간 리포트)의 "데이터 부족" 판단용 — 사용자가
-// 그날 수면/식사/활동/기분 얘기를 실제로 꺼냈는지만 가볍게 키워드로
-// 감지합니다(별도 LLM 호출 없이, 그라운딩 조건부 적용 때와 같은 방식).
-// 원문은 저장하지 않고 이 4개 불리언만 남깁니다.
-const SLEEP_RE = /잠|수면|주무|잤|불면|꿈/;
-const MEAL_RE = /밥|식사|먹었|드셨|아침|점심|저녁|반찬|끼니|간식/;
-const ACTIVITY_RE = /운동|산책|걸었|걷기|활동|스트레칭|체조/;
-const MOOD_RE = /기분|컨디션|우울|외롭|힘들|즐거|행복|답답|심심|편안/;
-function classifyEngagement(text) {
-  const t = text || '';
-  return {
-    sleep: SLEEP_RE.test(t),
-    meal: MEAL_RE.test(t),
-    activity: ACTIVITY_RE.test(t),
-    mood: MOOD_RE.test(t),
-  };
+const MAX_MEAL_PHOTO_BASE64_LEN = 4_000_000; // 대략 3MB 원본 — 클라이언트가 미리 리사이즈해서 보냄
+
+// 건강리포트 "식사" 체크인 — 사진(카메라 촬영 또는 갤러리에서 선택, 있으면
+// Gemini 비전으로 짧게 코멘트) 또는 사진을 못 찍었을 때의 대체 수단인
+// mealScore(0~5)를 bomi_meal_logs에 저장합니다. 일반 대화(callAI)와 같은
+// 엔드포인트를 쓰지만 별도 새 api/ 파일을 만들지 않으려고 요청 바디의
+// mealLog 유무로 갈라냅니다.
+async function handleMealLog(req, res, mealLog) {
+  const { bomiLinkCode, date, mealType, photoBase64, mimeType, description, mealScore } = mealLog;
+  if (!bomiLinkCode || !date || !mealType) {
+    res.status(400).json({ ok: false, message: 'bomiLinkCode, date, mealType이 필요해요.' });
+    return;
+  }
+  if (!photoBase64 && !description && mealScore === undefined) {
+    res.status(400).json({ ok: false, message: '사진, 설명, 점수 중 하나는 있어야 해요.' });
+    return;
+  }
+  if (photoBase64 && photoBase64.length > MAX_MEAL_PHOTO_BASE64_LEN) {
+    res.status(400).json({ ok: false, message: '사진 용량이 너무 커요. 다시 찍어서 보내주시겠어요?' });
+    return;
+  }
+  try {
+    let aiAnalysis = null;
+    if (photoBase64) {
+      try {
+        aiAnalysis = await analyzeMealPhoto(photoBase64, mimeType || 'image/jpeg');
+      } catch (e) {
+        aiAnalysis = null; // 분석 실패해도 사진 자체는 저장 — 리포트에 "사진만 기록됨"으로 남게
+      }
+    }
+    const saved = await addMealLog(bomiLinkCode, date, mealType, {
+      description: description || null,
+      photoDataUri: photoBase64 ? `data:${mimeType || 'image/jpeg'};base64,${photoBase64}` : null,
+      aiAnalysis,
+      mealScore,
+    });
+    res.status(200).json({ ok: true, mealLog: saved, aiAnalysis });
+  } catch (e) {
+    res.status(200).json({ ok: false, message: '식사 기록을 저장하지 못했어요.' });
+  }
 }
 
 // 클라이언트가 사주 정보(생년월일시)를 보내면, LLM이 사주팔자를 직접(부정확하게)
@@ -81,7 +105,11 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { system, messages, sajuBirth, location, bomiLinkCode } = req.body || {};
+    const { system, messages, sajuBirth, location, mealLog } = req.body || {};
+    if (mealLog) {
+      await handleMealLog(req, res, mealLog);
+      return;
+    }
     if (!messages || !Array.isArray(messages)) {
       res.status(400).json({ error: 'messages 배열이 필요해요.' });
       return;
@@ -92,11 +120,6 @@ export default async function handler(req, res) {
     // 헤더의 "대화 가능량" 게이지용 사용량 집계 — 실패해도 채팅 응답 자체를
     // 막으면 안 되므로 별도로 잡아서 무시합니다(fire-and-forget).
     incrementDailyUsage(todayKeyKST()).catch(() => {});
-    // 건강리포트용 참여 신호 기록도 같은 이유로 fire-and-forget.
-    if (bomiLinkCode) {
-      const lastUserText = messages.length ? messages[messages.length - 1].content : '';
-      markEngagementSignals(bomiLinkCode, todayKeyKST(), classifyEngagement(lastUserText)).catch(() => {});
-    }
     res.status(200).json({ reply });
   } catch (e) {
     res.status(500).json({ error: e.message });

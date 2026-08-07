@@ -102,6 +102,38 @@ async function callGemini(system, messages, maxTokens) {
   }
 }
 
+// 식사 사진 분석(건강리포트 "식사" 체크인) — AI_PROVIDER 설정과 무관하게
+// 항상 Gemini로 처리합니다. 이 기능만을 위해 Claude 비전 경로까지 이중
+// 구현할 만큼 핵심 기능은 아니라서 단순하게 유지했습니다.
+export async function analyzeMealPhoto(imageBase64, mimeType) {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    throw new Error('GEMINI_API_KEY가 설정되어 있지 않아요.');
+  }
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
+  const prompt = '이 사진은 어르신이 방금 드신 식사예요. 의학적 판단이나 정확한 칼로리 계산 없이, 어떤 음식인지 짧게 알아보고 골고루 챙겨 드셨는지 따뜻하게 한두 문장으로 코멘트해 주세요(예: "된장국에 나물 반찬까지, 골고루 잘 챙겨 드셨네요"). 존댓말로, 이모지 없이 답하세요.';
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+    body: JSON.stringify({
+      contents: [{
+        role: 'user',
+        parts: [
+          { text: prompt },
+          { inline_data: { mime_type: mimeType, data: imageBase64 } },
+        ],
+      }],
+      generationConfig: { maxOutputTokens: 200, thinkingConfig: { thinkingBudget: 0 } },
+    }),
+  });
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data?.error?.message || `Gemini 이미지 분석 실패 (status ${response.status})`);
+  }
+  const parts = data?.candidates?.[0]?.content?.parts || [];
+  return parts.map(p => p.text || '').join('').trim();
+}
+
 async function callClaude(system, messages, maxTokens) {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
