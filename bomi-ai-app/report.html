@@ -94,14 +94,14 @@ async function load(){
     document.getElementById('titleText').textContent = `${data.memberName}님의 소식`;
 
     const daily = data.daily || [];
-    const withChecklist = daily.filter(r => r.checklist_total);
-    const totalCompleted = withChecklist.reduce((s,r)=>s+(r.checklist_completed||0),0);
-    const totalTarget = withChecklist.reduce((s,r)=>s+(r.checklist_total||0),0);
-    const rate = totalTarget > 0 ? Math.round((totalCompleted/totalTarget)*100) : null;
+    const engagement = data.engagement || [];
+    const engagedDays = engagement.filter(r =>
+      r.sleep_mentioned || r.meal_mentioned || r.activity_mentioned || r.mood_mentioned
+    ).length;
     const withSteps = daily.filter(r => typeof r.steps === 'number');
     const avgSteps = withSteps.length > 0 ? Math.round(withSteps.reduce((s,r)=>s+r.steps,0)/withSteps.length) : null;
 
-    if(daily.length === 0){
+    if(daily.length === 0 && engagement.length === 0){
       content.innerHTML = '<div class="empty-note">아직 쌓인 기록이 없어요. 다음 주에 다시 확인해 주세요.</div>' + footerNote();
       return;
     }
@@ -109,8 +109,8 @@ async function load(){
     content.innerHTML = `
       <div class="metric-row">
         <div class="metric-card">
-          <div class="val">${rate === null ? '-' : rate+'%'}</div>
-          <div class="lb">최근 4주 체크리스트 완료율</div>
+          <div class="val">${engagedDays}<span style="font-size:14px;">/28일</span></div>
+          <div class="lb">최근 4주 안부 응답</div>
         </div>
         <div class="metric-card">
           <div class="val">${avgSteps === null ? '-' : avgSteps.toLocaleString('ko-KR')}</div>
@@ -118,14 +118,9 @@ async function load(){
         </div>
       </div>
       <div class="section">
-        <h2>최근 2주 추이</h2>
+        <h2>최근 2주 걸음수 추이</h2>
         <div class="trend-card">
           <div class="trend-row">
-            <div class="trend-label">체크리스트 완료 개수</div>
-            ${renderBars(daily, 'checklist_completed', v => v+'개')}
-          </div>
-          <div class="trend-row">
-            <div class="trend-label">걸음수</div>
             ${renderBars(daily, 'steps', v => v.toLocaleString('ko-KR')+'보')}
           </div>
         </div>
@@ -139,7 +134,7 @@ async function load(){
 }
 
 function footerNote(){
-  return `<div class="footer-note">이 리포트는 체크리스트 완료 여부와 실제 걸음수 기록만 보여드려요. 대화 원문은 절대 포함되지 않고, 보미와 나눈 이야기는 부모님 본인만 볼 수 있어요. 구독은 부모님이 보미 앱에서 언제든 철회하실 수 있어요.</div>`;
+  return `<div class="footer-note">이 리포트는 보미와 수면·식사·활동·기분 이야기를 나눈 날 수와 실제 걸음수 기록만 보여드려요. 대화 원문은 절대 포함되지 않고, 보미와 나눈 이야기는 부모님 본인만 볼 수 있어요. 구독은 부모님이 보미 앱에서 언제든 철회하실 수 있어요.</div>`;
 }
 
 load();

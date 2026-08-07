@@ -262,6 +262,39 @@ export async function listFamilyHealthDaily(crmId, sinceDate) {
   );
 }
 
+// 건강리포트(일간 화면 + 가족 주간 리포트)를 실제 참여 신호로 만들기 위한
+// 저장소 — 원문 대화 내용은 절대 저장하지 않고, 그날 수면/식사/활동/기분
+// 이야기를 "언급했는지" 여부만 불리언으로 남깁니다. 같은 날 여러 메시지가
+// 오면 한 번이라도 언급됐으면 true로 유지(OR 누적)합니다.
+export async function markEngagementSignals(crmId, dateStr, detected) {
+  const existingRows = await restRequest(
+    `bomi_engagement_daily?crm_id=eq.${encodeURIComponent(crmId)}&summary_date=eq.${dateStr}&limit=1`
+  );
+  const prev = existingRows && existingRows[0] ? existingRows[0] : {};
+  const merged = {
+    sleep_mentioned: !!(prev.sleep_mentioned || detected.sleep),
+    meal_mentioned: !!(prev.meal_mentioned || detected.meal),
+    activity_mentioned: !!(prev.activity_mentioned || detected.activity),
+    mood_mentioned: !!(prev.mood_mentioned || detected.mood),
+  };
+  // 아무 신호도 없으면 굳이 행을 만들지 않습니다 — 빈 행이 "그날 앱을 열긴
+  // 열었다"는 잘못된 참여 신호로 오인되면 안 되니까요.
+  if (!merged.sleep_mentioned && !merged.meal_mentioned && !merged.activity_mentioned && !merged.mood_mentioned) {
+    return null;
+  }
+  return restRequest('bomi_engagement_daily?on_conflict=crm_id,summary_date', {
+    method: 'POST',
+    headers: { Prefer: 'resolution=merge-duplicates' },
+    body: { crm_id: crmId, summary_date: dateStr, ...merged, updated_at: new Date().toISOString() },
+  });
+}
+
+export async function listEngagementDaily(crmId, sinceDate) {
+  return restRequest(
+    `bomi_engagement_daily?crm_id=eq.${encodeURIComponent(crmId)}&summary_date=gte.${sinceDate}&order=summary_date.asc`
+  );
+}
+
 // 체크리스트 위젯에 "오늘 일정"으로 같이 보여주기 위한 조회.
 export async function listCalendarEventsForDate(code, dateStr) {
   return restRequest(

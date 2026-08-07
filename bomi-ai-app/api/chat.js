@@ -8,8 +8,26 @@ import { callAI } from '../lib/aiProviders.mjs';
 import { calculateBaziPillars, describeBaziPillarsKorean } from '../lib/bazi.mjs';
 import { convertLunarToSolar } from '../lib/lunarConvert.mjs';
 import { reverseGeocode } from '../lib/transit.mjs';
-import { incrementDailyUsage } from '../lib/supabaseAdmin.mjs';
+import { incrementDailyUsage, markEngagementSignals } from '../lib/supabaseAdmin.mjs';
 import { todayKeyKST } from '../lib/usage.mjs';
+
+// 건강리포트(일간 화면 + 가족 주간 리포트)의 "데이터 부족" 판단용 — 사용자가
+// 그날 수면/식사/활동/기분 얘기를 실제로 꺼냈는지만 가볍게 키워드로
+// 감지합니다(별도 LLM 호출 없이, 그라운딩 조건부 적용 때와 같은 방식).
+// 원문은 저장하지 않고 이 4개 불리언만 남깁니다.
+const SLEEP_RE = /잠|수면|주무|잤|불면|꿈/;
+const MEAL_RE = /밥|식사|먹었|드셨|아침|점심|저녁|반찬|끼니|간식/;
+const ACTIVITY_RE = /운동|산책|걸었|걷기|활동|스트레칭|체조/;
+const MOOD_RE = /기분|컨디션|우울|외롭|힘들|즐거|행복|답답|심심|편안/;
+function classifyEngagement(text) {
+  const t = text || '';
+  return {
+    sleep: SLEEP_RE.test(t),
+    meal: MEAL_RE.test(t),
+    activity: ACTIVITY_RE.test(t),
+    mood: MOOD_RE.test(t),
+  };
+}
 
 // 클라이언트가 사주 정보(생년월일시)를 보내면, LLM이 사주팔자를 직접(부정확하게)
 // "지어내게" 하는 대신 검증된 만세력 조회 테이블로 정밀 계산해서 그 결과를
@@ -63,7 +81,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { system, messages, sajuBirth, location } = req.body || {};
+    const { system, messages, sajuBirth, location, bomiLinkCode } = req.body || {};
     if (!messages || !Array.isArray(messages)) {
       res.status(400).json({ error: 'messages 배열이 필요해요.' });
       return;
@@ -74,6 +92,11 @@ export default async function handler(req, res) {
     // 헤더의 "대화 가능량" 게이지용 사용량 집계 — 실패해도 채팅 응답 자체를
     // 막으면 안 되므로 별도로 잡아서 무시합니다(fire-and-forget).
     incrementDailyUsage(todayKeyKST()).catch(() => {});
+    // 건강리포트용 참여 신호 기록도 같은 이유로 fire-and-forget.
+    if (bomiLinkCode) {
+      const lastUserText = messages.length ? messages[messages.length - 1].content : '';
+      markEngagementSignals(bomiLinkCode, todayKeyKST(), classifyEngagement(lastUserText)).catch(() => {});
+    }
     res.status(200).json({ reply });
   } catch (e) {
     res.status(500).json({ error: e.message });

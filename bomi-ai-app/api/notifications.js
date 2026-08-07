@@ -17,7 +17,7 @@ import {
   listPendingCalendarAlarms, markCalendarAlarmSent,
   createFamilyReportRequest, getPendingFamilyConsent, respondFamilyConsent,
   revokeFamilyConsentByCrmId, listAgreedFamilyReports, getFamilyReportByToken,
-  listFamilyHealthDaily,
+  listFamilyHealthDaily, listEngagementDaily,
 } from '../lib/supabaseAdmin.mjs';
 import { sendPush } from '../lib/push.mjs';
 import { sendAlimtalk } from '../lib/kakao.mjs';
@@ -174,16 +174,16 @@ async function handleCheckins(req, res) {
 
 // 회원 이름은 서버에 따로 저장해두지 않는 원칙이라(로컬 전용 프로필),
 // 동의 시점에 한 번 받아둔 member_name만 씁니다 — 없으면 "어르신"으로 대체.
-// 체크리스트/걸음수 외의 수면·식사·활동 "수치"는 실제로 측정하는 값이
-// 없어서(2026-08-02 QA 감사로 AI가 지어낸 점수를 CRM에 보내지 않기로 한
-// 원칙과 동일하게) 문구에 넣지 않습니다 — 실측치만 보여줍니다.
-function buildWeeklyFamilyVariables(row, dailyRows) {
-  const withChecklist = dailyRows.filter((r) => r.checklist_total);
-  const totalCompleted = withChecklist.reduce((sum, r) => sum + (r.checklist_completed || 0), 0);
-  const totalTarget = withChecklist.reduce((sum, r) => sum + (r.checklist_total || 0), 0);
-  const rate = totalTarget > 0 ? Math.round((totalCompleted / totalTarget) * 100) : null;
+// 체크리스트 완료율은 뺐습니다 — 체크리스트 항목은 회원이 자유롭게 정하는
+// 개인 할일이라 가족이 보기엔 큰 의미가 없고, 대신 "안부 응답 일수"(보미와
+// 수면·식사·활동·기분 이야기를 실제로 나눈 날 수, 원문은 절대 포함 안 함)가
+// "요즘 어떻게 지내시는지" 더 잘 보여줍니다. 걸음수는 그대로 실측치만 사용.
+function buildWeeklyFamilyVariables(row, engagementRows, healthRows) {
+  const respondedDays = engagementRows.filter((r) =>
+    r.sleep_mentioned || r.meal_mentioned || r.activity_mentioned || r.mood_mentioned
+  ).length;
 
-  const withSteps = dailyRows.filter((r) => typeof r.steps === 'number');
+  const withSteps = healthRows.filter((r) => typeof r.steps === 'number');
   const avgSteps = withSteps.length > 0
     ? Math.round(withSteps.reduce((sum, r) => sum + r.steps, 0) / withSteps.length)
     : null;
@@ -191,7 +191,7 @@ function buildWeeklyFamilyVariables(row, dailyRows) {
   return {
     '#{회원이름}': row.member_name || '어르신',
     '#{자녀이름}': row.guardian_name || '자녀',
-    '#{체크리스트완료율}': rate === null ? '기록 없음' : `${rate}%`,
+    '#{안부응답}': `${respondedDays}/7일`,
     '#{평균걸음수}': avgSteps === null ? '기록 없음' : `${avgSteps.toLocaleString('ko-KR')}보`,
     '#{링크}': `https://bomi-7sbu.vercel.app/report.html?token=${row.report_token}`,
   };
@@ -206,8 +206,11 @@ async function sendDueFamilyReports(dayOfWeek, hour) {
   let sent = 0;
   let failed = 0;
   for (const row of rows || []) {
-    const dailyRows = await listFamilyHealthDaily(row.crm_id, since);
-    const variables = buildWeeklyFamilyVariables(row, dailyRows || []);
+    const [engagementRows, healthRows] = await Promise.all([
+      listEngagementDaily(row.crm_id, since),
+      listFamilyHealthDaily(row.crm_id, since),
+    ]);
+    const variables = buildWeeklyFamilyVariables(row, engagementRows || [], healthRows || []);
     const result = await sendAlimtalk(row.guardian_phone, templateId, variables);
     if (result.ok) sent += 1; else failed += 1;
   }
@@ -281,12 +284,16 @@ async function handleFamilyReport(req, res) {
     const row = await getFamilyReportByToken(token);
     if (!row) { res.status(200).json({ ok: false, message: '유효하지 않은 링크예요.' }); return; }
     const since = new Date(Date.now() - 28 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-    const daily = await listFamilyHealthDaily(row.crm_id, since);
+    const [daily, engagement] = await Promise.all([
+      listFamilyHealthDaily(row.crm_id, since),
+      listEngagementDaily(row.crm_id, since),
+    ]);
     res.status(200).json({
       ok: true,
       memberName: row.member_name || '어르신',
       consentedAt: row.consented_at,
       daily: daily || [],
+      engagement: engagement || [],
     });
   } catch (e) {
     res.status(200).json({ ok: false, message: '리포트를 불러오지 못했어요.' });
