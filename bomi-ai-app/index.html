@@ -4676,9 +4676,25 @@ function blobToBase64(blob){
   });
 }
 
+// 마이크 모드를 처음 열 때는 바로 듣기 시작하지 않고, 먼저 글자+음성으로
+// 인사를 건넵니다(HER처럼). 인사가 끝난 뒤 원을 누르면 그때 첫 턴을 듣기
+// 시작해요 — voiceOrb 클릭 핸들러(이미 열려있을 때의 다음 턴)는 그대로 두고,
+// "아직 안 열려있을 때"만 이 인사 단계를 거치게 voiceBtn에만 적용합니다.
+function openVoiceModeWithGreeting(){
+  const overlay = document.getElementById('voiceOverlay');
+  overlay.classList.add('active');
+  overlay.classList.remove('processing');
+  document.getElementById('voiceStatusText').textContent = '';
+  const greeting = `안녕하세요 ${profile.name}님, 필요하신 내용을 말씀해주세요!`;
+  showVoiceReply(greeting);
+}
 document.getElementById('voiceBtn').addEventListener('click', ()=>{
-  if(isRecordingVoice) stopVoiceRecording();
-  else startVoiceRecording();
+  if(isRecordingVoice){ stopVoiceRecording(); return; }
+  if(document.getElementById('voiceOverlay').classList.contains('active')){
+    startVoiceRecording();
+    return;
+  }
+  openVoiceModeWithGreeting();
 });
 
 /* ============ APP START ============ */
