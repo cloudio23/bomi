@@ -3295,7 +3295,13 @@ async function regenerateReply(userText){
     addAssistantBlock(reply, userText, true, weatherCode);
     messages.push({role:'assistant', content:reply});
     await storeSet(todayKey('messages'), messages.slice(-30));
-    if(options.length) addSuggestedOptions(options);
+    // 일정에 시작 시간이 있으면 handleCalendarIntent가 곧이어 "몇 시간 전에
+    // 알림 받으실래요?" 선택지 5개를 붙입니다 — 그 위에 AI가 자체적으로 붙인
+    // 예상 답변 선택지(최대 3개)까지 같이 뜨면 한 번에 최대 8개가 쏟아져서
+    // 어르신께 너무 많습니다. 이 경우엔 알림 시간 질문이 더 급한 후속 질문이라
+    // AI 선택지는 이번 턴만 건너뜁니다.
+    const willAskAlarmLead = !!(calendarEvent && calendarEvent.startTime);
+    if(options.length && !willAskAlarmLead) addSuggestedOptions(options);
     if(calendarEvent) handleCalendarIntent(calendarEvent);
   }catch(e){
     removeTyping();
@@ -4324,7 +4330,13 @@ async function sendMessage(text){
     addAssistantBlock(reply, text, true, weatherCode);
     messages.push({role:'assistant', content:reply});
     await storeSet(todayKey('messages'), messages.slice(-30));
-    if(options.length) addSuggestedOptions(options);
+    // 일정에 시작 시간이 있으면 handleCalendarIntent가 곧이어 "몇 시간 전에
+    // 알림 받으실래요?" 선택지 5개를 붙입니다 — 그 위에 AI가 자체적으로 붙인
+    // 예상 답변 선택지(최대 3개)까지 같이 뜨면 한 번에 최대 8개가 쏟아져서
+    // 어르신께 너무 많습니다. 이 경우엔 알림 시간 질문이 더 급한 후속 질문이라
+    // AI 선택지는 이번 턴만 건너뜁니다.
+    const willAskAlarmLead = !!(calendarEvent && calendarEvent.startTime);
+    if(options.length && !willAskAlarmLead) addSuggestedOptions(options);
     if(calendarEvent) handleCalendarIntent(calendarEvent);
   }catch(e){
     removeTyping();
