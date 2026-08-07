@@ -410,16 +410,30 @@
   .auroraBorder.active{ opacity:1; animation: auroraSpin 5s linear infinite; }
   @keyframes auroraSpin{ to{ --angle:360deg; } }
 
-  /* ---------- 음성 대화 오버레이 (제미나이 라이브 스타일 참고) ----------
+  /* ---------- 음성 대화 오버레이 (영화 HER, 제미나이 라이브 스타일 참고) ----------
      "듣고 있어요" 상태에서는 실제 목소리 크기(진폭)에 맞춰 원이 커졌다
      작아지고, "알아듣는 중"으로 넘어가면 진폭 반응 없이 은은하게 숨쉬듯
-     펄스만 남습니다 — 지금 어떤 상태인지 한눈에 구분되도록. */
+     펄스만 남습니다. 답변이 오면 원 위쪽 공간에 큰 글씨로 보여주고, 원을
+     다시 누르면 그 자리에서 바로 다음 턴을 이어갑니다(화면을 나가지 않고
+     계속 대화) — 답변 영역이 flex:1로 위쪽을 채우기 때문에 원은 자연히
+     화면 중앙보다 아래쪽에 자리합니다. */
   .voice-overlay{
     position:fixed; inset:0; z-index:80; display:none; flex-direction:column;
-    align-items:center; justify-content:center; gap:20px;
-    background:rgba(246,243,238,0.94); pointer-events:none;
+    align-items:center; background:rgba(246,243,238,0.96); pointer-events:none;
+    padding:64px 24px 56px; box-sizing:border-box;
   }
   .voice-overlay.active{ display:flex; }
+  .voice-close-btn{
+    position:absolute; top:16px; right:16px; width:40px; height:40px; border-radius:50%;
+    border:none; background:#F1EEE7; color:var(--ink); font-size:18px; cursor:pointer;
+    pointer-events:auto; display:flex; align-items:center; justify-content:center;
+  }
+  .voice-reply-text{
+    flex:1; width:100%; max-width:440px; display:flex; align-items:center; justify-content:center;
+    text-align:center; overflow-y:auto; white-space:pre-line;
+    font-size:calc(23px * var(--app-font-scale)); font-weight:700; color:var(--ink); line-height:1.5;
+  }
+  .voice-orb-area{ display:flex; flex-direction:column; align-items:center; gap:16px; flex-shrink:0; padding-top:8px; }
   .voice-orb{
     width:120px; height:120px; border-radius:50%; border:none; cursor:pointer; pointer-events:auto;
     background:radial-gradient(circle at 35% 30%, #9FDBFF, #6C63FF 60%, #4C46B8);
@@ -680,9 +694,13 @@
 
   <div class="auroraBorder" id="auroraBorder"></div>
   <div class="voice-overlay" id="voiceOverlay">
-    <button type="button" class="voice-orb" id="voiceOrb" aria-label="말하기 종료"></button>
-    <div class="voice-status-text" id="voiceStatusText">듣고 있어요</div>
-    <div class="voice-hint-text" id="voiceHintText">다 말씀하셨으면 원 안을 눌러주세요</div>
+    <button type="button" class="voice-close-btn" id="voiceCloseBtn" aria-label="마이크 모드 닫기">✕</button>
+    <div class="voice-reply-text" id="voiceReplyText"></div>
+    <div class="voice-orb-area">
+      <button type="button" class="voice-orb" id="voiceOrb" aria-label="말하기 시작/종료"></button>
+      <div class="voice-status-text" id="voiceStatusText">듣고 있어요</div>
+      <div class="voice-hint-text" id="voiceHintText">다 말씀하셨으면 원 안을 눌러주세요</div>
+    </div>
   </div>
   <div class="cameraOverlay" id="cameraOverlay">
     <button class="camera-close" id="closeCameraBtn" aria-label="닫기">✕</button>
@@ -3359,6 +3377,57 @@ document.querySelectorAll('.chip[data-msg]').forEach(chip=>{
   chip.addEventListener('click', ()=> sendMessage(chip.dataset.msg));
 });
 
+/* ============ 버튼 효과음·진동 ============ */
+// 소리 파일을 따로 두지 않고, Web Audio API로 짧은 톤을 그때그때 만들어서
+// 재생합니다(다운로드 불필요, 용량도 안 늘어남). AudioContext는 반드시
+// 사용자 제스처(클릭) 안에서 처음 만들거나 resume해야 브라우저 자동재생
+// 제한에 안 걸려서, 여기서 만드는 하나를 계속 재사용합니다.
+let sharedAudioCtx = null;
+function getSharedAudioCtx(){
+  try{
+    if(!sharedAudioCtx) sharedAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if(sharedAudioCtx.state === 'suspended') sharedAudioCtx.resume().catch(()=>{});
+    return sharedAudioCtx;
+  }catch(e){ return null; }
+}
+function playTone(freq, duration, volume, delay){
+  const ctx = getSharedAudioCtx();
+  if(!ctx) return;
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = 'sine';
+  osc.frequency.value = freq;
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+  const startAt = ctx.currentTime + (delay || 0);
+  gain.gain.setValueAtTime(0.0001, startAt);
+  gain.gain.linearRampToValueAtTime(volume, startAt + 0.012);
+  gain.gain.exponentialRampToValueAtTime(0.0001, startAt + duration);
+  osc.start(startAt);
+  osc.stop(startAt + duration + 0.03);
+}
+function hapticTap(pattern){
+  if(navigator.vibrate){ try{ navigator.vibrate(pattern); }catch(e){} }
+}
+function playUiClick(){ playTone(720, 0.045, 0.05); }
+function playVoiceStartCue(){ playTone(520, 0.09, 0.07); playTone(780, 0.12, 0.07, 0.08); hapticTap(15); }
+function playVoiceStopCue(){ playTone(780, 0.08, 0.07); playTone(480, 0.12, 0.07, 0.07); hapticTap([10,25,10]); }
+
+// 버튼마다 일일이 소리를 넣는 대신, 주요 조작 버튼들을 한 군데서 위임 처리—
+// 원 안(.voice-orb)은 시작/종료음이 따로 있어서 여기서 빼고, 체크박스처럼
+// 자주 누르는 작은 조작까지는 넣지 않아 과하지 않게 유지했습니다.
+document.addEventListener('click', (e)=>{
+  const el = e.target.closest(
+    '.chip, .dockbtn, #sendBtn, .option-link, .backbtn, .usage-gauge, ' +
+    '.cal-nav-btn, .cal-add-btn, .cal-btn-primary, .cal-btn-ghost, .cal-day, ' +
+    '.transit-map-btn, .transit-alt-btn, .stock-naver-link, .voice-close-btn, .nav-card'
+  );
+  if(el && !el.closest('.voice-orb')){
+    playUiClick();
+    hapticTap(8);
+  }
+}, true);
+
 /* ============ INPUT DOCK: camera / keyboard / voice ============ */
 function showToast(msg){
   const t = document.getElementById('toast');
@@ -3481,12 +3550,14 @@ async function startVoiceRecording(){
   document.getElementById('auroraBorder').classList.add('active');
   document.getElementById('voiceBtn').classList.add('recording');
   setVoiceOverlayState('listening');
+  playVoiceStartCue();
   voiceMaxDurationTimer = setTimeout(()=> stopVoiceRecording(), VOICE_MAX_SECONDS*1000);
 }
 
-// 듣는 중(listening) / 알아듣는 중(processing) / 꺼짐(off) 세 상태를 뚜렷하게
+// 듣는 중(listening) / 알아듣는 중(processing) / 꺼짐(off) 상태를 뚜렷하게
 // 구분해서 "지금 말해도 되는지, 다 됐는지"가 한눈에 보이게 합니다(제미나이
-// 라이브 참고).
+// 라이브 참고). listening으로 갈 때마다 이전 턴의 답변 글자는 지워서 다음
+// 턴을 깨끗하게 시작합니다.
 function setVoiceOverlayState(state){
   const overlay = document.getElementById('voiceOverlay');
   const statusText = document.getElementById('voiceStatusText');
@@ -3498,6 +3569,7 @@ function setVoiceOverlayState(state){
   overlay.classList.add('active');
   overlay.classList.toggle('processing', state === 'processing');
   if(state === 'listening'){
+    document.getElementById('voiceReplyText').textContent = '';
     statusText.textContent = '듣고 있어요';
     hintText.textContent = '다 말씀하셨으면 원 안을 눌러주세요';
     document.getElementById('voiceOrb').style.transform = 'scale(1)';
@@ -3511,21 +3583,73 @@ function updateVoiceOrbAmplitude(rms){
   const scale = 1 + Math.min(rms * 9, 0.55);
   document.getElementById('voiceOrb').style.transform = `scale(${scale})`;
 }
-document.getElementById('voiceOrb').addEventListener('click', ()=> stopVoiceRecording());
 
-async function stopVoiceRecording(){
+// 답변을 마이크 모드 화면 자체에 큰 글씨로 보여줘서, 대화창으로 돌아가지
+// 않고도(영화 HER처럼) 계속 이어서 말할 수 있게 합니다. 원을 다시 누르면
+// 바로 다음 턴이 시작됩니다.
+function showVoiceReply(text){
+  document.getElementById('voiceOverlay').classList.remove('processing');
+  document.getElementById('voiceReplyText').textContent = text;
+  document.getElementById('voiceStatusText').textContent = '';
+  document.getElementById('voiceHintText').textContent = '다시 말씀하시려면 원을 눌러주세요';
+}
+
+// 마이크로 들어온 문장을 처리합니다. 주식/뉴스/민원처럼 카드·목록이 필요한
+// 흐름은 이 작은 원형 화면 안에서 보여주기 어려우니, 그런 의도가 감지되면
+// 마이크 모드를 닫고 원래 대화창에서 처리합니다(routeUserInput이 그대로
+// 처리). 일반 대화는 이 화면을 나가지 않고 큰 글씨 답변으로 이어집니다.
+async function runVoiceTurn(text){
+  if(routeUserInput(text)){
+    setVoiceOverlayState('off');
+    return;
+  }
+  addBubble('user', text);
+  messages.push({role:'user', content:text});
+  await storeSet(todayKey('messages'), messages.slice(-30));
+  try{
+    const raw = await callBomi(text);
+    const { text: rawReply, options } = parseBomiReply(raw);
+    const { text: cleanedText, code: weatherCode } = extractWeatherCode(rawReply);
+    const reply = stripMarkdown(cleanedText);
+    addAssistantBlock(reply, text, false, weatherCode); // 배경 대화창에도 그대로 기록(다음에 열어도 이어지게)
+    messages.push({role:'assistant', content:reply});
+    await storeSet(todayKey('messages'), messages.slice(-30));
+    if(options.length) addSuggestedOptions(options);
+    showVoiceReply(reply);
+  }catch(e){
+    if(e instanceof RateLimitError){
+      setVoiceOverlayState('off');
+      showRateLimitUpsell();
+    } else {
+      showVoiceReply('지금 연결이 원활하지 않아요. 잠시 후 다시 말씀해 주세요.');
+    }
+  }
+  refreshUsageGauge();
+}
+
+document.getElementById('voiceOrb').addEventListener('click', ()=>{
+  if(isRecordingVoice) stopVoiceRecording();
+  else startVoiceRecording(); // 답변을 본 뒤 원을 다시 누르면 바로 다음 턴 시작
+});
+document.getElementById('voiceCloseBtn').addEventListener('click', ()=>{
+  if(isRecordingVoice) stopVoiceRecording(true); // 녹음 중 닫기는 그 문장을 버림(전송하지 않음)
+  else setVoiceOverlayState('off');
+});
+
+async function stopVoiceRecording(discard){
   if(!isRecordingVoice) return;
   isRecordingVoice = false;
   clearTimeout(voiceMaxDurationTimer);
   document.getElementById('auroraBorder').classList.remove('active');
   document.getElementById('voiceBtn').classList.remove('recording');
-  setVoiceOverlayState('processing');
+  playVoiceStopCue();
   const sampleRate = voiceAudioContext.sampleRate;
   voiceScriptProcessor.disconnect();
   voiceMediaStream.getTracks().forEach(t=>t.stop());
   await voiceAudioContext.close();
 
-  if(voiceRecordedChunks.length === 0){ setVoiceOverlayState('off'); return; }
+  if(discard || voiceRecordedChunks.length === 0){ voiceRecordedChunks = []; setVoiceOverlayState('off'); return; }
+  setVoiceOverlayState('processing');
   const wavBlob = encodeWavBlob(voiceRecordedChunks, sampleRate);
   voiceRecordedChunks = [];
 
@@ -3536,10 +3660,10 @@ async function stopVoiceRecording(){
       body: JSON.stringify({ audioBase64 }),
     });
     const data = await response.json();
-    setVoiceOverlayState('off');
     if(data.ok && data.text && data.text.trim()){
-      handleUserInput(data.text.trim());
+      await runVoiceTurn(data.text.trim());
     } else {
+      setVoiceOverlayState('off');
       showToast(data.message || '음성을 이해하지 못했어요. 다시 말씀해 주시겠어요?');
     }
   }catch(e){
