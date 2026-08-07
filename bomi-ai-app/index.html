@@ -4693,29 +4693,17 @@ async function startApp(isNew){
   stepGoal = (await storeGet('step-goal')) || stepGoal;
   todaySteps = await storeGet(todayKey('steps'));
   requestStepsFromNative(); // 네이티브 앱이면 최신 걸음수로 바로 갱신, 아니면 무시됨
-  messages = await storeGet(todayKey('messages')) || [];
+  // 앱을 열 때마다 이전 대화 내용은 이어서 보여주지 않고 매번 새로 시작합니다
+  // (예전엔 그날 나눈 대화를 계속 이어 보여줬는데, 그러지 말아달라는 요청).
+  // 저장된 이전 대화는 아래 storeSet이 바로 덮어써서 실질적으로 사라집니다.
+  messages = [];
   showScreen('chatScreen');
 
-  if(messages.length === 0){
-    const intro = `반가워요! 보미가 매일 이런 걸 여쭤볼게요:
+  const greeting = `안녕하세요 ${profile.name}님, 무엇을 도와드릴까요?`;
+  addBubble('assistant', greeting);
+  messages.push({role:'assistant', content:greeting});
+  await storeSet(todayKey('messages'), messages);
 
-• 오늘 컨디션은 어떠신지
-• 어젯밤은 푹 주무셨는지
-• 식사는 잘 챙겨 드셨는지
-• 요즘 마음 상태는 어떤지
-• ${profile.interests[0]||'관심사'} 활동은 즐기고 계신지
-
-이렇게 매일 대화를 나누면서 건강리포트를 만들어 드릴게요! 궁금한 게 있으면 언제든 물어보세요.`;
-    addBubble('assistant', intro);
-    messages.push({role:'assistant', content:intro});
-    await storeSet(todayKey('messages'), messages);
-  } else {
-    let lastUserText = null;
-    messages.forEach(m=>{
-      if(m.role === 'user'){ addBubble('user', m.content); lastUserText = m.content; }
-      else { addAssistantBlock(m.content, lastUserText); }
-    });
-  }
   renderPinnedChecklist();
   refreshTodayCalEvents();
   syncHealthSummaryIfConsented();
