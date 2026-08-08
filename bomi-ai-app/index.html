@@ -824,6 +824,7 @@
       <div class="chip" id="callChip">통화</div>
       <div class="chip" id="calendarChip">달력</div>
       <div class="chip" id="transitChip">대중교통</div>
+      <div class="chip" id="weatherChip">날씨</div>
       <div class="chip" id="restaurantChip">맛집</div>
       <div class="chip" id="sajuChip">오늘 운세</div>
       <div class="chip" id="reportChip">건강리포트</div>
@@ -3840,6 +3841,10 @@ async function runTransitSearch(origin, destination, originResolved, destResolve
   }
 }
 document.getElementById('transitChip').addEventListener('click', startTransitFlow);
+// 별도 카드 없이, 사용자가 직접 "오늘 날씨 어때요?"라고 타이핑한 것과 똑같이
+// 처리합니다 — routeUserInput을 거치는 handleUserInput을 그대로 써서, 채팅으로
+// 직접 물어봤을 때와 동일한 그라운딩/날씨 카드(extractWeatherCode) 흐름을 탑니다.
+document.getElementById('weatherChip').addEventListener('click', ()=> handleUserInput('오늘 날씨 어때요?'));
 
 /* ============ 주식 시세 (국내: 공공데이터포털 금융위원회_주식시세정보 / 해외: Finnhub, api/stock.js 참고) ============ */
 // AI가 시세를 지어내는 일이 없도록, 시세 자체는 AI를 거치지 않고 /api/stock을
