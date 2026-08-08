@@ -279,15 +279,10 @@
   .ai-content{ display:flex; flex-direction:column; gap:10px; }
   .ai-text{ font-size:calc(16px * var(--app-font-scale)); line-height:1.6; font-weight:500; color:var(--ink); white-space:pre-line; }
   .ai-thinking{ font-size:14px; color:var(--sub); font-weight:600; }
-  .ai-disclaimer{ font-size:11px; color:var(--sub); line-height:1.5; }
-  .ai-feedback{ display:flex; gap:8px; }
-  .fb-icon{
-    width:30px; height:30px; border-radius:50%; border:1px solid var(--line); background:#fff;
-    display:flex; align-items:center; justify-content:center; color:var(--sub); cursor:pointer; padding:0;
-  }
-  .fb-icon svg{ width:15px; height:15px; display:block; }
-  .fb-icon:hover{ background:#F1EEE7; }
-  .fb-icon.active{ border-color:var(--blue); color:var(--blue); background:var(--accent-soft); }
+  /* 답변 글자를 한 글자씩 페이드인시키는 공용 스타일(채팅+마이크 모드 공용) —
+     타자기처럼 뚝뚝 나타나지 않고 부드럽게 살아나 보이게 합니다. */
+  .fade-ch{ opacity:0; transition:opacity 320ms ease; }
+  .fade-ch.show{ opacity:1; }
 
   /* ---------- 예상 답변 선택지 (카나나 스타일 — 점선 밑줄 텍스트 링크) ---------- */
   .reply-options{ display:flex; flex-direction:column; align-items:stretch; gap:12px; max-width:94%; }
@@ -395,13 +390,11 @@
      (예전엔 사진을 별도 메시지로 먼저 넣어서, 타자기 효과로 글이 길어지며
      자동 스크롤될 때 사진만 화면 위로 밀려나 안 보이는 문제가 있었음). */
   /* 날씨 답변만 흰 배경 테두리 카드로(대중교통/주식 카드와 같은 스타일) —
-     사진은 카드 위쪽에 꽉 차게, 글/안내문구/피드백 아이콘은 안쪽 여백을 줘서
-     사진+글이 하나의 카드처럼 보이게 합니다. */
+     사진은 카드 위쪽에 꽉 차게, 글은 안쪽 여백을 줘서 사진+글이 하나의
+     카드처럼 보이게 합니다. */
   .weather-card{ max-width:86%; background:#fff; border:1px solid var(--line); border-radius:18px; overflow:hidden; flex-shrink:0; }
   .weather-card .ai-content{ gap:0; padding-bottom:14px; }
   .weather-card .ai-text{ padding:0 15px; }
-  .weather-card .ai-disclaimer{ padding:0 15px; margin-top:8px; }
-  .weather-card .ai-feedback{ padding:0 15px; margin-top:2px; }
   .ai-weather-img{ display:block; width:100%; height:190px; object-fit:cover; object-position:center bottom; border-radius:16px; margin-bottom:12px; }
   .weather-card .ai-weather-img{ border-radius:0; margin-bottom:12px; }
 
@@ -3219,14 +3212,6 @@ document.getElementById('stepGoalBack').addEventListener('click', ()=> showScree
 
 /* ============ CHAT LOGIC ============ */
 
-const FB_ICONS = {
-  up: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7 11v9H4v-9h3Zm3 9h7.5a2 2 0 0 0 1.94-1.51l1.36-5.4A2 2 0 0 0 18.86 10H14l.7-4.2a1.6 1.6 0 0 0-2.86-1.24L8 9.5"/></svg>',
-  down: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7 13V4H4v9h3Zm3-9H17.5a2 2 0 0 1 1.94 1.51l1.36 5.4A2 2 0 0 1 18.86 14H14l.7 4.2a1.6 1.6 0 0 1-2.86 1.24L8 14.5"/></svg>',
-  retry: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 0 1 13.66-5.66M20 12a8 8 0 0 1-13.66 5.66"/><path d="M17.5 3.5v3.3h-3.3M6.5 20.5v-3.3h3.3"/></svg>',
-  share: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V4M8 8l4-4 4 4"/><path d="M5 14v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"/></svg>',
-};
-const AI_DISCLAIMER = 'AI가 생성한 응답은 정확하지 않을 수 있어요. 중요한 내용은 확인해 주세요.';
-
 function addBubble(role, text){
   if(role !== 'user'){ addAssistantBlock(text, null); return; }
   const chat = document.getElementById('chat');
@@ -3240,19 +3225,10 @@ function addBubble(role, text){
   chat.scrollTop = chat.scrollHeight;
 }
 
-// userText: the question this answer responds to (used by the retry button
-// to regenerate). Pass null for messages with no clear preceding question
-// (e.g. the onboarding intro) — the retry button hides itself in that case.
-// 피드백 아이콘 줄은 매 답변마다 보여주면 번잡해서, "어려운 작업"(길고 실질적인
-// 답변)일 때만 보여줍니다 — 짧은 잡담성 답변에는 안 보이게 하는 단순한 기준으로
-// 글자 수를 씀 (정교한 신호가 없어서 택한 실용적 근사치).
-const FEEDBACK_MIN_LENGTH = 80;
-
-// animate: true일 때 텍스트를 타자기처럼 한 글자씩 보여줌 (실시간 새 답변용).
+// animate: true일 때 텍스트를 한 글자씩 페이드인시킴(실시간 새 답변용).
 // 과거 대화 replay나 인트로 메시지는 animate 없이 즉시 표시.
 function addAssistantBlock(text, userText, animate, weatherCode){
   const chat = document.getElementById('chat');
-  const showFeedback = text.length >= FEEDBACK_MIN_LENGTH;
   const wrap = document.createElement('div');
   // 날씨 답변은 사진과 글을 흰 배경 테두리 카드 하나로 묶어서(대중교통/주식
   // 카드와 같은 스타일) 보여줍니다 — 그냥 사진+민글자를 순서대로 늘어놓기만
@@ -3264,100 +3240,60 @@ function addAssistantBlock(text, userText, animate, weatherCode){
     <div class="ai-content">
       ${heroHtml}
       <div class="ai-text"></div>
-      <div class="ai-disclaimer" style="display:none;">${AI_DISCLAIMER}</div>
-      ${showFeedback ? `<div class="ai-feedback" style="display:none;">
-        <button class="fb-icon" type="button" data-fb="up" aria-label="좋아요">${FB_ICONS.up}</button>
-        <button class="fb-icon" type="button" data-fb="down" aria-label="별로예요">${FB_ICONS.down}</button>
-        <button class="fb-icon" type="button" data-fb="retry" aria-label="다시 생성">${FB_ICONS.retry}</button>
-        <button class="fb-icon" type="button" data-fb="share" aria-label="공유">${FB_ICONS.share}</button>
-      </div>` : ''}
     </div>`;
   const textEl = wrap.querySelector('.ai-text');
-  const disclaimerEl = wrap.querySelector('.ai-disclaimer');
-  if(showFeedback){
-    const upBtn = wrap.querySelector('[data-fb="up"]');
-    const downBtn = wrap.querySelector('[data-fb="down"]');
-    const retryBtn = wrap.querySelector('[data-fb="retry"]');
-    const shareBtn = wrap.querySelector('[data-fb="share"]');
-    upBtn.addEventListener('click', ()=> handleFeedbackVote(upBtn, downBtn, 'up', text));
-    downBtn.addEventListener('click', ()=> handleFeedbackVote(upBtn, downBtn, 'down', text));
-    if(userText){ retryBtn.addEventListener('click', ()=> regenerateReply(userText)); }
-    else { retryBtn.style.display = 'none'; }
-    shareBtn.addEventListener('click', ()=> shareText(text));
-  }
   chat.appendChild(wrap);
   chat.scrollTop = chat.scrollHeight;
 
-  const revealTrailer = ()=>{
-    disclaimerEl.style.display = '';
-    if(showFeedback) wrap.querySelector('.ai-feedback').style.display = '';
-    chat.scrollTop = chat.scrollHeight;
-  };
   if(animate){
-    typewriterReveal(chat, textEl, text).then(revealTrailer);
+    const spans = prepareFadeChars(textEl, text);
+    fadeCharsIn(chat, spans);
   } else {
     textEl.textContent = text;
-    revealTrailer();
+    chat.scrollTop = chat.scrollHeight;
   }
 }
 
-// 텍스트를 한 글자씩(성능을 위해 몇 글자씩 묶어서) 채워 넣는 타자기 효과.
-// 실제 API 스트리밍이 아니라, 이미 다 받은 응답을 화면에서만 흉내 내는 것.
-function typewriterReveal(chat, el, text, msPerTick){
-  msPerTick = msPerTick || 42;
-  const charsPerTick = 2;
+/* ============ 글자별 페이드인 (대화창 + 마이크 모드 공용) ============ */
+// text를 글자 하나하나를 <span class="fade-ch">로 쪼개 el에 채워 넣습니다.
+// 처음엔 전부 opacity:0 상태 — 이후 revealCharsUpTo로 그 지점까지 .show를
+// 붙이면 CSS transition(.fade-ch.show, 320ms)이 알아서 부드럽게 살아나 보이게
+// 합니다. 타자기처럼 글자가 뚝뚝 끊겨 나타나는 대신 은은하게 페이드인되는
+// 효과를 대화창(타이머 기반)과 마이크 모드(TTS 오디오/음성 재생 진행률 기반)
+// 양쪽에서 같은 방식으로 재사용하기 위한 공용 헬퍼입니다.
+function prepareFadeChars(el, text){
+  el.innerHTML = '';
+  const spans = [];
+  for(const ch of text){
+    const span = document.createElement('span');
+    span.className = 'fade-ch';
+    span.textContent = ch;
+    el.appendChild(span);
+    spans.push(span);
+  }
+  return spans;
+}
+function revealCharsUpTo(spans, end){
+  for(let i=0; i<end && i<spans.length; i++){
+    if(!spans[i].classList.contains('show')) spans[i].classList.add('show');
+  }
+}
+function revealAllChars(spans){
+  spans.forEach(s=>s.classList.add('show'));
+}
+// 대화창처럼 오디오 재생 진행률 같은 외부 기준 없이, 일정한 속도로 글자를
+// 순서대로 드러낼 때 씁니다.
+function fadeCharsIn(chat, spans, msPerChar){
+  msPerChar = msPerChar || 24;
   return new Promise(resolve=>{
     let i = 0;
     const timer = setInterval(()=>{
-      i = Math.min(text.length, i + charsPerTick);
-      el.textContent = text.slice(0, i);
+      i = Math.min(spans.length, i + 1);
+      revealCharsUpTo(spans, i);
       chat.scrollTop = chat.scrollHeight;
-      if(i >= text.length){ clearInterval(timer); resolve(); }
-    }, msPerTick);
+      if(i >= spans.length){ clearInterval(timer); resolve(); }
+    }, msPerChar);
   });
-}
-
-async function handleFeedbackVote(upBtn, downBtn, kind, messageText){
-  upBtn.classList.toggle('active', kind === 'up');
-  downBtn.classList.toggle('active', kind === 'down');
-  await saveFeedback(`[${kind === 'up' ? '👍' : '👎'}] ${messageText}`);
-}
-
-async function shareText(text){
-  if(navigator.share){
-    try{ await navigator.share({ text }); return; }catch(e){ /* user cancelled or unsupported, fall through */ }
-  }
-  if(navigator.clipboard){
-    try{ await navigator.clipboard.writeText(text); showToast('복사했어요'); return; }catch(e){}
-  }
-  showToast('공유 기능을 사용할 수 없어요');
-}
-
-async function regenerateReply(userText){
-  addTyping();
-  try{
-    const raw = await callBomi(userText);
-    const { text: rawReply, options } = parseBomiReply(raw);
-    const { text: afterWeather, code: weatherCode } = extractWeatherCode(rawReply);
-    const { text: cleanedText, event: calendarEvent } = extractCalendarIntent(afterWeather);
-    const reply = stripMarkdown(cleanedText);
-    removeTyping();
-    addAssistantBlock(reply, userText, true, weatherCode);
-    messages.push({role:'assistant', content:reply});
-    await storeSet(todayKey('messages'), messages.slice(-30));
-    // 일정에 시작 시간이 있으면 handleCalendarIntent가 곧이어 "몇 시간 전에
-    // 알림 받으실래요?" 선택지 5개를 붙입니다 — 그 위에 AI가 자체적으로 붙인
-    // 예상 답변 선택지(최대 3개)까지 같이 뜨면 한 번에 최대 8개가 쏟아져서
-    // 어르신께 너무 많습니다. 이 경우엔 알림 시간 질문이 더 급한 후속 질문이라
-    // AI 선택지는 이번 턴만 건너뜁니다.
-    const willAskAlarmLead = !!(calendarEvent && calendarEvent.startTime);
-    if(options.length && !willAskAlarmLead) addSuggestedOptions(options);
-    if(calendarEvent) handleCalendarIntent(calendarEvent);
-  }catch(e){
-    removeTyping();
-    if(e instanceof RateLimitError){ showRateLimitUpsell(); }
-    else { addAssistantBlock('지금 연결이 원활하지 않아요. 잠시 후 다시 말씀해 주세요.', userText, true); }
-  }
 }
 
 function addTyping(){
@@ -4476,15 +4412,6 @@ function showRateLimitUpsell(){
   });
 }
 
-async function saveFeedback(text){
-  try{
-    const key = `feedback:${profile.crmId}:${Date.now()}`;
-    await storeSet(key, {
-      name: profile.name, crmId: profile.crmId, message: text, ts: new Date().toISOString()
-    });
-  }catch(e){}
-}
-
 async function sendMessage(text){
   if(!text || !text.trim()) return;
   document.getElementById('sendBtn').disabled = true;
@@ -4791,18 +4718,22 @@ function pickKoreanVoice(){
 }
 // 구글 음성도, 브라우저 내장 음성도 둘 다 안 될 때의 마지막 대체 — 실제
 // 목소리 속도 정보가 없으니 한국어 평균 낭독 속도에 가깝게 고정 속도로
-// 타자기 효과만 보여줍니다.
-function fallbackTypewriter(el, text){
+// 페이드인 효과만 보여줍니다.
+function fallbackTypewriter(el, text, spans){
+  spans = spans || prepareFadeChars(el, text);
   let i = 0;
   const timer = setInterval(()=>{
-    i = Math.min(text.length, i + 2);
-    el.textContent = text.slice(0, i);
-    if(i >= text.length) clearInterval(timer);
-  }, 50);
+    i = Math.min(spans.length, i + 1);
+    revealCharsUpTo(spans, i);
+    if(i >= spans.length) clearInterval(timer);
+  }, 45);
 }
-function speakWithBrowserTts(el, text){
+// spans를 넘겨받으면(speakVoiceReply에서 이미 만들어둔 것) 다시 쪼개지 않고
+// 그대로 이어서 씁니다 — 화면이 한 번 깜빡이며 다시 그려지는 걸 막기 위함.
+function speakWithBrowserTts(el, text, spans){
+  spans = spans || prepareFadeChars(el, text);
   if(!('speechSynthesis' in window)){
-    fallbackTypewriter(el, text);
+    fallbackTypewriter(el, text, spans);
     return;
   }
   window.speechSynthesis.cancel();
@@ -4813,16 +4744,16 @@ function speakWithBrowserTts(el, text){
   if(koVoice) utter.voice = koVoice;
   utter.onboundary = (e)=>{
     const end = e.charIndex + (e.charLength || 6);
-    el.textContent = text.slice(0, end);
+    revealCharsUpTo(spans, end);
   };
-  utter.onend = ()=>{ el.textContent = text; voiceUtterance = null; };
-  utter.onerror = ()=>{ el.textContent = text; voiceUtterance = null; };
+  utter.onend = ()=>{ revealAllChars(spans); voiceUtterance = null; };
+  utter.onerror = ()=>{ revealAllChars(spans); voiceUtterance = null; };
   voiceUtterance = utter;
   window.speechSynthesis.speak(utter);
 }
 async function speakVoiceReply(text){
   const el = document.getElementById('voiceReplyText');
-  el.textContent = '';
+  const spans = prepareFadeChars(el, text);
   try{
     const res = await fetch('/api/tts', {
       method:'POST', headers:{'Content-Type':'application/json'},
@@ -4835,13 +4766,13 @@ async function speakVoiceReply(text){
     audio.addEventListener('timeupdate', ()=>{
       if(!audio.duration) return;
       const end = Math.round(text.length * Math.min(1, audio.currentTime / audio.duration));
-      el.textContent = text.slice(0, end);
+      revealCharsUpTo(spans, end);
     });
-    audio.addEventListener('ended', ()=>{ el.textContent = text; voiceAudioEl = null; });
-    audio.addEventListener('error', ()=>{ speakWithBrowserTts(el, text); });
+    audio.addEventListener('ended', ()=>{ revealAllChars(spans); voiceAudioEl = null; });
+    audio.addEventListener('error', ()=>{ speakWithBrowserTts(el, text, spans); });
     await audio.play();
   }catch(e){
-    speakWithBrowserTts(el, text);
+    speakWithBrowserTts(el, text, spans);
   }
 }
 
